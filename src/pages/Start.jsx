@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Cake, DollarSign, Globe, HeartHandshake } from "lucide-react";
+import { ArrowRight, Cake, DollarSign, Globe, HeartHandshake, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import TopMenu from "@/components/paper/TopMenu";
@@ -11,7 +10,6 @@ import StepRail from "@/components/paper/start/StepRail";
 import StepCard from "@/components/paper/start/StepCard";
 import PlanRow from "@/components/paper/start/PlanRow";
 import CreatureHint from "@/components/paper/start/CreatureHint";
-import SlideToContinue from "@/components/paper/start/SlideToContinue";
 
 // Onboarding — value before account, and no account needed at all to go
 // through it. Five friendly steps, one big card at a time: ask, check,
@@ -84,8 +82,6 @@ export default function Start() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const noteRef = useRef(null);
-  const dropRef = useRef(null);
-  const [dragChip, setDragChip] = useState(null);
   const [step, setStep] = useState(1);
   const [ex, setEx] = useState(null);
   const [note, setNote] = useState("");
@@ -231,6 +227,9 @@ export default function Start() {
     onCommit: () => setEditingLine(null),
   });
 
+  const goldPill =
+    "inline-flex items-center gap-2 rounded-full px-6 py-3 text-[15px] font-semibold transition-all hover:brightness-[1.03] disabled:opacity-60";
+  const goldStyle = { background: "var(--amber-cta)", color: "#2b1d0e", boxShadow: "0 12px 26px -12px rgba(232,163,61,.75)" };
   const kicker = "text-[11px] font-semibold uppercase tracking-[0.2em]";
   const kickerColor = { color: "rgba(60,45,25,.5)" };
 
@@ -267,28 +266,11 @@ export default function Start() {
                 {EXAMPLES.map((e) => {
                   const Icon = CHIP_ICONS[e.chip];
                   return (
-                    <motion.button
+                    <button
                       key={e.chip}
                       type="button"
                       onClick={() => pickExample(e)}
-                      drag
-                      dragSnapToOrigin
-                      whileDrag={{ scale: 1.06, rotate: 2, zIndex: 40 }}
-                      onDragStart={() => setDragChip(e.chip)}
-                      onDragEnd={(ev) => {
-                        setDragChip(null);
-                        const r = dropRef.current?.getBoundingClientRect();
-                        if (
-                          r &&
-                          ev.clientX >= r.left &&
-                          ev.clientX <= r.right &&
-                          ev.clientY >= r.top &&
-                          ev.clientY <= r.bottom
-                        ) {
-                          pickExample(e);
-                        }
-                      }}
-                      className="flex cursor-grab items-center gap-3 rounded-2xl border border-hairline bg-[#FAF6ED] px-4 py-4 text-left transition-all hover:border-amber-cta/60 hover:bg-white hover:shadow-[0_10px_24px_-14px_rgba(60,45,25,.3)] active:cursor-grabbing"
+                      className="flex items-center gap-3 rounded-2xl border border-hairline bg-[#FAF6ED] px-4 py-4 text-left transition-all hover:border-amber-cta/60 hover:bg-white hover:shadow-[0_10px_24px_-14px_rgba(60,45,25,.3)]"
                     >
                       <span
                         className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
@@ -297,45 +279,29 @@ export default function Start() {
                         <Icon className="h-5 w-5" />
                       </span>
                       <span className="text-[15px] font-semibold text-ink-warm">{e.chip}</span>
-                    </motion.button>
+                    </button>
                   );
                 })}
               </div>
 
               <p className="mt-6 text-[13px]" style={{ color: "rgba(60,45,25,.55)" }}>
-                Drag one onto the note — or just tap it. No account yet, nothing to connect.
+                Or type your own — no account yet, nothing to connect.
               </p>
-              <div ref={dropRef} className="relative mx-auto mt-3 max-w-[560px]">
-                {dragChip && (
-                  <div
-                    className="pointer-events-none absolute -inset-1 z-10 grid place-items-center rounded-2xl border-2 border-dashed"
-                    style={{ borderColor: "var(--amber-cta)", background: "rgba(232,163,61,.10)" }}
-                  >
-                    <span
-                      className="rounded-full bg-white/80 px-3 py-1 text-[12.5px] font-semibold"
-                      style={{ color: "#9a6516" }}
-                    >
-                      Drop it here
-                    </span>
-                  </div>
-                )}
-                <textarea
-                  ref={noteRef}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  rows={3}
-                  maxLength={300}
-                  placeholder="Watch for chicken thighs under $1.50 and text me…"
-                  className="block w-full rounded-2xl border border-hairline bg-[#FAF6ED] p-4 font-hand text-[19px] leading-snug text-ink-warm outline-none placeholder:italic placeholder:opacity-45 focus:border-amber-cta/60"
-                />
-              </div>
-              <SlideToContinue
-                className="mx-auto mt-5"
-                label={note.trim() ? "Slide to read it back" : "Pick a note first — or write your own"}
-                onDone={typedNext}
-                disabled={!note.trim()}
-                busy={busy}
+              <textarea
+                ref={noteRef}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={3}
+                maxLength={300}
+                placeholder="Watch for chicken thighs under $1.50 and text me…"
+                className="mx-auto mt-3 block w-full max-w-[560px] rounded-2xl border border-hairline bg-[#FAF6ED] p-4 font-hand text-[19px] leading-snug text-ink-warm outline-none placeholder:italic placeholder:opacity-45 focus:border-amber-cta/60"
               />
+              {note.trim() && (
+                <button type="button" onClick={typedNext} disabled={busy} className={`mt-5 ${goldPill}`} style={goldStyle}>
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                  Read it back to me
+                </button>
+              )}
             </div>
 
             <div className="absolute bottom-4 right-5 hidden sm:block">
@@ -362,16 +328,15 @@ export default function Start() {
                   <PlanRow {...rowProps("what")} />
                   <PlanRow {...rowProps("tells")} />
                 </div>
-                <div className="mt-7">
-                  <SlideToContinue
-                    label={busy ? "Checking…" : "Slide to run it once now"}
-                    onDone={runOnce}
-                    busy={busy}
-                  />
+                <div className="mt-6 flex flex-wrap items-center gap-4">
+                  <button type="button" onClick={runOnce} disabled={busy} className={goldPill} style={goldStyle}>
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                    {busy ? "checking…" : "Looks right — run it once now"}
+                  </button>
                   <button
                     type="button"
                     onClick={() => setStep(1)}
-                    className="mt-3 text-[14px] font-medium"
+                    className="text-[14px] font-medium"
                     style={{ color: "rgba(60,45,25,.6)" }}
                   >
                     Back
@@ -420,12 +385,14 @@ export default function Start() {
                 It will do that every morning from now on — and stay silent on the days there's nothing worth telling
                 you.
               </p>
-              <div className="mt-7">
-                <SlideToContinue label="Slide to keep it running" onDone={() => setStep(4)} />
+              <div className="mt-6 flex flex-wrap items-center gap-4">
+                <button type="button" onClick={() => setStep(4)} className={goldPill} style={goldStyle}>
+                  Keep it running
+                </button>
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="mt-3 text-[14px] font-medium"
+                  className="text-[14px] font-medium"
                   style={{ color: "rgba(60,45,25,.6)" }}
                 >
                   Change the note
@@ -458,16 +425,15 @@ export default function Start() {
                     className="flex-1 bg-transparent py-3.5 pr-4 text-[16px] text-ink-warm outline-none placeholder:opacity-40"
                   />
                 </div>
-                <div className="mt-7">
-                  <SlideToContinue
-                    label={busy ? "Pinning…" : "Slide to pin the note"}
-                    onDone={pinNote}
-                    busy={busy}
-                  />
+                <div className="mt-5 flex flex-wrap items-center gap-4">
+                  <button type="button" onClick={pinNote} disabled={busy} className={goldPill} style={goldStyle}>
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Pin the note
+                  </button>
                   <button
                     type="button"
                     onClick={() => setStep(3)}
-                    className="mt-3 text-[14px] font-medium"
+                    className="text-[14px] font-medium"
                     style={{ color: "rgba(60,45,25,.6)" }}
                   >
                     Back
