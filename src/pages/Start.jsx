@@ -259,12 +259,12 @@ export default function Start() {
           <div>
             <div className="text-center">
               <h1 className="font-heading text-[34px] font-semibold leading-[1.08] tracking-[-0.02em] text-neutral-900 sm:text-[44px]">
-                Your life, quietly organized.
+                Your life needs organization. This is where it starts.
               </h1>
               <p className="mx-auto mt-3.5 max-w-[460px] text-[15.5px] leading-relaxed text-neutral-500">
-                Tell it the things you're afraid you'll forget — bills to pay on time, coupons
-                about to expire, dates that sneak up on you. It checks every day and texts you
-                right when it matters. Like having someone who never forgets.
+                Stop putting plans in your calendar and forgetting about them. Say it once —
+                bills to pay, coupons about to expire, dates that sneak up — and it checks every
+                day, texting you right when it matters.
               </p>
             </div>
 
