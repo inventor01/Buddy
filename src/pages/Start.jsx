@@ -13,10 +13,10 @@ import FoundIt from "@/components/maker/FoundIt";
 // quiet enough for a big company. No jargon on the screen, ever.
 
 const EXAMPLES = [
-  { label: "Chicken under $1.50", text: "Every morning, find chicken under $1.50 and text me" },
-  { label: "The permit page", text: "Watch the permit page and tell me the day it opens" },
+  { label: "Bills on time", text: "Three days before my electric bill is due, text me a nudge" },
+  { label: "Expiring coupons", text: "When my coupons are about to expire, tell me which ones still work" },
   { label: "Birthday nudges", text: "A week before anyone's birthday, text me a nudge" },
-  { label: "Flights home", text: "When flights home drop under $200, text me" },
+  { label: "Price drops", text: "When chicken drops under $1.50, text me" },
 ];
 
 const CATS = ["when", "what", "tells"];
@@ -259,11 +259,12 @@ export default function Start() {
           <div>
             <div className="text-center">
               <h1 className="font-heading text-[34px] font-semibold leading-[1.08] tracking-[-0.02em] text-neutral-900 sm:text-[44px]">
-                Say it once. It gets done.
+                Your life, quietly organized.
               </h1>
-              <p className="mx-auto mt-3.5 max-w-[440px] text-[15.5px] leading-relaxed text-neutral-500">
-                Type the thing you keep checking — a price, a page, a birthday. It gets done
-                every day, and you get a text when there's something worth knowing.
+              <p className="mx-auto mt-3.5 max-w-[460px] text-[15.5px] leading-relaxed text-neutral-500">
+                Tell it the things you're afraid you'll forget — bills to pay on time, coupons
+                about to expire, dates that sneak up on you. It checks every day and texts you
+                right when it matters. Like having someone who never forgets.
               </p>
             </div>
 
@@ -273,7 +274,7 @@ export default function Start() {
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
                 maxLength={300}
-                placeholder="Every morning, find chicken under $1.50 and text me…"
+                placeholder="Three days before my electric bill is due, text me…"
                 className="w-full resize-none bg-transparent px-3 pt-2.5 text-[16px] leading-relaxed text-neutral-900 outline-none placeholder:text-neutral-400"
               />
               {image && (
