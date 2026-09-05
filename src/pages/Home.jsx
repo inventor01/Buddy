@@ -112,7 +112,13 @@ export default function Home() {
         const res = await base44.functions.invoke("runBuddyNow", { buddyId: b.id });
         const lines = res.data?.lines || [];
         if (lines.length) {
-          const noteMsg = { who: "note", at: new Date().toISOString(), text: lines.join("\n") };
+          const foundItems = res.data?.items || [];
+          const noteMsg = {
+            who: "note",
+            at: new Date().toISOString(),
+            text: lines.join("\n"),
+            items: foundItems,
+          };
           msgs = [...msgs, noteMsg];
           setBuddies((p) => p.map((x) => (x.id === b.id ? { ...x, messages: msgs, last_result: lines } : x)));
           await base44.entities.Buddy.update(b.id, { messages: msgs, last_result: lines });

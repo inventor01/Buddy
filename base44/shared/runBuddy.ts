@@ -20,6 +20,7 @@ export function parseScheduleHour(scheduleTime) {
 export const FINDINGS_RULES = [
   "For every finding include source_name (the site or store it came from) and the exact URL it was read from.",
   "Only give a URL you actually read — never invent one. If a finding has no source URL, leave url empty.",
+  "When the finding is a specific product, listing, or deal, also include a product object: name, price as a short string (like \"price under $1.50\" → \"$1.29/lb\"), stock only when the page shows it, and image_url — the exact product image URL shown on the page. Never invent an image URL; omit it when unsure.",
   "If today has nothing genuinely useful, say so plainly — never invent codes or prices."
 ];
 
@@ -33,7 +34,16 @@ export const FINDINGS_SCHEMA = {
         properties: {
           text: { type: "string" },
           source_name: { type: "string" },
-          url: { type: "string" }
+          url: { type: "string" },
+          product: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              image_url: { type: "string" },
+              price: { type: "string" },
+              stock: { type: "string" }
+            }
+          }
         },
         required: ["text"]
       }
@@ -65,7 +75,27 @@ export function toFindingItems(raw) {
         /* the hostname is a nicety, not a requirement */
       }
     }
-    items.push({ text, url, source });
+    // A product finding carries its own card data: name, image, price, stock.
+    let product = null;
+    const p = f && typeof f === "object" ? f.product : null;
+    if (p && typeof p === "object" && (p.name || p.price)) {
+      const imageUrl =
+        typeof p.image_url === "string" && /^https?:\/\//i.test(p.image_url.trim())
+          ? p.image_url.trim().slice(0, 300)
+          : "";
+      const clean = (v) =>
+        typeof v === "string" && !/not (displayed|specified|available|known)|n\/a|unknown/i.test(v)
+          ? v.trim().slice(0, 40)
+          : "";
+      product = {
+        name: (typeof p.name === "string" ? p.name.trim().slice(0, 80) : "") || text.slice(0, 60),
+        image_url: imageUrl,
+        price: clean(p.price),
+        stock: clean(p.stock),
+        url
+      };
+    }
+    items.push({ text, url, source, product });
     if (items.length >= 5) break;
   }
   return items;

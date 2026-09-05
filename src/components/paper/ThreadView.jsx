@@ -3,6 +3,8 @@ import moment from "moment";
 import { ArrowRight, Loader2 } from "lucide-react";
 import StickyNote from "./StickyNote";
 import LinkedText from "@/components/maker/LinkedText";
+import ProductCard from "@/components/maker/ProductCard";
+import FindingRow from "@/components/maker/FindingRow";
 
 // The note's thread — what you wrote, pinned at the top, then everything
 // it did and said, oldest to newest. You can pause it, rewrite the note,
@@ -123,15 +125,29 @@ export default function ThreadView({ buddy, onPause, onTakeDown, onEditNote, onS
               <span className="font-mono text-[9.5px] tracking-[0.14em] text-neutral-400">
                 {it ? "THE NOTE" : "YOU"} · {fmtAt(m.at)}
               </span>
-              <div
-                className={`mt-1 max-w-[74%] whitespace-pre-line px-4 py-2.5 text-[14px] leading-snug ${
-                  it
-                    ? "glass rounded-2xl rounded-tl-md text-neutral-900"
-                    : "rounded-2xl rounded-tr-md bg-neutral-900 text-white"
-                }`}
-              >
-                <LinkedText>{m.text}</LinkedText>
-              </div>
+              {it && Array.isArray(m.items) && m.items.length ? (
+                <div className="glass mt-1 max-w-[86%] space-y-2 rounded-2xl rounded-tl-md p-2.5">
+                  {m.items.map((f, j) =>
+                    f.product ? (
+                      <ProductCard key={j} item={f} />
+                    ) : (
+                      <div key={j} className="px-1 py-1">
+                        <FindingRow item={f} />
+                      </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                <div
+                  className={`mt-1 max-w-[74%] whitespace-pre-line px-4 py-2.5 text-[14px] leading-snug ${
+                    it
+                      ? "glass rounded-2xl rounded-tl-md text-neutral-900"
+                      : "rounded-2xl rounded-tr-md bg-neutral-900 text-white"
+                  }`}
+                >
+                  <LinkedText>{m.text}</LinkedText>
+                </div>
+              )}
             </div>
           );
         })}

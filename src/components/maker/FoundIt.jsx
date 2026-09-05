@@ -1,6 +1,8 @@
 import React, { useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, ExternalLink, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import ProductCard from "./ProductCard";
+import FindingRow from "./FindingRow";
 
 // "Here's what we found" — the payoff moment. Every finding rises into
 // place one by one over a breathing emerald glow, buttons respond with a
@@ -86,24 +88,8 @@ export default function FoundIt({ result, onContinue, onRestart }) {
           </p>
           <div className="mt-2.5 space-y-2.5">
             {items.map((it, i) => (
-              <motion.div key={i} variants={rise} className="flex items-start gap-2.5">
-                <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                <div>
-                  <p className="text-[15.5px] leading-snug text-neutral-900">{it.text}</p>
-                  {it.url && (
-                    <motion.a
-                      href={it.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="mt-1 inline-flex items-center gap-1 rounded-full border border-white/70 bg-white/60 px-2 py-0.5 text-[11px] font-medium text-neutral-600 transition-colors hover:bg-white hover:text-neutral-900"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      {it.source || "Source"}
-                    </motion.a>
-                  )}
-                </div>
+              <motion.div key={i} variants={rise}>
+                {it.product ? <ProductCard item={it} /> : <FindingRow item={it} />}
               </motion.div>
             ))}
           </div>
