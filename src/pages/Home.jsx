@@ -1,31 +1,17 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ShoppingBag, Store, Cake, Pill, ArrowDown } from "lucide-react";
+import { ShoppingBag, Store, Cake, Pill, ArrowDown, Loader2, Sparkles } from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { useToast } from "@/components/ui/use-toast";
 import FireflyField from "@/components/buddy/FireflyField";
 import NoteComposer from "@/components/buddy/NoteComposer";
 import BuddyCard from "@/components/buddy/BuddyCard";
+import BuddyCreature from "@/components/buddy/BuddyCreature";
+import { readBigText, applyBigText } from "@/lib/bigText";
 
 // The buddy garden — a twilight world where your note hatches a helper
 // creature that runs your errand and pins the answer back to you.
-const BUDDIES = [
-  {
-    name: "Shopping Sam",
-    variant: "sam",
-    time: "9:00 AM",
-    pinnedAt: "9:02 AM",
-    status: "done",
-    lines: ["Every morning at 9", "Finds your store's best coupons", "Pins them back here"],
-    result: ["$2 off eggs · code EGG2", "BOGO coffee · in store", "15% off produce · FRESH15"],
-  },
-  {
-    name: "Birthday Bells",
-    variant: "bells",
-    time: "8:00 AM",
-    status: "running",
-    lines: ["Every morning at 8", "Checks who needs a birthday text", "Sends it a week early"],
-  },
-];
-
 const HELPERS = [
   { icon: ShoppingBag, label: "Shopping Sam", variant: "sam" },
   { icon: Store, label: "Storefront Sid", variant: "sid" },
@@ -40,7 +26,68 @@ const STEPS = [
 ];
 
 export default function Home() {
-  const [extra, setExtra] = useState(null);
+  const { toast } = useToast();
+  const [buddies, setBuddies] = useState(null); // null = still loading
+  const [bigText, setBigText] = useState(readBigText());
+
+  const loadBuddies = useCallback(async () => {
+    try {
+      const user = await base44.auth.me();
+      const list = await base44.entities.Buddy.filter(
+        { created_by_id: user.id },
+        "-created_date",
+        50
+      );
+      setBuddies(list);
+    } catch (e) {
+      setBuddies([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    applyBigText(readBigText());
+    loadBuddies();
+  }, [loadBuddies]);
+
+  const toggleBigText = () => {
+    const next = !bigText;
+    setBigText(next);
+    applyBigText(next);
+  };
+
+  const handlePin = async (note) => {
+    try {
+      const res = await base44.functions.invoke("createBuddyFromNote", { note });
+      const plan = res.data?.plan;
+      if (!plan) throw new Error("The buddy didn't hatch — try again.");
+      const created = await base44.entities.Buddy.create({ note, ...plan, status: "active" });
+      setBuddies((prev) => [created, ...(prev ?? [])]);
+    } catch (e) {
+      toast({
+        title: e.message || "Couldn't hatch that buddy — try again.",
+        variant: "destructive",
+      });
+      throw e;
+    }
+  };
+
+  const togglePause = async (b) => {
+    const status = b.status === "paused" ? "active" : "paused";
+    await base44.entities.Buddy.update(b.id, { status });
+    setBuddies((prev) => prev.map((x) => (x.id === b.id ? { ...x, status } : x)));
+  };
+
+  const takeDown = async (b) => {
+    await base44.entities.Buddy.delete(b.id);
+    setBuddies((prev) => prev.filter((x) => x.id !== b.id));
+  };
+
+  const signOut = () => base44.auth.logout("/login");
+
+  const navItems = [
+    { label: "Home", to: "/" },
+    { label: "Settings", to: "/settings" },
+  ];
 
   return (
     <div
@@ -65,27 +112,46 @@ export default function Home() {
       <div className="relative z-10 mx-auto max-w-5xl px-5 sm:px-8">
         {/* Header */}
         <header className="flex items-center justify-between py-6">
-          <div className="flex items-center gap-2.5">
+          <Link to="/" className="flex items-center gap-2.5">
             <div className="grid place-items-center w-8 h-8 rounded-full bg-amber-300 text-stone-900 font-bold text-sm shadow-[0_0_18px_#ffd29c88]">
               ab
             </div>
-            <span className="text-cream font-semibold tracking-tight" style={{ color: "#faf3e0" }}>
+            <span className="font-semibold tracking-tight" style={{ color: "#faf3e0" }}>
               Agent Buddy
             </span>
-          </div>
+          </Link>
           <nav className="flex items-center gap-1 rounded-full border border-amber-200/15 bg-white/5 p-1 backdrop-blur-md">
-            {["Home", "Settings", "Bigger text", "Sign in"].map((item, i) => (
-              <button
-                key={item}
+            {navItems.map(({ label, to }) => (
+              <Link
+                key={label}
+                to={to}
                 className={`rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm transition-colors ${
-                  i === 0
+                  label === "Home"
                     ? "bg-amber-300/90 text-stone-900 font-semibold"
                     : "text-amber-50/70 hover:text-amber-50"
                 }`}
               >
-                {item}
-              </button>
+                {label}
+              </Link>
             ))}
+            <button
+              type="button"
+              onClick={toggleBigText}
+              className={`rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm transition-colors ${
+                bigText
+                  ? "bg-amber-300/90 text-stone-900 font-semibold"
+                  : "text-amber-50/70 hover:text-amber-50"
+              }`}
+            >
+              Bigger text
+            </button>
+            <button
+              type="button"
+              onClick={signOut}
+              className="rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm text-amber-50/70 hover:text-amber-50 transition-colors"
+            >
+              Sign out
+            </button>
           </nav>
         </header>
 
@@ -113,7 +179,7 @@ export default function Home() {
           </motion.p>
 
           <div className="mt-10">
-            <NoteComposer onPin={() => setExtra({ hatched: true })} />
+            <NoteComposer onPin={handlePin} />
           </div>
 
           {/* "it goes" connector */}
@@ -132,22 +198,25 @@ export default function Home() {
 
         {/* Buddy habitat */}
         <section className="pb-4">
-          <div className="grid gap-5 sm:grid-cols-2">
-            {BUDDIES.map((b) => (
-              <BuddyCard key={b.name} buddy={b} />
-            ))}
-            {extra?.hatched && (
-              <BuddyCard
-                buddy={{
-                  name: "Your new buddy",
-                  variant: "sid",
-                  time: "tomorrow",
-                  status: "running",
-                  lines: ["Just hatched", "Reading your note", "Getting ready to run"],
-                }}
-              />
-            )}
-          </div>
+          {buddies === null ? (
+            <div className="flex items-center justify-center gap-2 py-14 text-amber-100/60">
+              <Loader2 className="w-4 h-4 animate-spin" /> Waking the garden…
+            </div>
+          ) : buddies.length === 0 ? (
+            <div className="flex flex-col items-center gap-4 py-14 text-center">
+              <BuddyCreature variant="bells" size={84} active={false} />
+              <p className="flex items-center gap-1.5 text-amber-100/70">
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                Your helpers will show up here once you make your first one.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2">
+              {buddies.map((b) => (
+                <BuddyCard key={b.id} buddy={b} onPause={togglePause} onTakeDown={takeDown} />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Helper pills */}
@@ -182,7 +251,7 @@ export default function Home() {
                 className="rounded-2xl border border-amber-200/12 bg-white/[0.04] p-5 backdrop-blur-md"
               >
                 <div className="text-amber-300/60 text-xs font-mono">{s.n}</div>
-                <h4 className="mt-2 text-cream font-semibold" style={{ color: "#faf3e0" }}>
+                <h4 className="mt-2 font-semibold" style={{ color: "#faf3e0" }}>
                   {s.title}
                 </h4>
                 <p className="mt-1 text-sm text-amber-50/65">{s.body}</p>
@@ -193,9 +262,7 @@ export default function Home() {
 
         {/* Footer */}
         <footer className="py-12 text-center">
-          <p className="text-amber-200/50 text-sm">
-            Made to be simple enough for anyone.
-          </p>
+          <p className="text-amber-200/50 text-sm">Made to be simple enough for anyone.</p>
         </footer>
       </div>
     </div>

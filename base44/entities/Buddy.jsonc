@@ -1,0 +1,61 @@
+{
+  "name": "Buddy",
+  "type": "object",
+  "properties": {
+    "note": {
+      "type": "string",
+      "description": "The original one-sentence note the user pinned"
+    },
+    "name": {
+      "type": "string",
+      "description": "Friendly buddy name, e.g. Shopping Sam"
+    },
+    "creature": {
+      "type": "string",
+      "enum": [
+        "sam",
+        "sid",
+        "bells",
+        "med"
+      ],
+      "default": "sam",
+      "description": "Which garden creature this buddy is"
+    },
+    "when_line": {
+      "type": "string",
+      "description": "Plain-English line: when it happens"
+    },
+    "what_line": {
+      "type": "string",
+      "description": "Plain-English line: what it does"
+    },
+    "how_line": {
+      "type": "string",
+      "description": "Plain-English line: how it tells you"
+    },
+    "schedule_time": {
+      "type": "string",
+      "description": "The time it runs, e.g. 9:00 AM"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "paused"
+      ],
+      "default": "active"
+    },
+    "last_result": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The latest findings pinned back by this buddy"
+    }
+  },
+  "required": [
+    "note",
+    "name",
+    "creature"
+  ]
+}

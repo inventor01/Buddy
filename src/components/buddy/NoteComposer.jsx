@@ -1,31 +1,31 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Mic, Sparkles, Pin } from "lucide-react";
 
 // The glowing paper lantern where you leave your note. One plain sentence
-// is all it takes — the lantern glows brighter as you write.
+// is all it takes — the lantern glows brighter as you write, and the pin
+// button hatches your buddy (the note is kept if hatching fails).
 export default function NoteComposer({ onPin }) {
   const [note, setNote] = useState("");
-  const [pinned, setPinned] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const glow = Math.min(0.25 + note.length / 180, 0.85);
 
-  const handlePin = () => {
-    if (!note.trim()) return;
-    setPinned(true);
-    onPin?.(note);
-    setTimeout(() => {
-      setPinned(false);
+  const handlePin = async () => {
+    if (busy || !note.trim()) return;
+    setBusy(true);
+    try {
+      await onPin(note);
       setNote("");
-    }, 2200);
+    } catch (e) {
+      /* keep the note so they can retry */
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <motion.div
-      className="relative w-full max-w-md mx-auto"
-      animate={{ "--glow": glow }}
-      transition={{ duration: 0.4 }}
-    >
+    <motion.div className="relative w-full max-w-md mx-auto">
       {/* warm halo behind the lantern */}
       <div
         className="absolute -inset-6 rounded-[2rem] blur-2xl transition-opacity duration-500"
@@ -53,6 +53,7 @@ export default function NoteComposer({ onPin }) {
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={2}
+          maxLength={300}
           placeholder="Send me Kroger's best coupons every morning at 9"
           className="w-full resize-none bg-transparent outline-none text-xl sm:text-2xl leading-snug text-stone-800 placeholder:text-stone-400/70"
           style={{ fontFamily: "'Caveat', cursive" }}
@@ -70,30 +71,25 @@ export default function NoteComposer({ onPin }) {
           <motion.button
             type="button"
             onClick={handlePin}
+            disabled={busy}
             whileTap={{ scale: 0.94 }}
-            className="flex items-center gap-2 rounded-full pl-4 pr-5 py-2 text-sm font-semibold text-stone-800 transition-colors"
+            className="flex items-center gap-2 rounded-full pl-4 pr-5 py-2 text-sm font-semibold text-stone-800 transition-colors disabled:cursor-wait"
             style={{
               background: note.trim() ? "linear-gradient(180deg,#ffe9b8,#f4a261)" : "#f0e3cc",
               boxShadow: note.trim() ? "0 6px 18px -6px #f4a261aa" : "none",
             }}
           >
-            <Pin className="w-4 h-4" />
-            Pin it up
+            {busy ? (
+              <>
+                <Sparkles className="w-4 h-4 animate-pulse" /> Hatching…
+              </>
+            ) : (
+              <>
+                <Pin className="w-4 h-4" /> Pin it up
+              </>
+            )}
           </motion.button>
         </div>
-
-        <AnimatePresence>
-          {pinned && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-x-6 -bottom-3 flex items-center justify-center gap-1.5 rounded-full bg-amber-500/90 px-4 py-1.5 text-xs font-semibold text-white shadow-lg"
-            >
-              <Sparkles className="w-3.5 h-3.5" /> A buddy is hatching…
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </motion.div>
   );

@@ -89,4 +89,9 @@
   body {
     @apply bg-background text-foreground font-body;
   }
+
+  /* "Bigger text" preference — scales all rem-based text ~12% larger */
+  html.big-text {
+    font-size: 112.5%;
+  }
 }

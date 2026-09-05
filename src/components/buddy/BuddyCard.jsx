@@ -1,13 +1,14 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Volume2, Check } from "lucide-react";
+import { Volume2, Pause, Play, Trash2 } from "lucide-react";
 import BuddyCreature from "./BuddyCreature";
 
-// A buddy's lantern — the creature lives here, bobs while it works, and
-// pins its findings back onto a little note tucked underneath.
-export default function BuddyCard({ buddy }) {
-  const { name, variant, time, status, pinnedAt, lines = [], result } = buddy;
-  const running = status === "running";
+// A buddy's lantern — the creature lives here, bobs while it works, shows
+// the note it was born from, its three plain lines, and its latest findings.
+// Every buddy can be paused or taken down at any time.
+export default function BuddyCard({ buddy, onPause, onTakeDown }) {
+  const { name, creature, note, status, when_line, what_line, how_line, last_result } = buddy;
+  const active = status !== "paused";
 
   return (
     <motion.div
@@ -19,26 +20,24 @@ export default function BuddyCard({ buddy }) {
       style={{
         background: "linear-gradient(165deg, rgba(255,253,246,0.10), rgba(255,246,230,0.04))",
         border: "1px solid rgba(255,217,160,0.22)",
-        boxShadow: running
+        boxShadow: active
           ? "0 0 36px -6px #ffd29c55, inset 0 0 24px -10px #ffd29c44"
           : "0 14px 40px -22px #00000099",
       }}
     >
       {/* header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <BuddyCreature variant={variant} size={64} active={running} />
-          <div>
-            <h3 className="text-cream font-semibold text-lg" style={{ color: "#faf3e0" }}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <BuddyCreature variant={creature} size={64} active={active} />
+          <div className="min-w-0">
+            <h3 className="font-semibold text-lg truncate" style={{ color: "#faf3e0" }}>
               {name}
             </h3>
-            <p className="text-xs text-amber-100/60">
-              {pinnedAt ? `pinned this at ${pinnedAt}` : `every ${time}`}
-            </p>
+            <p className="text-xs text-amber-100/60">every {buddy.schedule_time}</p>
           </div>
         </div>
-        {running && (
-          <span className="flex items-center gap-1 rounded-full bg-emerald-400/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300">
+        {active ? (
+          <span className="flex items-center gap-1 rounded-full bg-emerald-400/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300 shrink-0">
             <motion.span
               className="w-1.5 h-1.5 rounded-full bg-emerald-300"
               animate={{ opacity: [0.3, 1, 0.3] }}
@@ -46,28 +45,35 @@ export default function BuddyCard({ buddy }) {
             />
             Running
           </span>
-        )}
-        {!running && (
-          <span className="flex items-center gap-1 rounded-full bg-amber-300/10 px-2.5 py-1 text-[11px] font-semibold text-amber-200/80">
-            <Check className="w-3 h-3" /> Done
+        ) : (
+          <span className="rounded-full bg-amber-300/10 px-2.5 py-1 text-[11px] font-semibold text-amber-200/80 shrink-0">
+            Paused
           </span>
         )}
       </div>
 
-      {/* the three plain lines (when/what/how) */}
-      {lines.length > 0 && (
-        <ul className="mt-4 space-y-1.5">
-          {lines.map((l, i) => (
-            <li key={i} className="flex gap-2 text-sm text-amber-50/75">
-              <span className="text-amber-300/70 mt-0.5">—</span>
-              <span>{l}</span>
-            </li>
-          ))}
-        </ul>
+      {/* the note it was born from */}
+      {note && (
+        <p
+          className="mt-4 text-lg leading-snug text-amber-100/85"
+          style={{ fontFamily: "'Caveat', cursive" }}
+        >
+          “{note}”
+        </p>
       )}
 
-      {/* pinned result note */}
-      {result && (
+      {/* the three plain lines (when/what/how) */}
+      <ul className="mt-3 space-y-1.5">
+        {[when_line, what_line, how_line].filter(Boolean).map((l, i) => (
+          <li key={i} className="flex gap-2 text-sm text-amber-50/75">
+            <span className="text-amber-300/70 mt-0.5">—</span>
+            <span>{l}</span>
+          </li>
+        ))}
+      </ul>
+
+      {/* latest findings pinned back */}
+      {Array.isArray(last_result) && last_result.length > 0 && (
         <div
           className="mt-4 rounded-2xl p-4"
           style={{
@@ -76,7 +82,7 @@ export default function BuddyCard({ buddy }) {
           }}
         >
           <div className="space-y-2">
-            {result.map((r, i) => (
+            {last_result.map((r, i) => (
               <div
                 key={i}
                 className="flex items-center justify-between rounded-xl bg-stone-900/[0.04] px-3 py-2 text-sm text-stone-700"
@@ -90,6 +96,25 @@ export default function BuddyCard({ buddy }) {
           </button>
         </div>
       )}
+
+      {/* actions */}
+      <div className="mt-4 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onPause(buddy)}
+          className="flex items-center gap-1.5 rounded-full border border-amber-200/15 bg-white/5 px-3 py-1.5 text-xs text-amber-50/70 hover:text-amber-50 transition-colors"
+        >
+          {active ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+          {active ? "Pause" : "Resume"}
+        </button>
+        <button
+          type="button"
+          onClick={() => onTakeDown(buddy)}
+          className="flex items-center gap-1.5 rounded-full border border-red-300/15 bg-red-500/5 px-3 py-1.5 text-xs text-red-200/70 hover:text-red-200 transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" /> Take down
+        </button>
+      </div>
     </motion.div>
   );
 }
