@@ -20,7 +20,7 @@ export function parseScheduleHour(scheduleTime) {
 export const FINDINGS_RULES = [
   "For every finding include source_name (the site or store it came from) and the exact URL it was read from.",
   "Only give a URL you actually read — never invent one. If a finding has no source URL, leave url empty.",
-  "When the finding is a specific product, listing, or deal, also include a product object: name, price as a short string (like \"price under $1.50\" → \"$1.29/lb\"), stock only when the page shows it, and image_url — the exact product image URL shown on the page. For product findings, make a real effort to read the listing page and copy its main product image URL; never invent one, and omit image_url only when the page truly shows no image.",
+  "When the finding is a specific product, listing, or deal, also include a product object: name, price as a short string (like \"price under $1.50\" → \"$1.29/lb\"), stock only when the page shows it, image_url — the exact product image URL shown on the page — and url, the direct link to that product's own page (never a search results or homepage). For product findings, make a real effort to read the listing page and copy its main product image URL; never invent one, and omit image_url only when the page truly shows no image.",
   "Only include a product object when the finding is a genuinely purchasable product with a real price or product photo — never for news, reminders, permit openings, birthdays, or general updates; those are plain findings with no product object.",
   "If today has nothing genuinely useful, say so plainly — never invent codes or prices."
 ];
@@ -42,7 +42,8 @@ export const FINDINGS_SCHEMA = {
               name: { type: "string" },
               image_url: { type: "string" },
               price: { type: "string" },
-              stock: { type: "string" }
+              stock: { type: "string" },
+              url: { type: "string" }
             }
           }
         },
@@ -91,13 +92,22 @@ export function toFindingItems(raw) {
         typeof p.image_url === "string" && /^https?:\/\//i.test(p.image_url.trim())
           ? p.image_url.trim().slice(0, 300)
           : "";
+      // The product's own page beats the finding's source link — it's the
+      // direct route to buy the thing.
+      let pUrl = typeof p.url === "string" ? p.url.trim() : "";
+      if (pUrl && !/^https?:\/\//i.test(pUrl)) pUrl = "https://" + pUrl;
+      try {
+        if (pUrl) new URL(pUrl);
+      } catch (_) {
+        pUrl = "";
+      }
       if (price || imageUrl) {
         product = {
           name: (typeof p.name === "string" ? p.name.trim().slice(0, 80) : "") || text.slice(0, 60),
           image_url: imageUrl,
           price,
           stock: clean(p.stock),
-          url
+          url: pUrl || url
         };
       }
     }

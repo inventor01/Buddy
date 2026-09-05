@@ -3,9 +3,10 @@ import { ArrowUpRight, ShoppingBag } from "lucide-react";
 import { Image } from "@/components/ui/image";
 
 // One product finding as a card — preview image, price, stock when the
-// page showed it, and a straight shot to the product page. Store images
-// are hotlink-protected on some sites, so we load them without a referrer
-// and fall back to a branded tile whenever one won't load.
+// page showed it, and a straight shot to the product's own page. The
+// whole card is the link. Store images are hotlink-protected on some
+// sites, so we load them without a referrer and fall back to a branded
+// tile whenever one won't load.
 export default function ProductCard({ item }) {
   const [broken, setBroken] = useState(false);
   const p = item.product || {};
@@ -14,7 +15,14 @@ export default function ProductCard({ item }) {
   const showImage = p.image_url && !broken;
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/70 bg-white/80 p-3">
+    <a
+      href={url || undefined}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`flex items-center gap-3 rounded-xl border border-white/70 bg-white/80 p-3 transition-shadow ${
+        url ? "hover:border-neutral-300 hover:shadow-sm" : "pointer-events-none"
+      }`}
+    >
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-white/80 bg-white/70">
         {showImage ? (
           <Image
@@ -54,15 +62,10 @@ export default function ProductCard({ item }) {
         </div>
       </div>
       {url && (
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-neutral-900 px-3 py-1.5 text-[11.5px] font-semibold text-white transition-opacity hover:opacity-90"
-        >
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-neutral-900 px-3 py-1.5 text-[11.5px] font-semibold text-white">
           Go to product <ArrowUpRight className="h-3.5 w-3.5" />
-        </a>
+        </span>
       )}
-    </div>
+    </a>
   );
 }
