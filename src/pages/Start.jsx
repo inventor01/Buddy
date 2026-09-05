@@ -83,51 +83,11 @@ export default function Start() {
   const [payOpen, setPayOpen] = useState(false);
   const [authed, setAuthed] = useState(null); // null while checking
 
-  // Sign-in is only asked when they pin or run a note — never on arrival.
-  // Their note is kept across the sign-in and the flow resumes right here.
+  // No account needed to go through the flow — notes only get saved
+  // once someone is signed in.
   useEffect(() => {
-    let alive = true;
-    base44.auth
-      .isAuthenticated()
-      .then((ok) => {
-        if (!alive) return;
-        setAuthed(ok);
-        if (ok) {
-          try {
-            const stash = JSON.parse(sessionStorage.getItem("agentbuddy_flow") || "null");
-            sessionStorage.removeItem("agentbuddy_flow");
-            if (stash?.note) {
-              setNote(stash.note);
-              if (stash.exKey) {
-                const e = EXAMPLES.find((x) => x.chip === stash.exKey);
-                if (e) {
-                  setEx(e);
-                  setLines({ when: e.when, what: e.what, tells: e.tells });
-                  setStep(stash.step || 2);
-                }
-              }
-            }
-          } catch (_) {
-            /* nothing to resume */
-          }
-        }
-      })
-      .catch(() => alive && setAuthed(false));
-    return () => {
-      alive = false;
-    };
+    base44.auth.isAuthenticated().then(setAuthed).catch(() => setAuthed(false));
   }, []);
-
-  const stashFlow = (nextStep) => {
-    try {
-      sessionStorage.setItem(
-        "agentbuddy_flow",
-        JSON.stringify({ note: note.trim(), exKey: ex?.chip, step: nextStep })
-      );
-    } catch (_) {
-      /* private browsing — the sign-in still proceeds */
-    }
-  };
 
   const pickExample = (e) => {
     setEx(e);
@@ -138,11 +98,6 @@ export default function Start() {
 
   const typedNext = async () => {
     if (!note.trim() || busy) return;
-    if (authed === false) {
-      stashFlow(1);
-      base44.auth.redirectToLogin("/start");
-      return;
-    }
     setBusy(true);
     try {
       const res = await base44.functions.invoke("createBuddyFromNote", { note: note.trim() });
@@ -167,13 +122,31 @@ export default function Start() {
 
   const runOnce = async () => {
     if (busy) return;
-    if (authed === false) {
-      stashFlow(2);
-      base44.auth.redirectToLogin("/start");
-      return;
-    }
     setBusy(true);
     try {
+      if (authed === false) {
+        // Visitor with no account: run it once, save nothing.
+        if (ex) {
+          setResult({ text: ex.found, source: ex.source });
+        } else {
+          let found = null;
+          try {
+            const res = await base44.functions.invoke("previewBuddyRun", { note: note.trim() });
+            const ls = res.data?.lines || [];
+            if (ls.length) found = ls;
+          } catch (_) {
+            /* the fallback below covers it */
+          }
+          setResult(
+            found
+              ? { text: found.join("\n"), source: "What it read from the web just now" }
+              : { text: "It couldn't reach the page just now. It'll try again in the morning.", source: null }
+          );
+        }
+        setStep(3);
+        return;
+      }
+
       const created = await base44.entities.Buddy.create({
         note: note.trim(),
         name: ex ? ex.title : lines.name || "Your note",
@@ -557,14 +530,16 @@ export default function Start() {
                 >
                   Try Pro
                 </button>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/?note=${createdId || ""}`)}
-                  className="rounded-full border px-4 py-2 text-[12.5px] font-medium"
-                  style={{ borderColor: "rgba(255,255,255,.25)", color: "rgba(255,255,255,.75)" }}
-                >
-                  Open your note
-                </button>
+                {authed !== false && createdId && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/?note=${createdId}`)}
+                    className="rounded-full border px-4 py-2 text-[12.5px] font-medium"
+                    style={{ borderColor: "rgba(255,255,255,.25)", color: "rgba(255,255,255,.75)" }}
+                  >
+                    Open your note
+                  </button>
+                )}
               </div>
             </div>
           </div>

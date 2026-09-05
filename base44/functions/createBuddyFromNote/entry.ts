@@ -7,8 +7,6 @@ const CREATURES = ["sam", "sid", "bells", "med"];
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     let body = {};
     try { body = await req.json(); } catch (e) { body = {}; }
