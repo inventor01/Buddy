@@ -23,7 +23,7 @@ export default function BotAssembly({ sockets, blocksById, powered, onRemove }) 
           {powered ? "ready to wake up" : "waiting for its job"}
         </p>
       </div>
-      <div className="w-full space-y-3">
+      <div className="w-full space-y-2.5">
         {SOCKETS.map(({ cat, hint }) => {
           const id = sockets[cat];
           const block = id ? blocksById[id] : null;
@@ -34,10 +34,10 @@ export default function BotAssembly({ sockets, blocksById, powered, onRemove }) 
                 <div
                   ref={provided.innerRef}
                   {...provided.droppableProps}
-                  className="min-h-[58px] rounded-2xl border-2 border-dashed px-3 py-2.5 transition-colors"
+                  className="flex h-14 items-center rounded-2xl border-2 border-dashed p-1 transition-colors"
                   style={{
                     borderColor: block
-                      ? color + "99"
+                      ? "transparent"
                       : snapshot.isDraggingOver
                       ? color
                       : "rgba(64,64,96,.7)",
@@ -53,13 +53,13 @@ export default function BotAssembly({ sockets, blocksById, powered, onRemove }) 
                           {...p.dragHandleProps}
                           style={p.draggableProps.style}
                         >
-                          <TaskBlock block={block} placed onTap={() => onRemove(cat)} />
+                          <TaskBlock block={block} onTap={() => onRemove(cat)} />
                         </div>
                       )}
                     </Draggable>
                   ) : (
                     <p
-                      className="flex min-h-[42px] items-center justify-center px-2 text-center text-[12.5px]"
+                      className="flex h-12 w-full items-center justify-center px-2 text-center text-[11.5px]"
                       style={{ color: "rgba(160,160,192,.75)" }}
                     >
                       {hint}

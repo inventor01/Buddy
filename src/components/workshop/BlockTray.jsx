@@ -15,7 +15,7 @@ export default function BlockTray({ blocks, onPick }) {
       </p>
       <Droppable droppableId="tray">
         {(provided) => (
-          <div ref={provided.innerRef} {...provided.droppableProps} className="mt-2 space-y-2">
+          <div ref={provided.innerRef} {...provided.droppableProps} className="mt-2.5 space-y-2.5">
             {blocks.map((b, i) => (
               <Draggable key={b.id} draggableId={b.id} index={i}>
                 {(p, snapshot) => (
