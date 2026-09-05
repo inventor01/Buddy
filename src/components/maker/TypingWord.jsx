@@ -32,10 +32,15 @@ export default function TypingWord() {
     return () => clearTimeout(t);
   }, [phase, len, index]);
 
+  // The widest word holds the space, so the sentence around it never moves.
+  const longest = WORDS.reduce((a, b) => (b.length > a.length ? b : a));
   return (
-    <span className="whitespace-nowrap">
-      {WORDS[index].slice(0, len)}
-      <span className="ml-[3px] inline-block h-[0.78em] w-[2px] translate-y-[0.04em] animate-pulse rounded-full bg-neutral-400" />
+    <span className="relative inline-block whitespace-nowrap">
+      <span className="invisible">{longest}</span>
+      <span className="absolute inset-y-0 left-0">
+        {WORDS[index].slice(0, len)}
+        <span className="ml-[3px] inline-block h-[0.78em] w-[2px] translate-y-[0.04em] animate-pulse rounded-full bg-neutral-400" />
+      </span>
     </span>
   );
 }
