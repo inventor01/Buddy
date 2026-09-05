@@ -8,6 +8,7 @@ import Rail from "@/components/paper/Rail";
 import Composer from "@/components/paper/Composer";
 import ThreadView from "@/components/paper/ThreadView";
 import PaymentSheet from "@/components/paper/PaymentSheet";
+import PlanPanel from "@/components/maker/PlanPanel";
 import { readBigText, applyBigText } from "@/lib/bigText";
 
 // The home page IS the product (10a) — a rail of note threads on the left,
@@ -23,6 +24,7 @@ export default function Home() {
   const [bigText, setBigText] = useState(readBigText());
   const [pinning, setPinning] = useState(false);
   const [sending, setSending] = useState(false);
+  const [draft, setDraft] = useState(null); // note + plan awaiting the run button
 
   const selectedId = params.get("note");
   const pro = me?.plan === "pro";
@@ -76,19 +78,74 @@ export default function Home() {
       });
       const plan = res.data?.plan;
       if (!plan) throw new Error("That note didn't read back right — try again.");
-      const created = await base44.entities.Buddy.create({
+      // Don't hatch it yet — show the drag-and-reword plan first, like the
+      // landing page does, and only create it when they press run.
+      setDraft({
         note,
-        image_url: imageUrl,
-        ...plan,
-        status: "active",
+        image: imageUrl,
+        plan: { name: plan.name, creature: plan.creature, scheduleTime: plan.schedule_time },
+        lines: { when: plan.when_line, what: plan.what_line, tells: plan.how_line },
       });
-      setBuddies((prev) => [created, ...(prev ?? [])]);
-      setParams({ note: created.id });
     } catch (e) {
       toast({ title: e.message || "That note didn't hatch — try again.", variant: "destructive" });
       throw e;
     } finally {
       setPinning(false);
+    }
+  };
+
+  // The plan got the green light: create the note for real with whatever
+  // the cards say now, run it once, and open its thread with the findings.
+  const runDraft = async () => {
+    const d = draft;
+    if (!d || sending) return;
+    setSending(true);
+    try {
+      let scheduleTime = d.plan.scheduleTime || "9:00 AM";
+      try {
+        const rec = await base44.functions.invoke("recompilePlan", {
+          when_line: d.lines.when,
+          what_line: d.lines.what,
+          how_line: d.lines.tells,
+        });
+        if (rec.data?.schedule_time) scheduleTime = rec.data.schedule_time;
+      } catch (_) {
+        /* the first reading of the schedule still stands */
+      }
+      const created = await base44.entities.Buddy.create({
+        note: d.note,
+        image_url: d.image,
+        name: d.plan.name || "Your helper",
+        creature: d.plan.creature || "sam",
+        when_line: d.lines.when,
+        what_line: d.lines.what,
+        how_line: d.lines.tells,
+        schedule_time: scheduleTime,
+        status: "active",
+      });
+
+      let text = "It couldn't reach the page just now. It'll try again in the morning.";
+      let items = [];
+      try {
+        const res = await base44.functions.invoke("runBuddyNow", { buddyId: created.id });
+        const lines = res.data?.lines || [];
+        if (lines.length) {
+          text = lines.join("\n");
+          items = res.data?.items || [];
+        }
+      } catch (_) {
+        /* the fallback text covers it */
+      }
+      const msgs = [{ who: "note", at: new Date().toISOString(), text, items }];
+      const saved = await base44.entities.Buddy.update(created.id, { messages: msgs });
+
+      setBuddies((prev) => [{ ...saved, messages: msgs }, ...(prev ?? [])]);
+      setDraft(null);
+      setParams({ note: created.id });
+    } catch (e) {
+      toast({ title: "Something went wrong — try again.", variant: "destructive" });
+    } finally {
+      setSending(false);
     }
   };
 
@@ -184,6 +241,15 @@ export default function Home() {
               onTakeDown={takeDown}
               onEditNote={editNote}
               onSend={sendInThread}
+              busy={sending}
+            />
+          ) : draft ? (
+            <PlanPanel
+              note={draft.note}
+              lines={draft.lines}
+              onChange={(cat, v) => setDraft((d) => ({ ...d, lines: { ...d.lines, [cat]: v } }))}
+              onRun={runDraft}
+              onCancel={() => setDraft(null)}
               busy={sending}
             />
           ) : (
