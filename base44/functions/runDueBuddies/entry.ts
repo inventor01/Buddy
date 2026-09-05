@@ -40,7 +40,8 @@ export default async function(req) {
           entityClient: base44.asServiceRole,
           buddy,
           userEmail: owner?.email,
-          notifyEmail: !!owner?.notify_email
+          notifyEmail: !!owner?.notify_email,
+          smsPhone: typeof owner?.sms_phone === 'string' ? owner.sms_phone : ''
         });
         results.push({ id: buddy.id, name: buddy.name, ok: true, count: lines.length });
       } catch (e) {

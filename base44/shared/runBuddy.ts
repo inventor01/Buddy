@@ -1,6 +1,8 @@
 // Runs one buddy: searches the web for today's findings, pins them back on
-// the buddy's lantern, and emails the owner when they've asked for that.
+// the buddy's lantern, and delivers them by email and/or text message.
 // Shared by the hourly scheduler and the "Run now" button.
+
+import { secrets } from "base44:runtime";
 
 export function parseScheduleHour(scheduleTime) {
   const m = typeof scheduleTime === "string" ? scheduleTime.match(/(\d{1,2})/) : null;
@@ -11,7 +13,25 @@ export function parseScheduleHour(scheduleTime) {
   return hour;
 }
 
-export async function runBuddy({ client, entityClient, buddy, userEmail, notifyEmail }) {
+// Sends one SMS via Twilio. Silently does nothing when texting isn't configured.
+async function sendSms(to, body) {
+  const sid = secrets.get("TWILIO_ACCOUNT_SID");
+  const token = secrets.get("TWILIO_AUTH_TOKEN");
+  const from = secrets.get("TWILIO_FROM_NUMBER");
+  if (!sid || !token || !from) return;
+
+  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+    method: "POST",
+    headers: {
+      Authorization: "Basic " + btoa(sid + ":" + token),
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: new URLSearchParams({ To: to, From: from, Body: body.slice(0, 300) })
+  });
+  if (!res.ok) throw new Error("Twilio responded " + res.status);
+}
+
+export async function runBuddy({ client, entityClient, buddy, userEmail, notifyEmail, smsPhone }) {
   const findings = await client.asServiceRole.integrations.Core.InvokeLLM({
     model: "gemini_3_flash",
     add_context_from_internet: true,
@@ -19,7 +39,7 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
       "You are " + buddy.name + ", a helper for one person.",
       'Your job, from their note: "' + buddy.note + '"',
       "What it does: " + (buddy.what_line || ""),
-      "Search the web for today and report back the 3 most useful, concrete findings for this job.",
+      "Search the web for today and report back the 5 most useful, concrete findings for this job.",
       "Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
       "If today has nothing genuinely useful, say so plainly — never invent codes or prices."
     ].join("\n"),
@@ -34,7 +54,7 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
 
   const lines = (Array.isArray(findings?.findings) ? findings.findings : [])
     .filter((f) => typeof f === "string" && f.trim())
-    .slice(0, 3)
+    .slice(0, 5)
     .map((f) => f.trim().slice(0, 160));
   if (lines.length === 0) lines.push("Nothing new today — I will look again next time.");
 
@@ -50,6 +70,14 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
       });
     } catch (e) {
       // email failure should never fail the run — findings are already pinned
+    }
+  }
+
+  if (typeof smsPhone === "string" && smsPhone.trim().startsWith("+")) {
+    try {
+      await sendSms(smsPhone.trim(), buddy.name + " pinned something for you:\n" + lines.join("\n"));
+    } catch (e) {
+      // text failure should never fail the run — findings are already pinned
     }
   }
 

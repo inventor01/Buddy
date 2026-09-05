@@ -24,7 +24,8 @@ export default async function(req) {
       entityClient: base44,
       buddy,
       userEmail: user.email,
-      notifyEmail: !!user.notify_email
+      notifyEmail: !!user.notify_email,
+      smsPhone: typeof user.sms_phone === 'string' ? user.sms_phone : ''
     });
 
     return Response.json({ lines });

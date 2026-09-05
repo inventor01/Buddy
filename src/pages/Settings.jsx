@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Mail, Type, Loader2 } from "lucide-react";
+import { ArrowLeft, Mail, Type, Loader2, MessageCircle, Check } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Switch } from "@/components/ui/switch";
 import FireflyField from "@/components/buddy/FireflyField";
@@ -13,6 +13,9 @@ export default function Settings() {
   const [notifyEmail, setNotifyEmail] = useState(false);
   const [bigText, setBigText] = useState(readBigText());
   const [saving, setSaving] = useState(false);
+  const [smsPhone, setSmsPhone] = useState("");
+  const [phoneSaved, setPhoneSaved] = useState(false);
+  const [savingPhone, setSavingPhone] = useState(false);
 
   useEffect(() => {
     base44
@@ -20,6 +23,7 @@ export default function Settings() {
       .then((u) => {
         setMe(u);
         setNotifyEmail(!!u?.notify_email);
+        setSmsPhone(u?.sms_phone || "");
       })
       .catch(() => {});
   }, []);
@@ -33,6 +37,17 @@ export default function Settings() {
       setNotifyEmail(!value);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const savePhone = async () => {
+    setSavingPhone(true);
+    setPhoneSaved(false);
+    try {
+      await base44.auth.updateMe({ sms_phone: smsPhone.trim() });
+      setPhoneSaved(true);
+    } finally {
+      setSavingPhone(false);
     }
   };
 
@@ -93,6 +108,49 @@ export default function Settings() {
             <div className="flex items-center gap-2 shrink-0">
               {saving && <Loader2 className="w-4 h-4 animate-spin text-amber-200/60" />}
               <Switch checked={notifyEmail} onCheckedChange={saveEmailPref} />
+            </div>
+          </div>
+
+          {/* text message alerts */}
+          <div className="rounded-2xl border border-amber-200/15 bg-white/[0.04] p-5 backdrop-blur-md">
+            <div className="flex items-start gap-3">
+              <MessageCircle className="w-5 h-5 text-amber-300 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-medium" style={{ color: "#faf3e0" }}>
+                  Text me the answers
+                </h3>
+                <p className="text-sm text-amber-50/60 mt-0.5">
+                  When a buddy finds something, send it as a text message too.
+                </p>
+                <div className="mt-3 flex items-center gap-2">
+                  <input
+                    value={smsPhone}
+                    onChange={(e) => {
+                      setSmsPhone(e.target.value);
+                      setPhoneSaved(false);
+                    }}
+                    placeholder="+1 555 123 4567"
+                    inputMode="tel"
+                    className="flex-1 rounded-xl border border-amber-200/20 bg-white/[0.05] px-3 py-2 text-sm text-amber-50 placeholder:text-amber-50/30 focus:outline-none focus:border-amber-200/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={savePhone}
+                    disabled={savingPhone}
+                    className="flex items-center gap-1.5 rounded-xl border border-amber-200/25 bg-amber-300/10 px-3 py-2 text-sm text-amber-200 hover:bg-amber-300/20 transition-colors disabled:cursor-wait"
+                  >
+                    {savingPhone ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : phoneSaved ? (
+                      <Check className="w-4 h-4" />
+                    ) : null}
+                    {phoneSaved ? "Saved" : "Save"}
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-amber-50/40">
+                  Include the country code (like +1 for the US). Leave empty to turn texts off.
+                </p>
+              </div>
             </div>
           </div>
 
