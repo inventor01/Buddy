@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -81,6 +81,53 @@ export default function Start() {
   const [createdId, setCreatedId] = useState(null);
   const [phone, setPhone] = useState("");
   const [payOpen, setPayOpen] = useState(false);
+  const [authed, setAuthed] = useState(null); // null while checking
+
+  // Sign-in is only asked when they pin or run a note — never on arrival.
+  // Their note is kept across the sign-in and the flow resumes right here.
+  useEffect(() => {
+    let alive = true;
+    base44.auth
+      .isAuthenticated()
+      .then((ok) => {
+        if (!alive) return;
+        setAuthed(ok);
+        if (ok) {
+          try {
+            const stash = JSON.parse(sessionStorage.getItem("agentbuddy_flow") || "null");
+            sessionStorage.removeItem("agentbuddy_flow");
+            if (stash?.note) {
+              setNote(stash.note);
+              if (stash.exKey) {
+                const e = EXAMPLES.find((x) => x.chip === stash.exKey);
+                if (e) {
+                  setEx(e);
+                  setLines({ when: e.when, what: e.what, tells: e.tells });
+                  setStep(stash.step || 2);
+                }
+              }
+            }
+          } catch (_) {
+            /* nothing to resume */
+          }
+        }
+      })
+      .catch(() => alive && setAuthed(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const stashFlow = (nextStep) => {
+    try {
+      sessionStorage.setItem(
+        "agentbuddy_flow",
+        JSON.stringify({ note: note.trim(), exKey: ex?.chip, step: nextStep })
+      );
+    } catch (_) {
+      /* private browsing — the sign-in still proceeds */
+    }
+  };
 
   const pickExample = (e) => {
     setEx(e);
@@ -91,6 +138,11 @@ export default function Start() {
 
   const typedNext = async () => {
     if (!note.trim() || busy) return;
+    if (authed === false) {
+      stashFlow(1);
+      base44.auth.redirectToLogin("/start");
+      return;
+    }
     setBusy(true);
     try {
       const res = await base44.functions.invoke("createBuddyFromNote", { note: note.trim() });
@@ -115,6 +167,11 @@ export default function Start() {
 
   const runOnce = async () => {
     if (busy) return;
+    if (authed === false) {
+      stashFlow(2);
+      base44.auth.redirectToLogin("/start");
+      return;
+    }
     setBusy(true);
     try {
       const created = await base44.entities.Buddy.create({
@@ -232,7 +289,12 @@ export default function Start() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--paper)" }}>
-      <TopMenu onTryPro={() => setPayOpen(true)} onBook={() => navigate("/")} />
+      <TopMenu
+        onTryPro={() => setPayOpen(true)}
+        onBook={authed !== false ? () => navigate("/") : undefined}
+        authed={authed !== false}
+        onSignIn={() => base44.auth.redirectToLogin("/start")}
+      />
 
       {/* step rail */}
       <div className="mx-auto flex max-w-[640px] items-start justify-between gap-2 px-6 pt-8">

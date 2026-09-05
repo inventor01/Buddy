@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 // The shared top menu — used by the home page and onboarding.
 // Wordmark + handwritten tagline on the left, quiet nav and the
 // terracotta Try Pro pill on the right.
-export default function TopMenu({ onTryPro, onBook }) {
+export default function TopMenu({ onTryPro, onBook, authed = true, onSignIn }) {
   return (
     <header
       className="sticky top-0 z-30 border-b border-hairline"
@@ -23,13 +23,25 @@ export default function TopMenu({ onTryPro, onBook }) {
           <Link to="/start" className="hidden rounded-full px-3 py-2 transition-colors hover:text-ink-warm sm:block">
             What notes can do
           </Link>
-          <button
-            type="button"
-            onClick={onBook}
-            className="hidden rounded-full px-3 py-2 transition-colors hover:text-ink-warm sm:block"
-          >
-            Your book
-          </button>
+          {authed ? (
+            <button
+              type="button"
+              onClick={onBook}
+              className="hidden rounded-full px-3 py-2 transition-colors hover:text-ink-warm sm:block"
+            >
+              Your book
+            </button>
+          ) : (
+            onSignIn && (
+              <button
+                type="button"
+                onClick={onSignIn}
+                className="rounded-full px-3 py-2 transition-colors hover:text-ink-warm"
+              >
+                Sign in
+              </button>
+            )
+          )}
           <button
             type="button"
             onClick={onTryPro}
