@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 
-// The payment sheet (12b) — a modal over the page, never a route change.
+// The payment sheet — a modal over the page, never a route change.
 // Base44 Payments handles the card on its own secure checkout page, so
 // this sheet sells the plan and starts checkout; it never touches card data.
 export default function PaymentSheet({ open, onClose }) {
@@ -30,26 +30,21 @@ export default function PaymentSheet({ open, onClose }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
-      style={{ background: "rgba(30,22,14,.42)" }}
+      style={{ background: "rgba(24,24,27,.32)" }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[92dvh] w-full overflow-y-auto rounded-t-[22px] sm:w-[420px] sm:rounded-[22px]"
-        style={{ background: "var(--paper-card)", boxShadow: "0 40px 80px -30px rgba(30,22,14,.7)" }}
+        className="glass max-h-[92dvh] w-full overflow-y-auto rounded-t-[22px] sm:w-[420px] sm:rounded-[22px]"
       >
-        <div className="mx-auto mt-[10px] h-[4px] w-[38px] rounded-full sm:hidden" style={{ background: "rgba(60,45,25,.2)" }} />
+        <div className="mx-auto mt-[10px] h-[4px] w-[38px] rounded-full bg-neutral-300/60 sm:hidden" />
         <div className="p-5">
-          <p className="font-mono text-[9.5px] tracking-[0.18em]" style={{ color: "rgba(60,45,25,.55)" }}>
-            BUDDY PRO
-          </p>
+          <p className="font-mono text-[9.5px] tracking-[0.18em] text-neutral-400">BUDDY PRO</p>
           <p className="mt-2">
-            <span className="font-display text-[25px] font-semibold text-ink-warm">$6</span>{" "}
-            <span className="text-[13.5px]" style={{ color: "rgba(40,30,20,.65)" }}>
-              a month
-            </span>
+            <span className="font-heading text-[25px] font-semibold text-neutral-900">$6</span>{" "}
+            <span className="text-[13.5px] text-neutral-500">a month</span>
           </p>
-          <p className="mt-2 text-[14px] leading-snug text-ink-warm">
+          <p className="mt-2 text-[14px] leading-snug text-neutral-800">
             Unlimited notes, everyone you look after, weekly page of your book.
           </p>
 
@@ -57,31 +52,30 @@ export default function PaymentSheet({ open, onClose }) {
             type="button"
             onClick={startPro}
             disabled={busy}
-            className="mt-5 w-full rounded-full bg-terracotta py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+            className="mt-5 w-full rounded-full bg-neutral-900 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {busy ? "Starting…" : "Start Pro — $6 a month"}
           </button>
           {busy && (
-            <p className="mt-2 text-center font-hand text-[16px]" style={{ color: "rgba(60,45,25,.6)" }}>
+            <p className="mt-2 text-center text-[13px] text-neutral-400">
               taking you to secure checkout…
             </p>
           )}
-          {error && <p className="mt-2 text-center text-[12px]" style={{ color: "oklch(0.45 0.15 25)" }}>{error}</p>}
-          <p className="mt-2 text-center text-[11.5px]" style={{ color: "rgba(60,45,25,.6)" }}>
+          {error && <p className="mt-2 text-center text-[12px] text-red-600">{error}</p>}
+          <p className="mt-2 text-center text-[11.5px] text-neutral-500">
             Cancel in one tap. Notes run to month's end.
           </p>
 
-          <div className="my-4 border-t border-hairline" />
+          <div className="my-4 border-t border-white/70" />
 
           <button
             type="button"
             onClick={onClose}
-            className="w-full text-[13.5px] font-semibold transition-colors hover:text-ink-warm"
-            style={{ color: "rgba(40,30,20,.65)" }}
+            className="w-full text-[13.5px] font-semibold text-neutral-500 transition-colors hover:text-neutral-900"
           >
             No thanks — keep using it free
           </button>
-          <p className="mt-1 text-center text-[11.5px]" style={{ color: "rgba(60,45,25,.55)" }}>
+          <p className="mt-1 text-center text-[11.5px] text-neutral-400">
             Your three notes keep running either way.
           </p>
         </div>

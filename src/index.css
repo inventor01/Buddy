@@ -108,3 +108,24 @@
     font-size: 112.5%;
   }
 }
+
+@layer components {
+  /* Apple-style liquid glass: frosted blur + saturation boost, hairline
+     light border, and a specular highlight along the top edge. */
+  .glass {
+    background: rgba(255, 255, 255, 0.55);
+    -webkit-backdrop-filter: blur(22px) saturate(1.7);
+    backdrop-filter: blur(22px) saturate(1.7);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    box-shadow: 0 8px 32px -14px rgba(24, 28, 45, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  }
+
+  /* The soft color wash the glass floats on. */
+  .page-glow {
+    background: radial-gradient(52% 42% at 12% 0%, #dbeafe 0%, rgba(219, 234, 254, 0) 62%),
+      radial-gradient(46% 38% at 88% 6%, #ede9fe 0%, rgba(237, 233, 254, 0) 60%),
+      radial-gradient(60% 55% at 55% 100%, #d1fae5 0%, rgba(209, 250, 229, 0) 62%),
+      #f7f8fb;
+  }
+}

@@ -177,13 +177,20 @@ export default function Start() {
   const outline =
     "inline-flex items-center gap-2 rounded-full border border-neutral-300 bg-white px-5 py-2.5 text-[14px] font-medium text-neutral-700 hover:border-neutral-400";
   const ghost = "text-[13.5px] font-medium text-neutral-500 transition-colors hover:text-neutral-800";
-  const card = "rounded-[24px] border border-neutral-200 bg-white p-6 sm:p-8";
+  const card = "glass rounded-[24px] p-6 sm:p-8";
   const kicker = "text-[10.5px] font-semibold uppercase tracking-[0.2em] text-neutral-400";
   const h2 = "font-heading text-[26px] font-semibold tracking-tight text-neutral-900 sm:text-[30px]";
 
   return (
-    <div className="min-h-screen" style={{ background: "#FAFAFA" }}>
-      <header className="sticky top-0 z-30 border-b border-neutral-100 bg-white/80 backdrop-blur">
+    <div className="page-glow min-h-screen">
+      <header
+        className="sticky top-0 z-30 border-b border-white/60"
+        style={{
+          background: "rgba(255,255,255,.55)",
+          backdropFilter: "blur(22px) saturate(1.7)",
+          WebkitBackdropFilter: "blur(22px) saturate(1.7)",
+        }}
+      >
         <div className="mx-auto flex h-14 max-w-[720px] items-center justify-between px-5">
           <span className="font-heading text-[15px] font-semibold tracking-tight text-neutral-900">
             Buddy
@@ -224,7 +231,7 @@ export default function Start() {
               </p>
             </div>
 
-            <div className="mt-8 rounded-[22px] border border-neutral-200 bg-white p-2.5 shadow-[0_10px_36px_-16px_rgba(0,0,0,.14)]">
+            <div className="glass mt-8 rounded-[22px] p-2.5">
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}

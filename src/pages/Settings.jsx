@@ -3,11 +3,10 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Mail, Type, Loader2, MessageCircle, Check } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Switch } from "@/components/ui/switch";
-import FireflyField from "@/components/buddy/FireflyField";
 import { readBigText, applyBigText } from "@/lib/bigText";
 
-// Settings — notification and reading preferences, kept in the same
-// twilight garden so it feels like part of the world, not a control panel.
+// Settings — notification and reading preferences, on the same light
+// glass surfaces as everything else.
 export default function Settings() {
   const [me, setMe] = useState(null);
   const [notifyEmail, setNotifyEmail] = useState(false);
@@ -58,69 +57,51 @@ export default function Settings() {
   };
 
   return (
-    <div
-      className="relative min-h-screen w-full overflow-x-hidden"
-      style={{
-        background:
-          "radial-gradient(120% 80% at 50% -10%, #4a2d6e 0%, #2d1b4e 38%, #1a1033 100%)",
-      }}
-    >
-      <FireflyField />
-      <div className="relative z-10 mx-auto max-w-xl px-5 sm:px-8 pb-16">
+    <div className="page-glow min-h-screen">
+      <div className="mx-auto max-w-xl px-5 pb-16 sm:px-8">
         <header className="flex items-center justify-between py-6">
           <Link
             to="/"
-            className="flex items-center gap-2 rounded-full border border-amber-200/15 bg-white/5 px-4 py-2 text-sm text-amber-50/70 hover:text-amber-50 transition-colors"
+            className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-neutral-600 transition-colors hover:text-neutral-900"
           >
-            <ArrowLeft className="w-4 h-4" /> Back to the garden
+            <ArrowLeft className="h-4 w-4" /> Back to your notes
           </Link>
-          <span className="font-semibold tracking-tight" style={{ color: "#faf3e0" }}>
-            Settings
-          </span>
+          <span className="font-semibold tracking-tight text-neutral-900">Settings</span>
         </header>
 
-        <h1
-          className="mt-6 text-3xl sm:text-4xl font-semibold tracking-tight"
-          style={{ color: "#faf3e0", fontFamily: "'Fraunces', serif" }}
-        >
+        <h1 className="mt-6 font-heading text-3xl font-semibold tracking-tight text-neutral-900 sm:text-4xl">
           Your preferences
         </h1>
-        <p className="mt-2 text-amber-50/65">
-          How your buddies should reach you, and how things should read.
+        <p className="mt-2 text-[15px] text-neutral-500">
+          How your notes should reach you, and how things should read.
         </p>
 
         <div className="mt-8 space-y-4">
           {/* email notifications */}
-          <div
-            className="flex items-center justify-between gap-4 rounded-2xl border border-amber-200/15 bg-white/[0.04] p-5 backdrop-blur-md"
-          >
+          <div className="glass flex items-center justify-between gap-4 rounded-2xl p-5">
             <div className="flex items-start gap-3">
-              <Mail className="w-5 h-5 text-amber-300 mt-0.5" />
+              <Mail className="mt-0.5 h-5 w-5 text-neutral-400" />
               <div>
-                <h3 className="font-medium" style={{ color: "#faf3e0" }}>
-                  Email me the answers
-                </h3>
-                <p className="text-sm text-amber-50/60 mt-0.5">
-                  When a buddy finds something, email{me ? ` ${me.email}` : " you"} the result.
+                <h3 className="font-medium text-neutral-900">Email me the answers</h3>
+                <p className="mt-0.5 text-sm text-neutral-500">
+                  When a note finds something, email{me ? ` ${me.email}` : " you"} the result.
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {saving && <Loader2 className="w-4 h-4 animate-spin text-amber-200/60" />}
+            <div className="flex shrink-0 items-center gap-2">
+              {saving && <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />}
               <Switch checked={notifyEmail} onCheckedChange={saveEmailPref} />
             </div>
           </div>
 
           {/* text message alerts */}
-          <div className="rounded-2xl border border-amber-200/15 bg-white/[0.04] p-5 backdrop-blur-md">
+          <div className="glass rounded-2xl p-5">
             <div className="flex items-start gap-3">
-              <MessageCircle className="w-5 h-5 text-amber-300 mt-0.5" />
+              <MessageCircle className="mt-0.5 h-5 w-5 text-neutral-400" />
               <div className="flex-1">
-                <h3 className="font-medium" style={{ color: "#faf3e0" }}>
-                  Text me the answers
-                </h3>
-                <p className="text-sm text-amber-50/60 mt-0.5">
-                  When a buddy finds something, send it as a text message too.
+                <h3 className="font-medium text-neutral-900">Text me the answers</h3>
+                <p className="mt-0.5 text-sm text-neutral-500">
+                  When a note finds something, send it as a text message too.
                 </p>
                 <div className="mt-3 flex items-center gap-2">
                   <input
@@ -131,23 +112,23 @@ export default function Settings() {
                     }}
                     placeholder="+1 555 123 4567"
                     inputMode="tel"
-                    className="flex-1 rounded-xl border border-amber-200/20 bg-white/[0.05] px-3 py-2 text-sm text-amber-50 placeholder:text-amber-50/30 focus:outline-none focus:border-amber-200/50"
+                    className="flex-1 rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-neutral-400"
                   />
                   <button
                     type="button"
                     onClick={savePhone}
                     disabled={savingPhone}
-                    className="flex items-center gap-1.5 rounded-xl border border-amber-200/25 bg-amber-300/10 px-3 py-2 text-sm text-amber-200 hover:bg-amber-300/20 transition-colors disabled:cursor-wait"
+                    className="flex items-center gap-1.5 rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-sm text-neutral-800 transition-colors hover:bg-white disabled:cursor-wait"
                   >
                     {savingPhone ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : phoneSaved ? (
-                      <Check className="w-4 h-4" />
+                      <Check className="h-4 w-4 text-emerald-600" />
                     ) : null}
                     {phoneSaved ? "Saved" : "Save"}
                   </button>
                 </div>
-                <p className="mt-2 text-xs text-amber-50/40">
+                <p className="mt-2 text-xs text-neutral-400">
                   Include the country code (like +1 for the US). Leave empty to turn texts off.
                 </p>
               </div>
@@ -155,16 +136,12 @@ export default function Settings() {
           </div>
 
           {/* bigger text */}
-          <div
-            className="flex items-center justify-between gap-4 rounded-2xl border border-amber-200/15 bg-white/[0.04] p-5 backdrop-blur-md"
-          >
+          <div className="glass flex items-center justify-between gap-4 rounded-2xl p-5">
             <div className="flex items-start gap-3">
-              <Type className="w-5 h-5 text-amber-300 mt-0.5" />
+              <Type className="mt-0.5 h-5 w-5 text-neutral-400" />
               <div>
-                <h3 className="font-medium" style={{ color: "#faf3e0" }}>
-                  Bigger text
-                </h3>
-                <p className="text-sm text-amber-50/60 mt-0.5">
+                <h3 className="font-medium text-neutral-900">Bigger text</h3>
+                <p className="mt-0.5 text-sm text-neutral-500">
                   Makes everything a little easier to read.
                 </p>
               </div>

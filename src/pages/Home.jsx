@@ -138,12 +138,12 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--paper)" }}>
+    <div className="page-glow min-h-screen">
       <TopMenu onTryPro={() => setPayOpen(true)} onBook={() => { setView("book"); setParams({}); }} />
 
       <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[250px_1fr]">
         {/* rail — desktop sidebar */}
-        <aside className="hidden border-r border-hairline lg:block" style={{ background: "var(--rail)" }}>
+        <aside className="hidden lg:block">
           <div className="sticky top-[53px] max-h-[calc(100vh-53px)] overflow-y-auto">
             <Rail {...railProps} />
           </div>
@@ -154,13 +154,13 @@ export default function Home() {
           <button
             type="button"
             onClick={() => setRailOpen(true)}
-            className="mb-5 inline-flex items-center gap-2 border border-hairline bg-white px-3 py-2 text-[12.5px] font-medium text-ink-warm lg:hidden"
+            className="glass mb-5 inline-flex items-center gap-2 rounded-full px-3 py-2 text-[12.5px] font-medium text-neutral-700 lg:hidden"
           >
             <Menu className="h-4 w-4" /> Your notes
           </button>
 
           {buddies === null ? (
-            <p className="flex items-center gap-2 text-[13px]" style={{ color: "rgba(60,45,25,.55)" }}>
+            <p className="flex items-center gap-2 text-[13px] text-neutral-400">
               <Loader2 className="h-4 w-4 animate-spin" /> Opening your notes…
             </p>
           ) : selected ? (
@@ -181,10 +181,9 @@ export default function Home() {
       {/* rail — mobile drawer */}
       {railOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0" style={{ background: "rgba(30,22,14,.42)" }} onClick={() => setRailOpen(false)} />
+          <div className="absolute inset-0" style={{ background: "rgba(24,24,27,.32)" }} onClick={() => setRailOpen(false)} />
           <div
-            className="absolute left-0 top-0 h-full w-[280px] overflow-y-auto border-r border-hairline"
-            style={{ background: "var(--rail)" }}
+            className="glass absolute left-0 top-0 h-full w-[280px] overflow-y-auto rounded-r-2xl"
           >
             <Rail {...railProps} />
           </div>

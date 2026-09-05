@@ -14,8 +14,8 @@ function SegmentButton({ selected, onClick, icon, children }) {
       onClick={onClick}
       className="flex flex-1 items-center justify-center gap-1.5 rounded-full py-[7px] text-[12px] font-semibold transition-colors"
       style={{
-        background: selected ? "var(--ink-warm)" : "transparent",
-        color: selected ? "#fff" : "rgba(60,45,25,.7)",
+        background: selected ? "#18181B" : "transparent",
+        color: selected ? "#fff" : "rgba(113,113,122,.9)",
       }}
     >
       {icon}
@@ -40,13 +40,15 @@ export default function Rail({
       <button
         type="button"
         onClick={onNewNote}
-        className="w-full border border-dashed px-3 py-2.5 text-left font-hand text-[17px] leading-none text-ink-warm transition-colors hover:bg-white/60"
-        style={{ borderColor: "rgba(60,45,25,.35)" }}
+        className="w-full rounded-xl border border-dashed border-neutral-300 px-3 py-2.5 text-left text-[13.5px] font-medium text-neutral-700 transition-colors hover:border-neutral-400 hover:bg-white/50"
       >
         + New note
       </button>
 
-      <div className="flex gap-[3px] rounded-full p-[3px]" style={{ background: "rgba(60,45,25,.09)" }}>
+      <div
+        className="flex gap-[3px] rounded-full border border-white/60 p-[3px]"
+        style={{ background: "rgba(255,255,255,.45)" }}
+      >
         <SegmentButton selected={view === "notes"} onClick={() => onViewChange("notes")} icon={<PencilIcon />}>
           Notes
         </SegmentButton>
@@ -56,7 +58,7 @@ export default function Rail({
       </div>
 
       {view === "notes" ? (
-        <div className="grid content-start gap-[2px]">
+        <div className="grid content-start gap-[3px]">
           {(buddies || []).map((b) => {
             const sel = b.id === selectedId;
             return (
@@ -64,26 +66,27 @@ export default function Rail({
                 key={b.id}
                 type="button"
                 onClick={() => onSelect(b.id)}
-                className="w-full px-2.5 py-2 text-left"
-                style={{
-                  background: sel ? "#fff" : "transparent",
-                  borderLeft: `3px solid ${sel ? "var(--terracotta)" : "rgba(60,45,25,.18)"}`,
-                }}
+                className={`w-full rounded-xl px-2.5 py-2 text-left transition-colors ${
+                  sel
+                    ? "border border-white/70 shadow-[0_4px_16px_-8px_rgba(24,28,45,.18)]"
+                    : "hover:bg-white/45"
+                }`}
+                style={{ background: sel ? "rgba(255,255,255,.7)" : "transparent" }}
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="truncate font-hand text-[15px] leading-tight text-ink-warm">{b.name}</span>
-                  <span className="shrink-0 font-mono text-[9.5px]" style={{ color: "rgba(60,45,25,.5)" }}>
+                  <span className="truncate text-[13.5px] font-medium leading-tight text-neutral-900">
+                    {b.name}
+                  </span>
+                  <span className="shrink-0 font-mono text-[9.5px] text-neutral-400">
                     {moment(b.updated_date).fromNow(true)}
                   </span>
                 </div>
-                <div className="truncate text-[11.5px] leading-tight" style={{ color: "rgba(60,45,25,.6)" }}>
-                  {b.note}
-                </div>
+                <div className="truncate text-[11.5px] leading-tight text-neutral-500">{b.note}</div>
               </button>
             );
           })}
           {(!buddies || buddies.length === 0) && (
-            <p className="px-2.5 py-2 text-[12px]" style={{ color: "rgba(60,45,25,.5)" }}>
+            <p className="px-2.5 py-2 text-[12px] text-neutral-400">
               Nothing pinned yet. Write your first note.
             </p>
           )}
@@ -92,18 +95,16 @@ export default function Rail({
         <BookPage buddies={buddies} />
       )}
 
-      <div className="mt-auto border-t border-hairline pt-3">
-        <p className="text-[11px]" style={{ color: "rgba(60,45,25,.55)" }}>
-          Three notes free · $6 a month for unlimited
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" style={{ color: "rgba(60,45,25,.55)" }}>
-          <Link to="/settings" className="transition-colors hover:text-ink-warm">
+      <div className="mt-auto border-t border-white/60 pt-3">
+        <p className="text-[11px] text-neutral-500">Three notes free · $6 a month for unlimited</p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-neutral-500">
+          <Link to="/settings" className="transition-colors hover:text-neutral-900">
             Settings
           </Link>
-          <button type="button" onClick={onToggleBigText} className="transition-colors hover:text-ink-warm">
+          <button type="button" onClick={onToggleBigText} className="transition-colors hover:text-neutral-900">
             {bigText ? "Smaller text" : "Bigger text"}
           </button>
-          <button type="button" onClick={onSignOut} className="transition-colors hover:text-ink-warm">
+          <button type="button" onClick={onSignOut} className="transition-colors hover:text-neutral-900">
             Sign out
           </button>
         </div>

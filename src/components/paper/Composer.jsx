@@ -39,21 +39,21 @@ export default function Composer({ onPin, busy }) {
 
   return (
     <div className="mx-auto max-w-[640px]">
-      <h2 className="font-question text-[25px] leading-snug" style={{ color: "rgba(40,30,20,.68)" }}>
+      <h2 className="font-heading text-[26px] font-semibold tracking-tight text-neutral-900">
         What do you keep doing yourself?
       </h2>
 
-      <div className="mt-5 bg-white p-5" style={{ border: "1px solid var(--hairline)" }}>
+      <div className="glass mt-5 rounded-[20px] p-4">
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={2}
           maxLength={300}
           placeholder="Ask for anything you keep doing yourself…"
-          className="w-full resize-none bg-transparent text-[17px] leading-snug text-ink-warm outline-none placeholder:opacity-45"
+          className="w-full resize-none bg-transparent px-1 text-[16px] leading-snug text-neutral-900 outline-none placeholder:text-neutral-400"
         />
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <span className="font-mono text-[9.5px] tracking-[0.14em]" style={{ color: "rgba(60,45,25,.55)" }}>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <span className="font-mono text-[9.5px] tracking-[0.14em] text-neutral-400">
             IT'LL SHOW YOU WHEN AND HOW BEFORE IT RUNS
           </span>
           <div className="flex items-center gap-1.5">
@@ -61,8 +61,7 @@ export default function Composer({ onPin, busy }) {
               <button
                 type="button"
                 onClick={listen}
-                className="grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-black/5"
-                style={{ color: "rgba(60,45,25,.6)" }}
+                className="grid h-9 w-9 place-items-center rounded-full text-neutral-400 transition-colors hover:bg-white/60 hover:text-neutral-600"
                 aria-label="Say it out loud"
               >
                 <Mic className="h-4 w-4" />
@@ -72,8 +71,7 @@ export default function Composer({ onPin, busy }) {
               type="button"
               onClick={submit}
               disabled={busy || !note.trim()}
-              className="grid h-9 w-9 place-items-center rounded-full text-white transition-opacity disabled:opacity-40"
-              style={{ background: "var(--ink-warm)" }}
+              className="grid h-9 w-9 place-items-center rounded-full bg-neutral-900 text-white transition-opacity hover:opacity-90 disabled:opacity-40"
               aria-label="Pin it up"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
@@ -88,15 +86,14 @@ export default function Composer({ onPin, busy }) {
             key={s}
             type="button"
             onClick={() => setNote(s)}
-            className="rounded-full bg-white px-3.5 py-1.5 text-[12.5px] text-ink-warm transition-colors hover:bg-black/[0.03]"
-            style={{ border: "1px solid var(--hairline)" }}
+            className="rounded-full border border-white/70 bg-white/45 px-3.5 py-1.5 text-[12.5px] text-neutral-700 transition-colors hover:bg-white/75"
           >
             {s}
           </button>
         ))}
       </div>
 
-      <p className="mt-6 text-[13px]" style={{ color: "rgba(60,45,25,.6)" }}>
+      <p className="mt-6 text-[13px] text-neutral-500">
         Write it like you'd text a friend. Each note becomes its own thread — you can talk to it later.
       </p>
     </div>
