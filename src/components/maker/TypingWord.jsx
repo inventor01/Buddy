@@ -15,31 +15,27 @@ export default function TypingWord() {
     let t;
     if (phase === "typing") {
       if (len < word.length) {
-        t = setTimeout(() => setLen(len + 1), 75);
+        t = setTimeout(() => setLen(len + 1), 68 + (len % 3) * 14);
       } else {
-        t = setTimeout(() => setPhase("deleting"), 2400);
+        t = setTimeout(() => setPhase("deleting"), 2200);
       }
     } else {
       if (len > 0) {
-        t = setTimeout(() => setLen(len - 1), 38);
+        t = setTimeout(() => setLen(len - 1), 42);
       } else {
         t = setTimeout(() => {
           setIndex((i) => (i + 1) % WORDS.length);
           setPhase("typing");
-        }, 300);
+        }, 350);
       }
     }
     return () => clearTimeout(t);
   }, [phase, len, index]);
 
   return (
-    <span className="relative inline-block align-bottom">
-      <span className="invisible">{WORDS.reduce((a, b) => (b.length > a.length ? b : a))}</span>
-      <span className="absolute left-0 top-0">{WORDS[index].slice(0, len)}</span>
-      <span
-        className="absolute top-[0.12em] ml-[1px] inline-block w-[2px] animate-pulse bg-neutral-900"
-        style={{ height: "0.8em" }}
-      />
+    <span className="whitespace-nowrap">
+      {WORDS[index].slice(0, len)}
+      <span className="ml-[3px] inline-block h-[0.78em] w-[2px] translate-y-[0.04em] animate-pulse rounded-full bg-neutral-400" />
     </span>
   );
 }
