@@ -1,6 +1,8 @@
 // Runs one buddy: searches the web for today's findings, pins them back on
 // the buddy's lantern, and delivers them by email and/or text message.
-// Shared by the hourly scheduler and the "Run now" button.
+// Every finding carries proof of work — the site it came from and the
+// exact URL it was read at. Shared by the hourly scheduler, the "Run now"
+// button, and the visitor preview.
 
 import { secrets } from "base44:runtime";
 import { parseDelivery } from "./plan.ts";
@@ -12,6 +14,69 @@ export function parseScheduleHour(scheduleTime) {
   if (/pm/i.test(scheduleTime) && hour < 12) hour += 12;
   else if (/am/i.test(scheduleTime) && hour === 12) hour = 0;
   return hour;
+}
+
+// The rules every findings call shares — sources are proof of work.
+export const FINDINGS_RULES = [
+  "For every finding include source_name (the site or store it came from) and the exact URL it was read from.",
+  "Only give a URL you actually read — never invent one. If a finding has no source URL, leave url empty.",
+  "If today has nothing genuinely useful, say so plainly — never invent codes or prices."
+];
+
+export const FINDINGS_SCHEMA = {
+  type: "object",
+  properties: {
+    findings: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          text: { type: "string" },
+          source_name: { type: "string" },
+          url: { type: "string" }
+        },
+        required: ["text"]
+      }
+    }
+  },
+  required: ["findings"]
+};
+
+// Turns whatever the model returned into bounded finding objects:
+// { text, url, source }. Anything that isn't a real link is dropped.
+export function toFindingItems(raw) {
+  const list = Array.isArray(raw) ? raw : [];
+  const items = [];
+  for (const f of list) {
+    const text = (typeof f === "string" ? f : f?.text || "").trim().slice(0, 160);
+    if (!text) continue;
+    let url = typeof f?.url === "string" ? f.url.trim() : "";
+    if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
+    try {
+      if (url) new URL(url);
+    } catch (_) {
+      url = "";
+    }
+    let source = typeof f?.source_name === "string" ? f.source_name.trim().slice(0, 60) : "";
+    if (url && !source) {
+      try {
+        source = new URL(url).hostname.replace(/^www\./, "");
+      } catch (_) {
+        /* the hostname is a nicety, not a requirement */
+      }
+    }
+    items.push({ text, url, source });
+    if (items.length >= 5) break;
+  }
+  return items;
+}
+
+// The line format that gets pinned, emailed, and texted — the source
+// travels with the finding so the reader can always check the work.
+export function toLines(items) {
+  return (items || []).map((it) =>
+    it.url ? `${it.text} (Source: ${it.source || "web"} — ${it.url})` : it.text
+  );
 }
 
 // Sends one SMS via Twilio. Silently does nothing when texting isn't configured.
@@ -42,22 +107,16 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
       "Your daily job: " + (buddy.what_line || buddy.note),
       "Search the web for today and report back the 5 most useful, concrete findings for this job.",
       "Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
-      "If today has nothing genuinely useful, say so plainly — never invent codes or prices."
+      ...FINDINGS_RULES
     ].join("\n"),
-    response_json_schema: {
-      type: "object",
-      properties: {
-        findings: { type: "array", items: { type: "string" } }
-      },
-      required: ["findings"]
-    }
+    response_json_schema: FINDINGS_SCHEMA
   });
 
-  const lines = (Array.isArray(findings?.findings) ? findings.findings : [])
-    .filter((f) => typeof f === "string" && f.trim())
-    .slice(0, 5)
-    .map((f) => f.trim().slice(0, 160));
-  if (lines.length === 0) lines.push("Nothing new today — I will look again next time.");
+  const items = toFindingItems(findings?.findings);
+  if (items.length === 0) {
+    items.push({ text: "Nothing new today — I will look again next time.", url: "", source: "" });
+  }
+  const lines = toLines(items);
 
   const today = new Date().toISOString().slice(0, 10);
   await entityClient.entities.Buddy.update(buddy.id, { last_result: lines, last_run_date: today });
@@ -86,5 +145,5 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
     }
   }
 
-  return lines;
+  return { items, lines };
 }

@@ -84,19 +84,23 @@ export default function Start() {
       if (authed === false) {
         // Visitor with no account: run it once, save nothing.
         let found = null;
+        let foundItems = null;
         try {
           const res = await base44.functions.invoke("previewBuddyRun", {
             note: note.trim(),
             what: lines.what,
           });
           const ls = res.data?.lines || [];
-          if (ls.length) found = ls;
+          if (ls.length) {
+            found = ls;
+            foundItems = res.data?.items || null;
+          }
         } catch (_) {
           /* the fallback below covers it */
         }
         setResult(
           found
-            ? { text: found.join("\n"), source: "What it read from the web just now" }
+            ? { text: found.join("\n"), source: "What it read from the web just now", items: foundItems }
             : { text: "It couldn't reach the page just now. It'll try again in the morning.", source: null }
         );
         setStep("ran");
@@ -130,16 +134,20 @@ export default function Start() {
       setCreatedId(created.id);
 
       let found = null;
+      let foundItems = null;
       try {
         const res = await base44.functions.invoke("runBuddyNow", { buddyId: created.id });
         const ls = res.data?.lines || [];
-        if (ls.length) found = ls;
+        if (ls.length) {
+          found = ls;
+          foundItems = res.data?.items || null;
+        }
       } catch (_) {
         /* the fallback below covers it */
       }
       setResult(
         found
-          ? { text: found.join("\n"), source: "What it read from the web just now" }
+          ? { text: found.join("\n"), source: "What it read from the web just now", items: foundItems }
           : { text: "It couldn't reach the page just now. It'll try again in the morning.", source: null }
       );
       setStep("ran");

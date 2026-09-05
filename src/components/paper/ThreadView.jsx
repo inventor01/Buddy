@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import moment from "moment";
 import { ArrowRight, Loader2 } from "lucide-react";
 import StickyNote from "./StickyNote";
+import LinkedText from "@/components/maker/LinkedText";
 
 // The note's thread — what you wrote, pinned at the top, then everything
 // it did and said, oldest to newest. You can pause it, rewrite the note,
@@ -129,7 +130,7 @@ export default function ThreadView({ buddy, onPause, onTakeDown, onEditNote, onS
                     : "rounded-2xl rounded-tr-md bg-neutral-900 text-white"
                 }`}
               >
-                {m.text}
+                <LinkedText>{m.text}</LinkedText>
               </div>
             </div>
           );

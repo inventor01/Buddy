@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines } from '../../shared/runBuddy.ts';
 
 // Runs a visitor's typed note once, with no account and nothing saved —
 // the "watch it run" step for people who haven't signed in. Anonymous by
@@ -25,24 +26,18 @@ export default async function(req) {
         what ? "Your daily job: " + what : "",
         "Search the web for today and report back the 5 most useful, concrete findings for this job.",
         "Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
-        "If today has nothing genuinely useful, say so plainly — never invent codes or prices."
+        ...FINDINGS_RULES
       ].join("\n"),
-      response_json_schema: {
-        type: 'object',
-        properties: {
-          findings: { type: 'array', items: { type: 'string' } }
-        },
-        required: ['findings']
-      }
+      response_json_schema: FINDINGS_SCHEMA
     });
 
-    const lines = (Array.isArray(findings?.findings) ? findings.findings : [])
-      .filter((f) => typeof f === 'string' && f.trim())
-      .slice(0, 5)
-      .map((f) => f.trim().slice(0, 160));
-    if (lines.length === 0) lines.push("Nothing new today — I will look again next time.");
+    const items = toFindingItems(findings?.findings);
+    if (items.length === 0) {
+      items.push({ text: "Nothing new today — I will look again next time.", url: '', source: '' });
+    }
+    const lines = toLines(items);
 
-    return Response.json({ lines });
+    return Response.json({ lines, items });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

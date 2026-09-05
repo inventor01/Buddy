@@ -19,7 +19,7 @@ export default async function(req) {
       return Response.json({ error: 'That buddy is not yours' }, { status: 403 });
     }
 
-    const lines = await runBuddy({
+    const result = await runBuddy({
       client: base44,
       entityClient: base44,
       buddy,
@@ -28,7 +28,7 @@ export default async function(req) {
       smsPhone: typeof user.sms_phone === 'string' ? user.sms_phone : ''
     });
 
-    return Response.json({ lines });
+    return Response.json({ lines: result.lines, items: result.items });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

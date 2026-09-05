@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, ExternalLink, Sparkles } from "lucide-react";
 
 // "Here's what we found" — the payoff moment. Every finding rises into
 // place one by one over a breathing emerald glow, buttons respond with a
@@ -25,10 +25,15 @@ const rise = {
 };
 
 export default function FoundIt({ result, onContinue, onRestart }) {
-  const lines = (result?.text || "")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
+  // Prefer the structured findings (each carries its own source link);
+  // fall back to splitting the plain text for anything stored before.
+  const items = Array.isArray(result?.items) && result.items.length
+    ? result.items
+    : (result?.text || "")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .map((t) => ({ text: t, url: "", source: "" }));
 
   // A little buzz the moment the findings appear.
   useEffect(() => {
@@ -77,13 +82,28 @@ export default function FoundIt({ result, onContinue, onRestart }) {
           style={{ borderLeft: "4px solid #10B981" }}
         >
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-neutral-400">
-            What we found · just now{lines.length > 1 ? ` · ${lines.length} things` : ""}
+            What we found · just now{items.length > 1 ? ` · ${items.length} things` : ""}
           </p>
           <div className="mt-2.5 space-y-2.5">
-            {lines.map((line, i) => (
+            {items.map((it, i) => (
               <motion.div key={i} variants={rise} className="flex items-start gap-2.5">
                 <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                <p className="text-[15.5px] leading-snug text-neutral-900">{line}</p>
+                <div>
+                  <p className="text-[15.5px] leading-snug text-neutral-900">{it.text}</p>
+                  {it.url && (
+                    <motion.a
+                      href={it.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="mt-1 inline-flex items-center gap-1 rounded-full border border-white/70 bg-white/60 px-2 py-0.5 text-[11px] font-medium text-neutral-600 transition-colors hover:bg-white hover:text-neutral-900"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      {it.source || "Source"}
+                    </motion.a>
+                  )}
+                </div>
               </motion.div>
             ))}
           </div>
