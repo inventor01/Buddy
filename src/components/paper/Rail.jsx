@@ -4,12 +4,8 @@ import moment from "moment";
 import { PencilIcon, BookIcon } from "./Icons";
 import BookPage from "./BookPage";
 
-// The left rail — a conversation list. Every note is its own chat.
-const lastSaid = (b) => {
-  if (Array.isArray(b.messages) && b.messages.length) return b.messages[b.messages.length - 1].text;
-  if (Array.isArray(b.last_result) && b.last_result.length) return b.last_result[0];
-  return b.what_line || "";
-};
+// The left rail — a conversation list. Every note is its own chat,
+// and each row previews the note it was pinned from.
 
 function SegmentButton({ selected, onClick, icon, children }) {
   return (
@@ -40,7 +36,7 @@ export default function Rail({
   bigText,
 }) {
   return (
-    <div className="flex h-full flex-col gap-3.5 p-[18px]">
+    <div className="flex h-full flex-col gap-3.5 overflow-hidden p-[18px]">
       <button
         type="button"
         onClick={onNewNote}
@@ -81,7 +77,7 @@ export default function Rail({
                   </span>
                 </div>
                 <div className="truncate text-[11.5px] leading-tight" style={{ color: "rgba(60,45,25,.6)" }}>
-                  {lastSaid(b)}
+                  {b.note}
                 </div>
               </button>
             );
