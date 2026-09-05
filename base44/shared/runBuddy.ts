@@ -3,6 +3,7 @@
 // Shared by the hourly scheduler and the "Run now" button.
 
 import { secrets } from "base44:runtime";
+import { parseDelivery } from "./plan.ts";
 
 export function parseScheduleHour(scheduleTime) {
   const m = typeof scheduleTime === "string" ? scheduleTime.match(/(\d{1,2})/) : null;
@@ -37,8 +38,8 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
     add_context_from_internet: true,
     prompt: [
       "You are " + buddy.name + ", a helper for one person.",
-      'Your job, from their note: "' + buddy.note + '"',
-      "What it does: " + (buddy.what_line || ""),
+      'Their exact words: "' + buddy.note + '"',
+      "Your daily job: " + (buddy.what_line || buddy.note),
       "Search the web for today and report back the 5 most useful, concrete findings for this job.",
       "Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
       "If today has nothing genuinely useful, say so plainly — never invent codes or prices."
@@ -61,7 +62,11 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
   const today = new Date().toISOString().slice(0, 10);
   await entityClient.entities.Buddy.update(buddy.id, { last_result: lines, last_run_date: today });
 
-  if (notifyEmail && typeof userEmail === "string" && userEmail.includes("@")) {
+  // The TELLS line decides the channel: "text me" → SMS only,
+  // "email me" → email only, anything else → both.
+  const delivery = parseDelivery(buddy.how_line || "");
+
+  if (delivery.email && notifyEmail && typeof userEmail === "string" && userEmail.includes("@")) {
     try {
       await client.asServiceRole.integrations.Core.SendEmail({
         to: userEmail,
@@ -73,7 +78,7 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
     }
   }
 
-  if (typeof smsPhone === "string" && smsPhone.trim().startsWith("+")) {
+  if (delivery.sms && typeof smsPhone === "string" && smsPhone.trim().startsWith("+")) {
     try {
       await sendSms(smsPhone.trim(), buddy.name + " pinned something for you:\n" + lines.join("\n"));
     } catch (e) {

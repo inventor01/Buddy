@@ -84,7 +84,10 @@ export default function Start() {
         // Visitor with no account: run it once, save nothing.
         let found = null;
         try {
-          const res = await base44.functions.invoke("previewBuddyRun", { note: note.trim() });
+          const res = await base44.functions.invoke("previewBuddyRun", {
+            note: note.trim(),
+            what: lines.what,
+          });
           const ls = res.data?.lines || [];
           if (ls.length) found = ls;
         } catch (_) {
@@ -99,6 +102,20 @@ export default function Start() {
         return;
       }
 
+      // Recompute the real settings from the (possibly reworded) cards:
+      // WHEN → the daily schedule it runs on, TELLS → the channel.
+      let scheduleTime = lines.scheduleTime || "9:00 AM";
+      try {
+        const rec = await base44.functions.invoke("recompilePlan", {
+          when_line: lines.when,
+          what_line: lines.what,
+          how_line: lines.tells,
+        });
+        if (rec.data?.schedule_time) scheduleTime = rec.data.schedule_time;
+      } catch (_) {
+        /* the LLM's first reading of the schedule still stands */
+      }
+
       const created = await base44.entities.Buddy.create({
         note: note.trim(),
         name: lines.name || "Your helper",
@@ -106,7 +123,7 @@ export default function Start() {
         when_line: lines.when,
         what_line: lines.what,
         how_line: lines.tells,
-        schedule_time: lines.scheduleTime || "9:00 AM",
+        schedule_time: scheduleTime,
         status: "active",
       });
       setCreatedId(created.id);

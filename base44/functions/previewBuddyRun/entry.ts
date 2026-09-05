@@ -13,13 +13,16 @@ export default async function(req) {
     if (note.length < 3) {
       return Response.json({ error: 'Write your note first.' }, { status: 400 });
     }
+    // The WHAT card, if the visitor reworded it — it's the exact job.
+    const what = typeof body.what === 'string' ? body.what.trim().slice(0, 200) : '';
 
     const findings = await base44.asServiceRole.integrations.Core.InvokeLLM({
       model: "gemini_3_flash",
       add_context_from_internet: true,
       prompt: [
         "You are a helper for one person.",
-        'Your job, from their note: "' + note + '"',
+        'Their exact words: "' + note + '"',
+        what ? "Your daily job: " + what : "",
         "Search the web for today and report back the 5 most useful, concrete findings for this job.",
         "Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
         "If today has nothing genuinely useful, say so plainly — never invent codes or prices."
