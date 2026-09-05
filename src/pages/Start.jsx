@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import PaymentSheet from "@/components/paper/PaymentSheet";
 import PlanBoard from "@/components/maker/PlanBoard";
+import FoundIt from "@/components/maker/FoundIt";
 
 // One box, like a chat window — but what you type becomes a small set of
 // cards you can drag and reword before it runs. Simple enough for anyone,
@@ -303,33 +304,7 @@ export default function Start() {
         )}
 
         {step === "ran" && result && (
-          <div className={card}>
-            <p className={kicker}>Just ran it</p>
-            <h2 className={`mt-3 ${h2}`}>Here's what we found, right now.</h2>
-            <p className="mt-2 text-[14px] text-neutral-500">This is the real thing — not a demo.</p>
-            <div
-              className="mt-6 rounded-2xl border border-neutral-200 bg-neutral-50 p-5"
-              style={{ borderLeft: "4px solid #10B981" }}
-            >
-              <p className={kicker}>What we found · just now</p>
-              <p className="mt-2 whitespace-pre-line text-[16px] leading-snug text-neutral-900">
-                {result.text}
-              </p>
-              {result.source && <p className="mt-2 text-[12px] text-neutral-500">{result.source}</p>}
-            </div>
-            <p className="mt-4 rounded-2xl border border-dashed border-neutral-300 p-5 text-[14px] text-neutral-500">
-              From tomorrow, this arrives as one text — and only when there's something worth
-              saying.
-            </p>
-            <div className="mt-7 flex flex-wrap items-center gap-4">
-              <button type="button" onClick={() => setStep("phone")} className={primary}>
-                <ArrowRight className="h-4 w-4" /> Set it going
-              </button>
-              <button type="button" onClick={restart} className={ghost}>
-                Try different words
-              </button>
-            </div>
-          </div>
+          <FoundIt result={result} onContinue={() => setStep("phone")} onRestart={restart} />
         )}
 
         {step === "phone" && (
