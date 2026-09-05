@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, CreditCard, DollarSign, Globe, HeartHandshake, Loader2 } from "lucide-react";
+import { ArrowRight, Cake, DollarSign, Globe, HeartHandshake, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import TopMenu from "@/components/paper/TopMenu";
@@ -57,16 +57,16 @@ const EXAMPLES = [
     next: "Grab a passport slot the second one opens",
   },
   {
-    chip: "Catch money leaving my account",
-    title: "Renewals",
-    creature: "med",
-    note: "Warn me a week before anything renews",
-    when: "Every day, quietly",
-    what: "Reads renewal notices in your inbox",
-    tells: "Texts you 7 days out with the cancel link",
-    scheduleTime: "7:00 AM",
-    found: "Storage plan renews Aug 20 at $59 — up from $39. Cancel link ready.",
-    source: "Read from one email in your inbox, Aug 13",
+    chip: "Remind me about birthdays",
+    title: "Birthday bird",
+    creature: "bells",
+    note: "Tell me a week before anyone's birthday so I can send a card",
+    when: "Every morning at 8",
+    what: "Checks the birthdays you've told it about",
+    tells: "Texts you 7 days ahead, with a card idea",
+    scheduleTime: "8:00 AM",
+    found: "Ellie's birthday is next Friday — cards that arrive on time ship by Wednesday.",
+    source: "Read from your birthday list, 8:01 AM today",
     next: "Watch a price for me too",
   },
 ];
@@ -75,7 +75,7 @@ const CHIP_ICONS = {
   "Watch a price for me": DollarSign,
   "Remind someone I look after": HeartHandshake,
   "Watch a page that never updates": Globe,
-  "Catch money leaving my account": CreditCard,
+  "Remind me about birthdays": Cake,
 };
 
 export default function Start() {
