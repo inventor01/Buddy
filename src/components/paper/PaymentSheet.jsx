@@ -41,7 +41,7 @@ export default function PaymentSheet({ open, onClose }) {
         <div className="mx-auto mt-[10px] h-[4px] w-[38px] rounded-full sm:hidden" style={{ background: "rgba(60,45,25,.2)" }} />
         <div className="p-5">
           <p className="font-mono text-[9.5px] tracking-[0.18em]" style={{ color: "rgba(60,45,25,.55)" }}>
-            AGENT BUDDY PRO
+            BUDDY PRO
           </p>
           <p className="mt-2">
             <span className="font-display text-[25px] font-semibold text-ink-warm">$6</span>{" "}

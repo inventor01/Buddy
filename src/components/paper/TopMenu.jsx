@@ -13,7 +13,7 @@ export default function TopMenu({ onTryPro, onBook, authed = true, onSignIn }) {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-8">
         <div className="flex items-baseline gap-2.5">
           <Link to="/" className="font-display text-[16px] font-semibold tracking-[-0.02em] text-ink-warm">
-            Agent Buddy
+            Buddy
           </Link>
           <span className="hidden font-hand text-[13px] sm:inline" style={{ color: "rgba(40,30,20,.6)" }}>
             notes that do things
