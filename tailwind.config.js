@@ -42,6 +42,16 @@ module.exports = {
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
   			border: 'hsl(var(--border))',
+  			paper: 'var(--paper)',
+  			'paper-note': 'var(--paper-note)',
+  			'paper-note-2': 'var(--paper-note-2)',
+  			'paper-card': 'var(--paper-card)',
+  			'rail': 'var(--rail)',
+  			'ink-warm': 'var(--ink-warm)',
+  			terracotta: 'var(--terracotta)',
+  			'amber-cta': 'var(--amber-cta)',
+  			leaf: 'var(--leaf)',
+  			hairline: 'var(--hairline)',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',
   			chart: {
@@ -66,7 +76,9 @@ module.exports = {
   			heading: ['var(--font-heading)'],
   			body: ['var(--font-body)'],
   			display: ['var(--font-display)'],
-  			mono: ['var(--font-mono)']
+  			mono: ['var(--font-mono)'],
+  			hand: ['var(--font-hand)'],
+  			question: ['var(--font-question)']
   		},
   		keyframes: {
   			'accordion-down': {

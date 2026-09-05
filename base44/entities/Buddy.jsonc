@@ -8,7 +8,7 @@
     },
     "name": {
       "type": "string",
-      "description": "Friendly buddy name, e.g. Shopping Sam"
+      "description": "Friendly note title, e.g. Cheap chicken"
     },
     "creature": {
       "type": "string",
@@ -19,7 +19,7 @@
         "med"
       ],
       "default": "sam",
-      "description": "Which garden creature this buddy is"
+      "description": "Which garden creature this note was hatched as"
     },
     "when_line": {
       "type": "string",
@@ -50,11 +50,41 @@
       "items": {
         "type": "string"
       },
-      "description": "The latest findings pinned back by this buddy"
+      "description": "The latest findings pinned back by this note"
     },
     "last_run_date": {
       "type": "string",
-      "description": "Date (YYYY-MM-DD) the buddy last ran, so it never runs twice in one day"
+      "description": "Date (YYYY-MM-DD) the note last ran, so it never runs twice in one day"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "who": {
+            "type": "string",
+            "enum": [
+              "note",
+              "you"
+            ],
+            "description": "Who said it: the note, or you"
+          },
+          "at": {
+            "type": "string",
+            "description": "ISO date when it was said"
+          },
+          "text": {
+            "type": "string",
+            "description": "What was said"
+          }
+        },
+        "required": [
+          "who",
+          "at",
+          "text"
+        ]
+      },
+      "description": "The note's thread: what you asked and what it found, oldest first"
     }
   },
   "required": [
