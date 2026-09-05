@@ -29,13 +29,13 @@ export default function BuddyCard({ buddy, onPause, onTakeDown, onRun }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="relative rounded-[1.6rem] p-5 backdrop-blur-md"
+      className="relative rounded-3xl p-6 backdrop-blur-md"
       style={{
-        background: "linear-gradient(165deg, rgba(255,253,246,0.10), rgba(255,246,230,0.04))",
-        border: "1px solid rgba(255,217,160,0.22)",
+        background: "rgba(255,253,246,0.055)",
+        border: "1px solid rgba(255,255,255,0.08)",
         boxShadow: active
-          ? "0 0 36px -6px #ffd29c55, inset 0 0 24px -10px #ffd29c44"
-          : "0 14px 40px -22px #00000099",
+          ? "0 24px 60px -32px #000, 0 0 28px -12px #ffd29c40"
+          : "0 24px 60px -32px #000",
       }}
     >
       {/* header */}
@@ -68,7 +68,7 @@ export default function BuddyCard({ buddy, onPause, onTakeDown, onRun }) {
       {/* the note it was born from */}
       {note && (
         <p
-          className="mt-4 text-lg leading-snug text-amber-100/85"
+          className="mt-5 text-lg leading-snug text-amber-100/85"
           style={{ fontFamily: "'Caveat', cursive" }}
         >
           “{note}”
@@ -88,10 +88,11 @@ export default function BuddyCard({ buddy, onPause, onTakeDown, onRun }) {
       {/* latest findings pinned back */}
       {Array.isArray(last_result) && last_result.length > 0 && (
         <div
-          className="mt-4 rounded-2xl p-4"
+          className="mt-5 rounded-2xl p-4"
           style={{
-            background: "linear-gradient(160deg,#fffdf6,#fff3d6)",
-            boxShadow: "0 10px 24px -14px #00000088",
+            background: "#fffdf6",
+            border: "1px solid rgba(120,90,40,0.10)",
+            boxShadow: "0 12px 32px -20px #000",
           }}
         >
           <div className="space-y-2">
@@ -111,12 +112,12 @@ export default function BuddyCard({ buddy, onPause, onTakeDown, onRun }) {
       )}
 
       {/* actions */}
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-5 flex items-center gap-2">
         <button
           type="button"
           onClick={handleRun}
           disabled={busy}
-          className="flex items-center gap-1.5 rounded-full border border-amber-200/25 bg-amber-300/10 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-300/20 transition-colors disabled:cursor-wait"
+          className="flex items-center gap-1.5 rounded-full bg-amber-200/90 px-3.5 py-1.5 text-xs font-semibold text-stone-900 hover:bg-amber-200 transition-colors disabled:cursor-wait"
         >
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
           {busy ? "Running…" : "Run now"}
@@ -124,7 +125,7 @@ export default function BuddyCard({ buddy, onPause, onTakeDown, onRun }) {
         <button
           type="button"
           onClick={() => onPause(buddy)}
-          className="flex items-center gap-1.5 rounded-full border border-amber-200/15 bg-white/5 px-3 py-1.5 text-xs text-amber-50/70 hover:text-amber-50 transition-colors"
+          className="flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3.5 py-1.5 text-xs text-amber-50/70 hover:text-amber-50 hover:bg-white/[0.10] transition-colors"
         >
           {active ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
           {active ? "Pause" : "Resume"}
@@ -132,7 +133,7 @@ export default function BuddyCard({ buddy, onPause, onTakeDown, onRun }) {
         <button
           type="button"
           onClick={() => onTakeDown(buddy)}
-          className="flex items-center gap-1.5 rounded-full border border-red-300/15 bg-red-500/5 px-3 py-1.5 text-xs text-red-200/70 hover:text-red-200 transition-colors"
+          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-red-200/45 hover:text-red-200 transition-colors"
         >
           <Trash2 className="w-3.5 h-3.5" /> Take down
         </button>

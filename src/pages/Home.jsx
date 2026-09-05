@@ -105,7 +105,7 @@ export default function Home() {
       className="relative min-h-screen w-full overflow-x-hidden"
       style={{
         background:
-          "radial-gradient(120% 80% at 50% -10%, #4a2d6e 0%, #2d1b4e 38%, #1a1033 100%)",
+          "radial-gradient(120% 90% at 50% -20%, #35204f 0%, #211336 45%, #120a26 100%)",
       }}
     >
       <FireflyField />
@@ -116,7 +116,7 @@ export default function Home() {
         className="pointer-events-none fixed inset-x-0 bottom-0 h-1/2"
         style={{
           background:
-            "radial-gradient(100% 100% at 50% 120%, rgba(231,111,81,0.28), transparent 60%)",
+            "radial-gradient(100% 100% at 50% 120%, rgba(231,111,81,0.16), transparent 60%)",
         }}
       />
 
@@ -124,22 +124,22 @@ export default function Home() {
         {/* Header */}
         <header className="flex items-center justify-between py-6">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="grid place-items-center w-8 h-8 rounded-full bg-amber-300 text-stone-900 font-bold text-sm shadow-[0_0_18px_#ffd29c88]">
+            <div className="grid place-items-center w-8 h-8 rounded-full bg-amber-300 text-stone-900 font-bold text-sm shadow-[0_0_12px_#ffd29c55]">
               ab
             </div>
             <span className="font-semibold tracking-tight" style={{ color: "#faf3e0" }}>
               Agent Buddy
             </span>
           </Link>
-          <nav className="flex items-center gap-1 rounded-full border border-amber-200/15 bg-white/5 p-1 backdrop-blur-md">
+          <nav className="flex items-center gap-5 sm:gap-7">
             {navItems.map(({ label, to }) => (
               <Link
                 key={label}
                 to={to}
-                className={`rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm transition-colors ${
+                className={`text-sm transition-colors ${
                   label === "Home"
-                    ? "bg-amber-300/90 text-stone-900 font-semibold"
-                    : "text-amber-50/70 hover:text-amber-50"
+                    ? "text-amber-50 font-medium"
+                    : "text-amber-50/55 hover:text-amber-50"
                 }`}
               >
                 {label}
@@ -148,10 +148,8 @@ export default function Home() {
             <button
               type="button"
               onClick={toggleBigText}
-              className={`rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm transition-colors ${
-                bigText
-                  ? "bg-amber-300/90 text-stone-900 font-semibold"
-                  : "text-amber-50/70 hover:text-amber-50"
+              className={`text-sm transition-colors ${
+                bigText ? "text-amber-50 font-medium" : "text-amber-50/55 hover:text-amber-50"
               }`}
             >
               Bigger text
@@ -159,7 +157,7 @@ export default function Home() {
             <button
               type="button"
               onClick={signOut}
-              className="rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm text-amber-50/70 hover:text-amber-50 transition-colors"
+              className="text-sm text-amber-50/55 hover:text-amber-50 transition-colors"
             >
               Sign out
             </button>
@@ -167,7 +165,7 @@ export default function Home() {
         </header>
 
         {/* Hero */}
-        <section className="pt-10 sm:pt-16 text-center">
+        <section className="pt-14 sm:pt-24 text-center">
           <motion.h1
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
@@ -189,7 +187,7 @@ export default function Home() {
             look, and pins the answer back to you.
           </motion.p>
 
-          <div className="mt-10">
+          <div className="mt-12">
             <NoteComposer onPin={handlePin} />
           </div>
 
@@ -200,10 +198,7 @@ export default function Home() {
             transition={{ delay: 0.5 }}
             className="my-8 flex flex-col items-center gap-2 text-amber-200/60"
           >
-            <ArrowDown className="w-5 h-5 animate-bounce" />
-            <span className="rounded-full border border-amber-200/20 bg-white/5 px-3 py-1 text-xs tracking-wide">
-              it goes
-            </span>
+            <ArrowDown className="w-4 h-4 animate-bounce" />
           </motion.div>
         </section>
 
@@ -239,7 +234,7 @@ export default function Home() {
             {HELPERS.map(({ icon: Icon, label }) => (
               <div
                 key={label}
-                className="flex items-center gap-2 rounded-full border border-amber-200/15 bg-white/5 px-4 py-2 backdrop-blur-md"
+                className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.04] px-4 py-2"
               >
                 <Icon className="w-4 h-4 text-amber-300" />
                 <span className="text-sm text-amber-50/80">{label}</span>
@@ -259,7 +254,7 @@ export default function Home() {
             {STEPS.map((s) => (
               <div
                 key={s.n}
-                className="rounded-2xl border border-amber-200/12 bg-white/[0.04] p-5 backdrop-blur-md"
+                className="rounded-3xl border border-white/[0.06] bg-white/[0.03] p-6"
               >
                 <div className="text-amber-300/60 text-xs font-mono">{s.n}</div>
                 <h4 className="mt-2 font-semibold" style={{ color: "#faf3e0" }}>
