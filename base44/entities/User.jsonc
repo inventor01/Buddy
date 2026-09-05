@@ -7,6 +7,15 @@
         "admin",
         "user"
       ]
+    },
+    "plan": {
+      "type": "string",
+      "description": "Whether the user has Pro: 'pro' or 'free'. Set by the payments webhook when a subscription is approved, and revoked when it ends.",
+      "enum": [
+        "free",
+        "pro"
+      ],
+      "default": "free"
     }
   },
   "required": [

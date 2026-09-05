@@ -1,43 +1,38 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ShoppingBag, Store, Cake, Pill, ArrowDown, Loader2, Sparkles } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Loader2, Menu } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import FireflyField from "@/components/buddy/FireflyField";
-import NoteComposer from "@/components/buddy/NoteComposer";
-import BuddyCard from "@/components/buddy/BuddyCard";
-import BuddyCreature from "@/components/buddy/BuddyCreature";
+import TopMenu from "@/components/paper/TopMenu";
+import Rail from "@/components/paper/Rail";
+import Composer from "@/components/paper/Composer";
+import ThreadView from "@/components/paper/ThreadView";
+import PaymentSheet from "@/components/paper/PaymentSheet";
 import { readBigText, applyBigText } from "@/lib/bigText";
 
-// The buddy garden — a twilight world where your note hatches a helper
-// creature that runs your errand and pins the answer back to you.
-const HELPERS = [
-  { icon: ShoppingBag, label: "Shopping Sam", variant: "sam" },
-  { icon: Store, label: "Storefront Sid", variant: "sid" },
-  { icon: Cake, label: "Birthday Bells", variant: "bells" },
-  { icon: Pill, label: "Med Mate", variant: "med" },
-];
-
-const STEPS = [
-  { n: "01", title: "When it happens", body: "Pick a time, or just say “every morning.”" },
-  { n: "02", title: "What it does", body: "Your buddy goes off and runs the errand." },
-  { n: "03", title: "How it tells you", body: "It pins the answer back — by text or email." },
-];
-
+// The home page IS the product (10a) — a rail of note threads on the left,
+// the composer or the open thread on the right.
 export default function Home() {
   const { toast } = useToast();
-  const [buddies, setBuddies] = useState(null); // null = still loading
+  const [params, setParams] = useSearchParams();
+  const [buddies, setBuddies] = useState(null);
+  const [me, setMe] = useState(null);
+  const [payOpen, setPayOpen] = useState(false);
+  const [view, setView] = useState("notes");
+  const [railOpen, setRailOpen] = useState(false);
   const [bigText, setBigText] = useState(readBigText());
+  const [pinning, setPinning] = useState(false);
+  const [sending, setSending] = useState(false);
 
-  const loadBuddies = useCallback(async () => {
+  const selectedId = params.get("note");
+  const pro = me?.plan === "pro";
+  const selected = (buddies || []).find((b) => b.id === selectedId) || null;
+
+  const load = useCallback(async () => {
     try {
       const user = await base44.auth.me();
-      const list = await base44.entities.Buddy.filter(
-        { created_by_id: user.id },
-        "-created_date",
-        50
-      );
+      setMe(user);
+      const list = await base44.entities.Buddy.filter({ created_by_id: user.id }, "-updated_date", 50);
       setBuddies(list);
     } catch (e) {
       setBuddies([]);
@@ -46,8 +41,20 @@ export default function Home() {
 
   useEffect(() => {
     applyBigText(readBigText());
-    loadBuddies();
-  }, [loadBuddies]);
+    load();
+  }, [load]);
+
+  const selectNote = (id) => {
+    setParams({ note: id });
+    setView("notes");
+    setRailOpen(false);
+  };
+
+  const newNote = () => {
+    setParams({});
+    setView("notes");
+    setRailOpen(false);
+  };
 
   const toggleBigText = () => {
     const next = !bigText;
@@ -56,18 +63,24 @@ export default function Home() {
   };
 
   const handlePin = async (note) => {
+    if (!pro && (buddies?.length || 0) >= 3) {
+      setPayOpen(true);
+      toast({ title: "Three notes are free. Pro is $6 a month for unlimited." });
+      throw new Error("plan limit");
+    }
+    setPinning(true);
     try {
       const res = await base44.functions.invoke("createBuddyFromNote", { note });
       const plan = res.data?.plan;
-      if (!plan) throw new Error("The buddy didn't hatch — try again.");
+      if (!plan) throw new Error("That note didn't read back right — try again.");
       const created = await base44.entities.Buddy.create({ note, ...plan, status: "active" });
       setBuddies((prev) => [created, ...(prev ?? [])]);
+      setParams({ note: created.id });
     } catch (e) {
-      toast({
-        title: e.message || "Couldn't hatch that buddy — try again.",
-        variant: "destructive",
-      });
+      toast({ title: e.message || "That note didn't hatch — try again.", variant: "destructive" });
       throw e;
+    } finally {
+      setPinning(false);
     }
   };
 
@@ -80,197 +93,105 @@ export default function Home() {
   const takeDown = async (b) => {
     await base44.entities.Buddy.delete(b.id);
     setBuddies((prev) => prev.filter((x) => x.id !== b.id));
+    if (b.id === selectedId) setParams({});
   };
 
-  const runNow = async (b) => {
+  const editNote = async (b, text) => {
+    await base44.entities.Buddy.update(b.id, { note: text });
+    setBuddies((prev) => prev.map((x) => (x.id === b.id ? { ...x, note: text } : x)));
+  };
+
+  const sendInThread = async (b, text) => {
+    setSending(true);
     try {
-      const res = await base44.functions.invoke("runBuddyNow", { buddyId: b.id });
-      const lines = res.data?.lines || [];
-      setBuddies((prev) => prev.map((x) => (x.id === b.id ? { ...x, last_result: lines } : x)));
-    } catch (e) {
-      toast({ title: e.message || "That run didn't finish — try again.", variant: "destructive" });
-      throw e;
+      const youMsg = { who: "you", at: new Date().toISOString(), text };
+      let msgs = [...(b.messages || []), youMsg];
+      setBuddies((p) => p.map((x) => (x.id === b.id ? { ...x, messages: msgs } : x)));
+      await base44.entities.Buddy.update(b.id, { messages: msgs });
+      try {
+        const res = await base44.functions.invoke("runBuddyNow", { buddyId: b.id });
+        const lines = res.data?.lines || [];
+        if (lines.length) {
+          const noteMsg = { who: "note", at: new Date().toISOString(), text: lines.join("\n") };
+          msgs = [...msgs, noteMsg];
+          setBuddies((p) => p.map((x) => (x.id === b.id ? { ...x, messages: msgs, last_result: lines } : x)));
+          await base44.entities.Buddy.update(b.id, { messages: msgs, last_result: lines });
+        }
+      } catch (e) {
+        toast({ title: "That run didn't finish — try again.", variant: "destructive" });
+      }
+    } finally {
+      setSending(false);
     }
   };
 
-  const signOut = () => base44.auth.logout("/login");
-
-  const navItems = [
-    { label: "Home", to: "/" },
-    { label: "Settings", to: "/settings" },
-  ];
+  const railProps = {
+    buddies: buddies || [],
+    selectedId,
+    onSelect: selectNote,
+    onNewNote: newNote,
+    view,
+    onViewChange: setView,
+    onSignOut: () => base44.auth.logout("/login"),
+    onToggleBigText: toggleBigText,
+    bigText,
+  };
 
   return (
-    <div
-      className="relative min-h-screen w-full overflow-x-hidden"
-      style={{
-        background:
-          "radial-gradient(120% 90% at 50% -20%, #35204f 0%, #211336 45%, #120a26 100%)",
-      }}
-    >
-      <FireflyField />
+    <div className="min-h-screen" style={{ background: "var(--paper)" }}>
+      <TopMenu onTryPro={() => setPayOpen(true)} onBook={() => { setView("book"); setParams({}); }} />
 
-      {/* soft horizon glow */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-x-0 bottom-0 h-1/2"
-        style={{
-          background:
-            "radial-gradient(100% 100% at 50% 120%, rgba(231,111,81,0.16), transparent 60%)",
-        }}
-      />
-
-      <div className="relative z-10 mx-auto max-w-5xl px-5 sm:px-8">
-        {/* Header */}
-        <header className="flex items-center justify-between py-6">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="grid place-items-center w-8 h-8 rounded-full bg-amber-300 text-stone-900 font-bold text-sm shadow-[0_0_12px_#ffd29c55]">
-              ab
-            </div>
-            <span className="font-semibold tracking-tight" style={{ color: "#faf3e0" }}>
-              Agent Buddy
-            </span>
-          </Link>
-          <nav className="flex items-center gap-5 sm:gap-7">
-            {navItems.map(({ label, to }) => (
-              <Link
-                key={label}
-                to={to}
-                className={`text-sm transition-colors ${
-                  label === "Home"
-                    ? "text-amber-50 font-medium"
-                    : "text-amber-50/55 hover:text-amber-50"
-                }`}
-              >
-                {label}
-              </Link>
-            ))}
-            <button
-              type="button"
-              onClick={toggleBigText}
-              className={`text-sm transition-colors ${
-                bigText ? "text-amber-50 font-medium" : "text-amber-50/55 hover:text-amber-50"
-              }`}
-            >
-              Bigger text
-            </button>
-            <button
-              type="button"
-              onClick={signOut}
-              className="text-sm text-amber-50/55 hover:text-amber-50 transition-colors"
-            >
-              Sign out
-            </button>
-          </nav>
-        </header>
-
-        {/* Hero */}
-        <section className="pt-14 sm:pt-24 text-center">
-          <motion.h1
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: "easeOut" }}
-            className="text-4xl sm:text-6xl font-semibold tracking-tight leading-[1.05]"
-            style={{ color: "#faf3e0", fontFamily: "'Fraunces', serif" }}
-          >
-            Leave it a note.
-            <br />
-            <span style={{ color: "#ffd29c" }}>It does the errand.</span>
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.15 }}
-            className="mx-auto mt-5 max-w-md text-base sm:text-lg text-amber-50/70"
-          >
-            Write it the way you'd write it on the fridge. It goes off, has a
-            look, and pins the answer back to you.
-          </motion.p>
-
-          <div className="mt-12">
-            <NoteComposer onPin={handlePin} />
+      <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[250px_1fr]">
+        {/* rail — desktop sidebar */}
+        <aside className="hidden border-r border-hairline lg:block" style={{ background: "var(--rail)" }}>
+          <div className="sticky top-[53px] max-h-[calc(100vh-53px)] overflow-y-auto">
+            <Rail {...railProps} />
           </div>
+        </aside>
 
-          {/* "it goes" connector */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="my-8 flex flex-col items-center gap-2 text-amber-200/60"
+        {/* main column */}
+        <main className="min-h-[520px] px-6 py-9 sm:px-10">
+          <button
+            type="button"
+            onClick={() => setRailOpen(true)}
+            className="mb-5 inline-flex items-center gap-2 border border-hairline bg-white px-3 py-2 text-[12.5px] font-medium text-ink-warm lg:hidden"
           >
-            <ArrowDown className="w-4 h-4 animate-bounce" />
-          </motion.div>
-        </section>
+            <Menu className="h-4 w-4" /> Your notes
+          </button>
 
-        {/* Buddy habitat */}
-        <section className="pb-4">
           {buddies === null ? (
-            <div className="flex items-center justify-center gap-2 py-14 text-amber-100/60">
-              <Loader2 className="w-4 h-4 animate-spin" /> Waking the garden…
-            </div>
-          ) : buddies.length === 0 ? (
-            <div className="flex flex-col items-center gap-4 py-14 text-center">
-              <BuddyCreature variant="bells" size={84} active={false} />
-              <p className="flex items-center gap-1.5 text-amber-100/70">
-                <Sparkles className="w-4 h-4 text-amber-300" />
-                Your helpers will show up here once you make your first one.
-              </p>
-            </div>
+            <p className="flex items-center gap-2 text-[13px]" style={{ color: "rgba(60,45,25,.55)" }}>
+              <Loader2 className="h-4 w-4 animate-spin" /> Opening your notes…
+            </p>
+          ) : selected ? (
+            <ThreadView
+              buddy={selected}
+              onPause={togglePause}
+              onTakeDown={takeDown}
+              onEditNote={editNote}
+              onSend={sendInThread}
+              busy={sending}
+            />
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2">
-              {buddies.map((b) => (
-                <BuddyCard key={b.id} buddy={b} onPause={togglePause} onTakeDown={takeDown} onRun={runNow} />
-              ))}
-            </div>
+            <Composer onPin={handlePin} busy={pinning} />
           )}
-        </section>
-
-        {/* Helper pills */}
-        <section className="py-10">
-          <p className="text-center text-xs uppercase tracking-[0.25em] text-amber-200/50 mb-5">
-            Kinds of buddies
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {HELPERS.map(({ icon: Icon, label }) => (
-              <div
-                key={label}
-                className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.04] px-4 py-2"
-              >
-                <Icon className="w-4 h-4 text-amber-300" />
-                <span className="text-sm text-amber-50/80">{label}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* How it works — three plain lines */}
-        <section className="py-12">
-          <p className="text-center text-amber-50/70 max-w-md mx-auto">
-            Every note shows you three plain lines before it starts — when it
-            happens, what it does, and how it tells you. Take a note down any
-            time.
-          </p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            {STEPS.map((s) => (
-              <div
-                key={s.n}
-                className="rounded-3xl border border-white/[0.06] bg-white/[0.03] p-6"
-              >
-                <div className="text-amber-300/60 text-xs font-mono">{s.n}</div>
-                <h4 className="mt-2 font-semibold" style={{ color: "#faf3e0" }}>
-                  {s.title}
-                </h4>
-                <p className="mt-1 text-sm text-amber-50/65">{s.body}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="py-12 text-center">
-          <p className="text-amber-200/50 text-sm">Made to be simple enough for anyone.</p>
-        </footer>
+        </main>
       </div>
+
+      {/* rail — mobile drawer */}
+      {railOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div className="absolute inset-0" style={{ background: "rgba(30,22,14,.42)" }} onClick={() => setRailOpen(false)} />
+          <div
+            className="absolute left-0 top-0 h-full w-[280px] overflow-y-auto border-r border-hairline"
+            style={{ background: "var(--rail)" }}
+          >
+            <Rail {...railProps} />
+          </div>
+        </div>
+      )}
+
+      <PaymentSheet open={payOpen} onClose={() => setPayOpen(false)} />
     </div>
   );
 }

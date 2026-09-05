@@ -166,6 +166,20 @@ async function handleOrderApproved(db: any, eventData: any): Promise<Response> {
   //   - Gate paid access on a WRITABLE field you set here (e.g. plan / has_paid on the user or an
   //     Entitlement row) — NEVER on is_verified: it is platform-protected and cannot be set here,
   //     even as service role, so gating access on it locks the paying buyer out.
+  // Grant Pro: set plan = "pro" on the buyer's user record. An update — naturally idempotent.
+  // Signed-in buyer → purchase.appUserId; anonymous buyer → match buyerEmail against User.
+  if (purchase.appUserId) {
+    await db.entities.User.update(purchase.appUserId, { plan: "pro" });
+    console.log("payments-webhook: granted pro to user", purchase.appUserId);
+  } else if (buyerEmail) {
+    const users = await db.entities.User.filter({ email: buyerEmail });
+    if (users?.[0]) {
+      await db.entities.User.update(users[0].id, { plan: "pro" });
+      console.log("payments-webhook: granted pro to buyer by email", buyerEmail);
+    } else {
+      console.warn("payments-webhook: no user matches buyer email", { buyerEmail, purchaseId: purchase.id });
+    }
+  }
   // ===== END APP-SPECIFIC =====
 
   // Mark paid LAST, so "paid" always implies the grant above completed. The idempotency
@@ -217,10 +231,17 @@ async function handleSubscriptionEnded(db: any, eventData: any): Promise<Respons
   }
 
   // ===== APP-SPECIFIC =====
-  // Revoke whatever access the subscription granted (mirror of the grant). Runs BEFORE we
-  // mark the purchase canceled: if it throws, the status stays as-is so Wix's retry re-runs
-  // the revoke rather than hitting the "already canceled" short-circuit and leaving access on.
-  // Must be idempotent.
+  // Revoke Pro: set plan = "free" — the mirror of the grant. Idempotent.
+  if (purchase.appUserId) {
+    await db.entities.User.update(purchase.appUserId, { plan: "free" });
+    console.log("payments-webhook: revoked pro from user", purchase.appUserId);
+  } else if (purchase.buyerEmail) {
+    const users = await db.entities.User.filter({ email: purchase.buyerEmail });
+    if (users?.[0]) {
+      await db.entities.User.update(users[0].id, { plan: "free" });
+      console.log("payments-webhook: revoked pro from buyer by email", purchase.buyerEmail);
+    }
+  }
   // ===== END APP-SPECIFIC =====
 
   // Mark canceled LAST, so "canceled" always implies access was actually revoked.

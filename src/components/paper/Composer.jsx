@@ -1,0 +1,104 @@
+import React, { useState } from "react";
+import { ArrowRight, Loader2, Mic } from "lucide-react";
+
+// The composer — one question, one plain sentence, and the note goes off
+// to do the thing. Suggestion pills fill the input; they don't submit.
+const SUGGESTIONS = [
+  "Watch for chicken thighs under $1.50 and text me",
+  "Remind Mom about her pills at eight, tell me she saw it",
+  "Check the permit page every morning, ping me the day it opens",
+  "Warn me a week before anything renews",
+];
+
+export default function Composer({ onPin, busy }) {
+  const [note, setNote] = useState("");
+  const canListen =
+    typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  const listen = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    try {
+      const rec = new SR();
+      rec.lang = "en-US";
+      rec.onresult = (e) => setNote(e.results?.[0]?.[0]?.transcript || "");
+      rec.start();
+    } catch (_) {
+      /* voice isn't available on this browser — the button hides itself */
+    }
+  };
+
+  const submit = async () => {
+    if (!note.trim() || busy) return;
+    try {
+      await onPin(note);
+      setNote("");
+    } catch (_) {
+      /* the page already showed the error — keep the note so they can retry */
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-[640px]">
+      <h2 className="font-question text-[25px] leading-snug" style={{ color: "rgba(40,30,20,.68)" }}>
+        What do you keep doing yourself?
+      </h2>
+
+      <div className="mt-5 bg-white p-5" style={{ border: "1px solid var(--hairline)" }}>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={2}
+          maxLength={300}
+          placeholder="Ask for anything you keep doing yourself…"
+          className="w-full resize-none bg-transparent text-[17px] leading-snug text-ink-warm outline-none placeholder:opacity-45"
+        />
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <span className="font-mono text-[9.5px] tracking-[0.14em]" style={{ color: "rgba(60,45,25,.55)" }}>
+            IT'LL SHOW YOU WHEN AND HOW BEFORE IT RUNS
+          </span>
+          <div className="flex items-center gap-1.5">
+            {canListen && (
+              <button
+                type="button"
+                onClick={listen}
+                className="grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-black/5"
+                style={{ color: "rgba(60,45,25,.6)" }}
+                aria-label="Say it out loud"
+              >
+                <Mic className="h-4 w-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={submit}
+              disabled={busy || !note.trim()}
+              className="grid h-9 w-9 place-items-center rounded-full text-white transition-opacity disabled:opacity-40"
+              style={{ background: "var(--ink-warm)" }}
+              aria-label="Pin it up"
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {SUGGESTIONS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setNote(s)}
+            className="rounded-full bg-white px-3.5 py-1.5 text-[12.5px] text-ink-warm transition-colors hover:bg-black/[0.03]"
+            style={{ border: "1px solid var(--hairline)" }}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
+      <p className="mt-6 text-[13px]" style={{ color: "rgba(60,45,25,.6)" }}>
+        Write it like you'd text a friend. Each note becomes its own thread — you can talk to it later.
+      </p>
+    </div>
+  );
+}
