@@ -20,7 +20,7 @@ export function parseScheduleHour(scheduleTime) {
 export const FINDINGS_RULES = [
   "For every finding include source_name (the site or store it came from) and the exact URL it was read from.",
   "Only give a URL you actually read — never invent one. If a finding has no source URL, leave url empty.",
-  "When the finding is a specific product, listing, or deal, also include a product object: name, price as a short string (like \"price under $1.50\" → \"$1.29/lb\"), stock only when the page shows it, and image_url — the exact product image URL shown on the page. Never invent an image URL; omit it when unsure.",
+  "When the finding is a specific product, listing, or deal, also include a product object: name, price as a short string (like \"price under $1.50\" → \"$1.29/lb\"), stock only when the page shows it, and image_url — the exact product image URL shown on the page. For product findings, make a real effort to read the listing page and copy its main product image URL; never invent one, and omit image_url only when the page truly shows no image.",
   "Only include a product object when the finding is a genuinely purchasable product with a real price or product photo — never for news, reminders, permit openings, birthdays, or general updates; those are plain findings with no product object.",
   "If today has nothing genuinely useful, say so plainly — never invent codes or prices."
 ];

@@ -1,19 +1,30 @@
-import React from "react";
+import React, { useState } from "react";
 import { ArrowUpRight, ShoppingBag } from "lucide-react";
 import { Image } from "@/components/ui/image";
 
 // One product finding as a card — preview image, price, stock when the
-// page showed it, and a straight shot to the product page.
+// page showed it, and a straight shot to the product page. Store images
+// are hotlink-protected on some sites, so we load them without a referrer
+// and fall back to a branded tile whenever one won't load.
 export default function ProductCard({ item }) {
+  const [broken, setBroken] = useState(false);
   const p = item.product || {};
   const url = p.url || item.url || "";
   const soldOut = /sold out|out of stock/i.test(p.stock || "");
+  const showImage = p.image_url && !broken;
 
   return (
     <div className="flex items-center gap-3 rounded-xl border border-white/70 bg-white/80 p-3">
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-white/80 bg-white/70">
-        {p.image_url ? (
-          <Image src={p.image_url} className="h-full w-full" fittingType="fill" />
+        {showImage ? (
+          <Image
+            src={p.image_url}
+            alt={p.name || item.text}
+            className="h-full w-full"
+            fittingType="fill"
+            referrerPolicy="no-referrer"
+            onError={() => setBroken(true)}
+          />
         ) : (
           <div className="grid h-full w-full place-items-center">
             <ShoppingBag className="h-6 w-6 text-neutral-300" />
