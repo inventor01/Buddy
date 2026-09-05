@@ -260,7 +260,7 @@ export default function Start() {
           <div>
             <div className="text-center">
               <h1 className="font-heading text-[34px] font-semibold leading-[1.08] tracking-[-0.02em] text-neutral-900 sm:text-[44px]">
-                Your life needs <TypingWord />. This is where it starts.
+                Your life needs <TypingWord /> This is where it starts.
               </h1>
               <p className="mx-auto mt-3.5 max-w-[460px] text-[15.5px] leading-relaxed text-neutral-500">
                 Stop putting plans in your calendar and forgetting about them. Say it once —
