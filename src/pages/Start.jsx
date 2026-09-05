@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import PaymentSheet from "@/components/paper/PaymentSheet";
 import PlanBoard from "@/components/maker/PlanBoard";
 import FoundIt from "@/components/maker/FoundIt";
+import TypingWord from "@/components/maker/TypingWord";
 
 // One box, like a chat window — but what you type becomes a small set of
 // cards you can drag and reword before it runs. Simple enough for anyone,
@@ -259,7 +260,7 @@ export default function Start() {
           <div>
             <div className="text-center">
               <h1 className="font-heading text-[34px] font-semibold leading-[1.08] tracking-[-0.02em] text-neutral-900 sm:text-[44px]">
-                Your life needs organization. This is where it starts.
+                Your life needs <TypingWord />. This is where it starts.
               </h1>
               <p className="mx-auto mt-3.5 max-w-[460px] text-[15.5px] leading-relaxed text-neutral-500">
                 Stop putting plans in your calendar and forgetting about them. Say it once —
