@@ -51,6 +51,10 @@
         "type": "string"
       },
       "description": "The latest findings pinned back by this buddy"
+    },
+    "last_run_date": {
+      "type": "string",
+      "description": "Date (YYYY-MM-DD) the buddy last ran, so it never runs twice in one day"
     }
   },
   "required": [

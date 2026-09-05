@@ -1,14 +1,27 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Volume2, Pause, Play, Trash2 } from "lucide-react";
+import { Volume2, Pause, Play, Trash2, Zap, Loader2 } from "lucide-react";
 import BuddyCreature from "./BuddyCreature";
 
 // A buddy's lantern — the creature lives here, bobs while it works, shows
 // the note it was born from, its three plain lines, and its latest findings.
 // Every buddy can be paused or taken down at any time.
-export default function BuddyCard({ buddy, onPause, onTakeDown }) {
+export default function BuddyCard({ buddy, onPause, onTakeDown, onRun }) {
   const { name, creature, note, status, when_line, what_line, how_line, last_result } = buddy;
   const active = status !== "paused";
+  const [busy, setBusy] = useState(false);
+
+  const handleRun = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await onRun(buddy);
+    } catch (e) {
+      /* the page already showed the error toast */
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <motion.div
@@ -99,6 +112,15 @@ export default function BuddyCard({ buddy, onPause, onTakeDown }) {
 
       {/* actions */}
       <div className="mt-4 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleRun}
+          disabled={busy}
+          className="flex items-center gap-1.5 rounded-full border border-amber-200/25 bg-amber-300/10 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-300/20 transition-colors disabled:cursor-wait"
+        >
+          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+          {busy ? "Running…" : "Run now"}
+        </button>
         <button
           type="button"
           onClick={() => onPause(buddy)}

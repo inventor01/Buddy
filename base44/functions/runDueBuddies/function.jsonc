@@ -1,0 +1,16 @@
+{
+  "name": "runDueBuddies",
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "type": "scheduled",
+      "name": "hourly_buddy_sweep",
+      "description": "Runs every active buddy whose schedule time has arrived",
+      "function_args": { "mode": "run_due" },
+      "is_active": true,
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "0 * * * ?"
+    }
+  ]
+}

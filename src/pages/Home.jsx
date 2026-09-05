@@ -82,6 +82,17 @@ export default function Home() {
     setBuddies((prev) => prev.filter((x) => x.id !== b.id));
   };
 
+  const runNow = async (b) => {
+    try {
+      const res = await base44.functions.invoke("runBuddyNow", { buddyId: b.id });
+      const lines = res.data?.lines || [];
+      setBuddies((prev) => prev.map((x) => (x.id === b.id ? { ...x, last_result: lines } : x)));
+    } catch (e) {
+      toast({ title: e.message || "That run didn't finish — try again.", variant: "destructive" });
+      throw e;
+    }
+  };
+
   const signOut = () => base44.auth.logout("/login");
 
   const navItems = [
@@ -213,7 +224,7 @@ export default function Home() {
           ) : (
             <div className="grid gap-5 sm:grid-cols-2">
               {buddies.map((b) => (
-                <BuddyCard key={b.id} buddy={b} onPause={togglePause} onTakeDown={takeDown} />
+                <BuddyCard key={b.id} buddy={b} onPause={togglePause} onTakeDown={takeDown} onRun={runNow} />
               ))}
             </div>
           )}
