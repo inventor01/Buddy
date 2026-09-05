@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, ArrowUp, Check, ImagePlus, Loader2, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Image } from "@/components/ui/image";
@@ -228,10 +228,13 @@ export default function Start() {
           WebkitBackdropFilter: "blur(22px) saturate(1.7)",
         }}
       >
-        <div className="mx-auto flex h-14 max-w-[720px] items-center justify-between px-5">
-          <span className="font-heading text-[15px] font-semibold tracking-tight text-neutral-900">
+        <div className="relative mx-auto flex h-14 max-w-[720px] items-center justify-between px-5">
+          <Link
+            to="/"
+            className="absolute left-1/2 -translate-x-1/2 font-heading text-[15px] font-semibold tracking-tight text-neutral-900 sm:relative sm:left-auto sm:translate-x-0"
+          >
             Buddy
-          </span>
+          </Link>
           <div className="flex items-center gap-3">
             {authed === false && (
               <button
