@@ -7,7 +7,18 @@ export default function FindingRow({ item }) {
     <div className="flex items-start gap-2.5">
       <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
       <div>
-        <p className="text-[14.5px] leading-snug text-neutral-900">{item.text}</p>
+        {item.url ? (
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[14.5px] leading-snug text-neutral-900 underline decoration-transparent underline-offset-[3px] transition-colors hover:decoration-neutral-400"
+          >
+            {item.text}
+          </a>
+        ) : (
+          <p className="text-[14.5px] leading-snug text-neutral-900">{item.text}</p>
+        )}
         {item.url && (
           <a
             href={item.url}
