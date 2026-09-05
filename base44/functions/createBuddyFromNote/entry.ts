@@ -11,14 +11,21 @@ export default async function(req) {
     let body = {};
     try { body = await req.json(); } catch (e) { body = {}; }
     const note = typeof body.note === 'string' ? body.note.trim().slice(0, 300) : '';
+    const imageUrl = typeof body.image_url === 'string' && /^https?:\/\//i.test(body.image_url.trim())
+      ? body.image_url.trim().slice(0, 500)
+      : '';
     if (note.length < 3) {
       return Response.json({ error: 'Write your note first — one plain sentence is enough.' }, { status: 400 });
     }
 
     const plan = await base44.asServiceRole.integrations.Core.InvokeLLM({
+      ...(imageUrl ? { file_urls: [imageUrl] } : {}),
       prompt: [
         'A user left a note for their helper service. Turn it into a recurring helper plan.',
         'Note: "' + note + '"',
+        ...(imageUrl
+          ? ['A photo is attached — identify the product or thing it shows, and make what_line about finding that exact thing every day.']
+          : []),
         'Pick the best creature:',
         'sam = shopping, errands, deals. sid = stores, products, prices. bells = dates, birthdays, greetings, reminders. med = medications, health check-ins.',
         'Give the buddy a friendly two-word name (like "Shopping Sam").',

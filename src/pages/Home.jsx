@@ -62,7 +62,7 @@ export default function Home() {
     applyBigText(next);
   };
 
-  const handlePin = async (note) => {
+  const handlePin = async (note, imageUrl) => {
     if (!pro && (buddies?.length || 0) >= 3) {
       setPayOpen(true);
       toast({ title: "Three notes are free. Pro is $6 a month for unlimited." });
@@ -70,10 +70,18 @@ export default function Home() {
     }
     setPinning(true);
     try {
-      const res = await base44.functions.invoke("createBuddyFromNote", { note });
+      const res = await base44.functions.invoke("createBuddyFromNote", {
+        note,
+        image_url: imageUrl || undefined,
+      });
       const plan = res.data?.plan;
       if (!plan) throw new Error("That note didn't read back right — try again.");
-      const created = await base44.entities.Buddy.create({ note, ...plan, status: "active" });
+      const created = await base44.entities.Buddy.create({
+        note,
+        image_url: imageUrl,
+        ...plan,
+        status: "active",
+      });
       setBuddies((prev) => [created, ...(prev ?? [])]);
       setParams({ note: created.id });
     } catch (e) {

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, ArrowUp, Check, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowUp, Check, ImagePlus, Loader2, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { Image } from "@/components/ui/image";
 import { useToast } from "@/components/ui/use-toast";
 import PaymentSheet from "@/components/paper/PaymentSheet";
 import PlanBoard from "@/components/maker/PlanBoard";
@@ -25,6 +26,9 @@ export default function Start() {
   const navigate = useNavigate();
   const [step, setStep] = useState("compose"); // compose → plan → ran → phone → done
   const [note, setNote] = useState("");
+  const [image, setImage] = useState(null); // uploaded photo that rides along
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
   const [lines, setLines] = useState(null); // { when, what, tells, name, creature, scheduleTime }
   const [order, setOrder] = useState(CATS);
   const [editing, setEditing] = useState(null);
@@ -41,12 +45,32 @@ export default function Start() {
     base44.auth.isAuthenticated().then(setAuthed).catch(() => setAuthed(false));
   }, []);
 
+  // Attach a photo — it rides along and gets hunted down like a reverse
+  // image search every day.
+  const attach = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || uploading) return;
+    setUploading(true);
+    try {
+      const res = await base44.integrations.Core.UploadFile({ file });
+      setImage(res.file_url);
+    } catch (_) {
+      toast({ title: "That photo didn't upload — try again.", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   // Read the sentence back as when / what / tells cards.
   const toPlan = async () => {
     if (!note.trim() || busy) return;
     setBusy(true);
     try {
-      const res = await base44.functions.invoke("createBuddyFromNote", { note: note.trim() });
+      const res = await base44.functions.invoke("createBuddyFromNote", {
+        note: note.trim(),
+        image_url: image || undefined,
+      });
       const plan = res.data?.plan;
       if (!plan) throw new Error("It couldn't read that — try again.");
       setLines({
@@ -89,6 +113,7 @@ export default function Start() {
           const res = await base44.functions.invoke("previewBuddyRun", {
             note: note.trim(),
             what: lines.what,
+            image_url: image || undefined,
           });
           const ls = res.data?.lines || [];
           if (ls.length) {
@@ -123,6 +148,7 @@ export default function Start() {
 
       const created = await base44.entities.Buddy.create({
         note: note.trim(),
+        image_url: image,
         name: lines.name || "Your helper",
         creature: lines.creature || "sam",
         when_line: lines.when,
@@ -173,6 +199,7 @@ export default function Start() {
 
   const restart = () => {
     setNote("");
+    setImage(null);
     setLines(null);
     setOrder(CATS);
     setEditing(null);
@@ -249,8 +276,44 @@ export default function Start() {
                 placeholder="Every morning, find chicken under $1.50 and text me…"
                 className="w-full resize-none bg-transparent px-3 pt-2.5 text-[16px] leading-relaxed text-neutral-900 outline-none placeholder:text-neutral-400"
               />
+              {image && (
+                <div className="mx-1.5 mb-1 flex items-center gap-2.5 rounded-xl border border-white/70 bg-white/60 p-2">
+                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-white/70">
+                    <Image src={image} className="h-full w-full" fittingType="fill" />
+                  </div>
+                  <span className="text-[12px] leading-snug text-neutral-500">
+                    Photo attached — it'll hunt for this thing every day
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setImage(null)}
+                    className="ml-auto grid h-6 w-6 shrink-0 place-items-center rounded-full text-neutral-400 transition-colors hover:bg-white/70 hover:text-neutral-700"
+                    aria-label="Remove photo"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
               <div className="flex items-center justify-between px-1.5 pb-1 pt-1.5">
-                <span className="text-[11.5px] text-neutral-400">No account needed</span>
+                <div className="flex items-center gap-1">
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={attach}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={uploading}
+                    className="grid h-9 w-9 place-items-center rounded-full text-neutral-400 transition-colors hover:bg-white/60 hover:text-neutral-600 disabled:opacity-50"
+                    aria-label="Add a photo"
+                  >
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                  </button>
+                  <span className="text-[11.5px] text-neutral-400">No account needed</span>
+                </div>
                 <button
                   type="button"
                   onClick={toPlan}

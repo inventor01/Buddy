@@ -1,8 +1,11 @@
-import React, { useState } from "react";
-import { ArrowRight, Loader2, Mic } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { ArrowRight, ImagePlus, Loader2, Mic, X } from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { Image } from "@/components/ui/image";
 
 // The composer — one question, one plain sentence, and the note goes off
 // to do the thing. Suggestion pills fill the input; they don't submit.
+// A photo can ride along too — the note hunts for that exact thing daily.
 const SUGGESTIONS = [
   "Watch for chicken thighs under $1.50 and text me",
   "Remind Mom about her pills at eight, tell me she saw it",
@@ -12,6 +15,9 @@ const SUGGESTIONS = [
 
 export default function Composer({ onPin, busy }) {
   const [note, setNote] = useState("");
+  const [image, setImage] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
   const canListen =
     typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
@@ -27,11 +33,27 @@ export default function Composer({ onPin, busy }) {
     }
   };
 
+  const attach = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || uploading) return;
+    setUploading(true);
+    try {
+      const res = await base44.integrations.Core.UploadFile({ file });
+      setImage(res.file_url);
+    } catch (_) {
+      /* nothing attached — they can try again */
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const submit = async () => {
     if (!note.trim() || busy) return;
     try {
-      await onPin(note);
+      await onPin(note, image);
       setNote("");
+      setImage(null);
     } catch (_) {
       /* the page already showed the error — keep the note so they can retry */
     }
@@ -52,11 +74,45 @@ export default function Composer({ onPin, busy }) {
           placeholder="Ask for anything you keep doing yourself…"
           className="w-full resize-none bg-transparent px-1 text-[16px] leading-snug text-neutral-900 outline-none placeholder:text-neutral-400"
         />
+        {image && (
+          <div className="mb-2 flex items-center gap-2.5 rounded-xl border border-white/70 bg-white/60 p-2">
+            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-white/70">
+              <Image src={image} className="h-full w-full" fittingType="fill" />
+            </div>
+            <span className="text-[12px] leading-snug text-neutral-500">
+              Photo attached — it'll hunt for this thing every day
+            </span>
+            <button
+              type="button"
+              onClick={() => setImage(null)}
+              className="ml-auto grid h-6 w-6 shrink-0 place-items-center rounded-full text-neutral-400 transition-colors hover:bg-white/70 hover:text-neutral-700"
+              aria-label="Remove photo"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
         <div className="mt-2 flex items-center justify-between gap-3">
           <span className="font-mono text-[9.5px] tracking-[0.14em] text-neutral-400">
             IT'LL SHOW YOU WHEN AND HOW BEFORE IT RUNS
           </span>
           <div className="flex items-center gap-1.5">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={attach}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="grid h-9 w-9 place-items-center rounded-full text-neutral-400 transition-colors hover:bg-white/60 hover:text-neutral-600 disabled:opacity-50"
+              aria-label="Add a photo"
+            >
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+            </button>
             {canListen && (
               <button
                 type="button"

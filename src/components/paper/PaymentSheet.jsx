@@ -1,9 +1,16 @@
 import React, { useState } from "react";
+import { Check, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-// The payment sheet — a modal over the page, never a route change.
-// Base44 Payments handles the card on its own secure checkout page, so
-// this sheet sells the plan and starts checkout; it never touches card data.
+// The checkout — a modal over the page, never a route change. Base44
+// Payments handles the card on its own secure checkout page, so this
+// sheet sells the plan and starts checkout; it never touches card data.
+const INCLUDED = [
+  "Unlimited notes — as many things as you like",
+  "Everyone you look after, included",
+  "A weekly page of your book",
+];
+
 export default function PaymentSheet({ open, onClose }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -35,48 +42,59 @@ export default function PaymentSheet({ open, onClose }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="glass max-h-[92dvh] w-full overflow-y-auto rounded-t-[22px] sm:w-[420px] sm:rounded-[22px]"
+        className="glass max-h-[92dvh] w-full overflow-y-auto rounded-t-[26px] sm:w-[440px] sm:rounded-[26px]"
       >
         <div className="mx-auto mt-[10px] h-[4px] w-[38px] rounded-full bg-neutral-300/60 sm:hidden" />
-        <div className="p-5">
-          <p className="font-mono text-[9.5px] tracking-[0.18em] text-neutral-400">BUDDY PRO</p>
-          <p className="mt-2">
-            <span className="font-heading text-[25px] font-semibold text-neutral-900">$6</span>{" "}
-            <span className="text-[13.5px] text-neutral-500">a month</span>
+        <div className="p-6 sm:p-7">
+          <p className="text-center font-mono text-[10px] tracking-[0.2em] text-neutral-400">
+            BUDDY PRO
           </p>
-          <p className="mt-2 text-[14px] leading-snug text-neutral-800">
-            Unlimited notes, everyone you look after, weekly page of your book.
+          <p className="mt-3 text-center">
+            <span className="font-heading text-[40px] font-semibold tracking-tight text-neutral-900">
+              $6
+            </span>{" "}
+            <span className="text-[14px] text-neutral-500">a month</span>
           </p>
+          <p className="mt-1 text-center text-[13.5px] text-neutral-500">
+            Three notes are free. Pro is everything, unlimited.
+          </p>
+
+          <div className="mt-6 space-y-2.5">
+            {INCLUDED.map((line) => (
+              <div key={line} className="flex items-start gap-2.5">
+                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-50">
+                  <Check className="h-3 w-3 text-emerald-600" />
+                </span>
+                <span className="text-[14px] leading-snug text-neutral-800">{line}</span>
+              </div>
+            ))}
+          </div>
 
           <button
             type="button"
             onClick={startPro}
             disabled={busy}
-            className="mt-5 w-full rounded-full bg-neutral-900 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+            className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-neutral-900 py-3 text-[14.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
           >
-            {busy ? "Starting…" : "Start Pro — $6 a month"}
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+            {busy ? "Taking you to secure checkout…" : "Start Pro — $6 a month"}
           </button>
-          {busy && (
-            <p className="mt-2 text-center text-[13px] text-neutral-400">
-              taking you to secure checkout…
-            </p>
-          )}
           {error && <p className="mt-2 text-center text-[12px] text-red-600">{error}</p>}
-          <p className="mt-2 text-center text-[11.5px] text-neutral-500">
+          <p className="mt-2 text-center text-[11.5px] text-neutral-400">
             Cancel in one tap. Notes run to month's end.
           </p>
 
-          <div className="my-4 border-t border-white/70" />
+          <div className="my-5 border-t border-white/70" />
 
           <button
             type="button"
             onClick={onClose}
-            className="w-full text-[13.5px] font-semibold text-neutral-500 transition-colors hover:text-neutral-900"
+            className="w-full rounded-full border border-neutral-200 bg-white/60 py-2.5 text-[13.5px] font-semibold text-neutral-600 transition-colors hover:border-neutral-300 hover:text-neutral-900"
           >
-            No thanks — keep using it free
+            Continue browsing
           </button>
-          <p className="mt-1 text-center text-[11.5px] text-neutral-400">
-            Your three notes keep running either way.
+          <p className="mt-1.5 text-center text-[11.5px] text-neutral-400">
+            Your three free notes keep running either way.
           </p>
         </div>
       </div>

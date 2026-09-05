@@ -19,8 +19,8 @@ export default function HomeOrLanding() {
 
   if (authed === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--paper)" }}>
-        <Loader2 className="h-6 w-6 animate-spin" style={{ color: "rgba(60,45,25,.5)" }} />
+      <div className="page-glow flex min-h-screen items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
       </div>
     );
   }

@@ -6,6 +6,10 @@
       "type": "string",
       "description": "The original one-sentence note the user pinned"
     },
+    "image_url": {
+      "type": "string",
+      "description": "Photo pinned to the note \u2014 searched every day like a reverse image search"
+    },
     "name": {
       "type": "string",
       "description": "Friendly note title, e.g. Cheap chicken"

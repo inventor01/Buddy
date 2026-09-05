@@ -128,13 +128,25 @@ async function sendSms(to, body) {
 }
 
 export async function runBuddy({ client, entityClient, buddy, userEmail, notifyEmail, smsPhone }) {
+  // A photo pinned to the note rides along every run — reverse-search style.
+  const imageUrl =
+    typeof buddy.image_url === "string" && /^https?:\/\//i.test(buddy.image_url.trim())
+      ? buddy.image_url.trim()
+      : "";
   const findings = await client.asServiceRole.integrations.Core.InvokeLLM({
     model: "gemini_3_flash",
     add_context_from_internet: true,
+    ...(imageUrl ? { file_urls: [imageUrl] } : {}),
     prompt: [
       "You are " + buddy.name + ", a helper for one person.",
       'Their exact words: "' + buddy.note + '"',
       "Your daily job: " + (buddy.what_line || buddy.note),
+      ...(imageUrl
+        ? [
+            "A photo of the exact thing to track is attached. Treat it like a reverse image search:",
+            "identify the product in the photo and report today's best prices and where to buy it."
+          ]
+        : []),
       "Search the web for today and report back the 5 most useful, concrete findings for this job.",
       "Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
       ...FINDINGS_RULES
