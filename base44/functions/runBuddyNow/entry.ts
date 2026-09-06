@@ -291,7 +291,16 @@ export default async function (req) {
       metaPage: typeof user.meta_page_id === 'string' ? user.meta_page_id : '',
     });
 
-    return Response.json({ lines: result.lines, items: result.items });
+    if (result?.question) {
+      return Response.json({
+        state: 'needs_detail',
+        message: result.lines?.[0] || 'One more detail is needed.',
+        lines: result.lines || [],
+        items: [],
+      });
+    }
+
+    return Response.json({ state: 'answer', lines: result.lines, items: result.items });
   } catch (error) {
     return Response.json({ error: (error as Error).message }, { status: 500 });
   }
