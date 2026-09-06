@@ -179,8 +179,10 @@ export default async function(req) {
         due: cleanField(rawPayload.due, 100),
         notes: cleanField(rawPayload.notes, 600)
       },
-      when_line: String(plan?.when_line || 'Right now').slice(0, 120),
-      what_line: String(plan?.what_line || 'Runs your note for you').slice(0, 200),
+      when_line: effectiveRunMode === 'once' ? 'Right now' : String(plan?.when_line || 'Right now').slice(0, 120),
+      what_line: looksLikeFlightRequest(note) && effectiveRunMode === 'once'
+        ? `Find current flight options that match: ${note}`.slice(0, 200)
+        : String(plan?.what_line || 'Runs your note for you').slice(0, 200),
       how_line: String(plan?.how_line || 'Pins the answer back to your garden').slice(0, 200),
       schedule_time: String(plan?.schedule_time || '9:00 AM').slice(0, 40),
       question
