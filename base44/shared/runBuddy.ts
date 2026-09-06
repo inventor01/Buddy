@@ -10,6 +10,8 @@ import { runAdsBuddy } from "./ads.ts";
 import { runSocialBuddy } from "./social.ts";
 import { isWholesalePropertyRequest, runWholesaleDealFinder } from "./realEstate.ts";
 import { runOrchestratedBuddy, shouldOrchestrateRequest } from "./orchestrator.ts";
+import { loadLinkedBuddies, linkedBuddyPromptLines } from "./linkedBuddies.ts";
+import { taskStepPromptLines } from "./taskChain.ts";
 
 // The clock where the person actually is. A note set for 9 in the morning
 // should run at their 9, and "already ran today" means their today — so both
@@ -256,7 +258,7 @@ async function sendSms(to, body) {
   return true;
 }
 
-async function runGenericWebFindings({ client, buddy, imageUrl, timeZone, personalFacts, delegationLines }) {
+async function runGenericWebFindings({ client, buddy, imageUrl, timeZone, personalFacts, delegationLines, linkedLines = [], taskLines = [] }) {
   return await client.asServiceRole.integrations.Core.InvokeLLM({
     model: "gemini_3_flash",
     add_context_from_internet: true,
@@ -273,6 +275,8 @@ async function runGenericWebFindings({ client, buddy, imageUrl, timeZone, person
         "When a remembered preference affects the recommendation, explain that briefly in the result when useful."
       ] : []),
       ...(Array.isArray(delegationLines) ? delegationLines : []),
+      ...(Array.isArray(linkedLines) ? linkedLines : []),
+      ...(Array.isArray(taskLines) ? taskLines : []),
       ...contextLines(buddy),
       ...(imageUrl
         ? [
@@ -294,17 +298,20 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
     typeof buddy.image_url === "string" && /^https?:\/\//i.test(buddy.image_url.trim())
       ? buddy.image_url.trim()
       : "";
+  const linkedBuddies = await loadLinkedBuddies(client, buddy.owner_id, buddy.linked_buddy_ids);
+  const linkedLines = linkedBuddyPromptLines(linkedBuddies);
+  const taskLines = taskStepPromptLines(buddy.task_steps);
   let findings;
   const requestTextForRouting = `${buddy.note || ''} ${buddy.what_line || ''}`;
-  if (buddy.kind === "web" && shouldOrchestrateRequest(requestTextForRouting)) {
+  if (buddy.kind === "web" && (buddy.execution_mode === "chain" || shouldOrchestrateRequest(requestTextForRouting))) {
     try {
-      findings = await runOrchestratedBuddy({ base44: client, buddy, personalFacts, delegationLines });
+      findings = await runOrchestratedBuddy({ base44: client, buddy, personalFacts, delegationLines, linkedContextLines: linkedLines });
     } catch (_) {
       // Complex work should degrade gracefully. The specialist layer is an
       // upgrade, never a single point of failure.
       findings = isWholesalePropertyRequest(requestTextForRouting)
         ? await runWholesaleDealFinder({ base44: client, buddy })
-        : await runGenericWebFindings({ client, buddy, imageUrl, timeZone, personalFacts, delegationLines });
+        : await runGenericWebFindings({ client, buddy, imageUrl, timeZone, personalFacts, delegationLines, linkedLines, taskLines });
     }
   } else if (buddy.kind === "web" && isWholesalePropertyRequest(requestTextForRouting)) {
     findings = await runWholesaleDealFinder({ base44: client, buddy });
@@ -330,7 +337,7 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
       timeZone
     });
   } else {
-    findings = await runGenericWebFindings({ client, buddy, imageUrl, timeZone, personalFacts, delegationLines });
+    findings = await runGenericWebFindings({ client, buddy, imageUrl, timeZone, personalFacts, delegationLines, linkedLines, taskLines });
   }
 
   // The one case where guessing is wrong: a detail the user could hand over
