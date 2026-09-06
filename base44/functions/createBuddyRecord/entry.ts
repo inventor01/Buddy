@@ -93,9 +93,15 @@ export default async function(req: Request) {
       : [];
     let linkedBuddyIds: string[] = [];
     if (requestedLinkedIds.length) {
-      const owned = await base44.asServiceRole.entities.Buddy.filter({ owner_id: user.id }, '-updated_date', 100);
-      const ownedIds = new Set((Array.isArray(owned) ? owned : []).map((b: any) => b?.id).filter(Boolean));
-      linkedBuddyIds = requestedLinkedIds.filter((id: string) => ownedIds.has(id));
+      const checked = await Promise.all(requestedLinkedIds.map(async (id: string) => {
+        try {
+          const linked = await base44.asServiceRole.entities.Buddy.get(id);
+          return linked?.owner_id === user.id ? id : '';
+        } catch (_) {
+          return '';
+        }
+      }));
+      linkedBuddyIds = checked.filter(Boolean);
     }
     const taskSteps = normalizeTaskSteps(body.task_steps);
     const executionMode = body.execution_mode === 'chain' && taskSteps.length > 1 ? 'chain' : 'single';
