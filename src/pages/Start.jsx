@@ -133,7 +133,10 @@ export default function Start() {
           const state = res.data?.state || "answer";
           const ls = res.data?.lines || [];
           if (state === "needs_detail") {
-            setResult({ state: "needs_detail", text: res.data?.message || ls[0] || "One more detail is needed.", items: [] });
+            const missing = res.data?.message || ls[0] || "One more detail is needed.";
+            setLines((current) => current ? { ...current, question: missing } : current);
+            setAnswer("");
+            setResult({ state: "needs_detail", text: missing, items: [] });
             setStep("ran");
             return;
           }
@@ -215,6 +218,14 @@ export default function Start() {
         const res = await base44.functions.invoke("runBuddyNow", { buddyId: created.id });
         if (res.data?.needs_connection) {
           setResult({ state: "needs_connection", text: res.data?.lines?.[0] || "Connect the account this request needs before Buddy can continue." });
+          setStep("ran");
+          return;
+        }
+        if (res.data?.state === "needs_detail") {
+          const missing = res.data?.message || res.data?.lines?.[0] || "One more detail is needed.";
+          setLines((current) => current ? { ...current, question: missing } : current);
+          setAnswer("");
+          setResult({ state: "needs_detail", text: missing, items: [] });
           setStep("ran");
           return;
         }
