@@ -423,44 +423,74 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* text message alerts */}
+          {/* verified text message alerts */}
           <div className="glass rounded-2xl p-5">
             <div className="flex items-start gap-3">
               <MessageCircle className="mt-0.5 h-5 w-5 text-neutral-400" />
               <div className="flex-1">
-                <h3 className="font-medium text-neutral-900">Text me the answers</h3>
-                <p className="mt-0.5 text-sm text-neutral-500">
-                  When a note finds something, send it as a text message too.
-                </p>
-                <div className="mt-3 flex items-center gap-2">
-                  <input
-                    value={smsPhone}
-                    onChange={(e) => {
-                      setSmsPhone(e.target.value);
-                      setPhoneSaved(false);
-                    }}
-                    placeholder="+1 555 123 4567"
-                    inputMode="tel"
-                    className="flex-1 rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-neutral-400"
-                  />
-                  <button
-                    type="button"
-                    onClick={savePhone}
-                    disabled={savingPhone}
-                    className="flex items-center gap-1.5 rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-sm text-neutral-800 transition-colors hover:bg-white disabled:cursor-wait"
-                  >
-                    {savingPhone ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : phoneSaved ? (
-                      <Check className="h-4 w-4 text-emerald-600" />
-                    ) : null}
-                    {phoneSaved ? "Saved" : "Save"}
-                  </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-medium text-neutral-900">Text me the answers</h3>
+                  {phoneVerified && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-semibold text-emerald-700"><Check className="h-3 w-3" /> Confirmed</span>}
                 </div>
-                {phoneError && <p className="mt-2 text-xs text-red-600">{phoneError}</p>}
-                <p className="mt-2 text-xs text-neutral-400">
-                  Include the country code (like +1 for the US). Leave empty to turn texts off.
+                <p className="mt-0.5 text-sm text-neutral-500">
+                  Buddy only texts a number after you confirm you control it.
                 </p>
+
+                {phoneVerified ? (
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-emerald-50/55 px-3.5 py-3">
+                    <div>
+                      <p className="text-[12px] font-semibold text-neutral-800">Confirmed number</p>
+                      <p className="mt-0.5 font-mono text-[12px] text-neutral-500">{phoneMasked || smsPhone}</p>
+                    </div>
+                    <button type="button" onClick={removePhone} disabled={savingPhone} className="rounded-full border border-white/80 bg-white/75 px-3 py-1.5 text-[11.5px] font-medium text-neutral-600 hover:text-neutral-900 disabled:opacity-50">
+                      {savingPhone ? "Removing…" : "Remove"}
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mt-3 flex items-center gap-2">
+                      <input
+                        value={smsPhone}
+                        onChange={(e) => { setSmsPhone(e.target.value); setPhoneError(""); }}
+                        placeholder="+1 555 123 4567"
+                        inputMode="tel"
+                        className="flex-1 rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-neutral-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={sendPhoneCode}
+                        disabled={savingPhone || !smsPhone.trim()}
+                        className="flex items-center gap-1.5 rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-sm text-neutral-800 transition-colors hover:bg-white disabled:opacity-50"
+                      >
+                        {savingPhone && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {phoneCodeSent ? "Send again" : "Send code"}
+                      </button>
+                    </div>
+
+                    {phoneCodeSent && (
+                      <div className="mt-3 rounded-xl border border-sky-100 bg-sky-50/55 p-3.5">
+                        <p className="text-[12px] font-medium text-neutral-700">Enter the 6-digit code sent to {phoneMasked || "your phone"}.</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <input
+                            value={phoneCode}
+                            onChange={(e) => setPhoneCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                            placeholder="123456"
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            className="w-32 rounded-xl border border-white/80 bg-white px-3 py-2 text-center font-mono text-[16px] tracking-[0.18em] outline-none"
+                          />
+                          <button type="button" onClick={confirmPhoneCode} disabled={verifyingPhone || phoneCode.length !== 6} className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 px-3.5 py-2 text-[12.5px] font-medium text-white disabled:opacity-40">
+                            {verifyingPhone && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                            Confirm number
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {phoneError && <p className="mt-2 text-xs text-red-600">{phoneError}</p>}
+                <p className="mt-2 text-xs text-neutral-400">Only confirmed numbers receive Buddy texts. Codes expire after 10 minutes.</p>
               </div>
             </div>
           </div>
