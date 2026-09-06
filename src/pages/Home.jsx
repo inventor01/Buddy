@@ -21,6 +21,7 @@ export default function Home() {
   const [buddies, setBuddies] = useState(null);
   const [me, setMe] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [receipts, setReceipts] = useState([]);
   const [view, setView] = useState("notes");
   const [railOpen, setRailOpen] = useState(false);
   const [bigText, setBigText] = useState(readBigText());
