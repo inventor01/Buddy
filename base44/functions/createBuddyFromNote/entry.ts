@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { checkUsageLimit } from '../../shared/rateLimit.ts';
 
 // Turns one plain sentence into a plain-language plan. The consumer never
 // needs to know about agents, workflows, or automation — they only see what
@@ -8,6 +9,13 @@ const CREATURES = ["sam", "sid", "bells", "med"];
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    const quota = await checkUsageLimit({ base44, req, scope: 'plan', minuteLimit: 12, dayLimit: 80 });
+    if (!quota.ok) {
+      return Response.json(
+        { error: 'Too many requests right now. Try again shortly.' },
+        { status: 429, headers: { 'Retry-After': String(quota.retryAfter || 60) } }
+      );
+    }
 
     let body = {};
     try { body = await req.json(); } catch (e) { body = {}; }
