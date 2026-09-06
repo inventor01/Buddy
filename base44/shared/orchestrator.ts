@@ -143,7 +143,7 @@ async function runOpenAI(instruction: string, goal: string) {
         tools: [{ type: 'web_search' }],
         input: [
           { role: 'system', content: 'You are a specialist worker inside Buddy. Complete only the assigned subtask. Be evidence-first, concise, and do not perform consequential actions.' },
-          { role: 'user', content: `Overall goal: ${goal}\nAssigned subtask: ${instruction}\nReturn a concise result with concrete facts and sources.` },
+          { role: 'user', content: `Overall goal: ${goal}\nAssigned subtask: ${instruction}\nReturn a concise result with concrete facts and exact source URLs. When a specific article, product, listing, provider, event, route/search, or booking page supports the result, return that direct page instead of a homepage or generic landing page. Never invent a deep link.` },
         ],
       }),
     });
@@ -180,7 +180,7 @@ async function runBase44Research(base44: any, instruction: string, goal: string,
       'You are a specialist worker inside Buddy.',
       `Overall goal: ${goal}`,
       `Assigned subtask: ${instruction}`,
-      'Return JSON with a concise summary, exact source URLs actually used when available, and confidence from 0 to 1. Never invent a URL or claim.',
+      'Return JSON with a concise summary, exact source URLs actually used when available, and confidence from 0 to 1. Prefer the direct article, product, listing, provider, event, route/search, or booking page over a homepage or generic landing page. Never invent a URL or claim.',
     ].join('\n'),
     response_json_schema: {
       type: 'object', properties: {
@@ -299,6 +299,7 @@ async function synthesize(base44: any, goal: string, results: any[]) {
       'You are Buddy’s verifier and final editor.',
       `User goal: ${goal}`,
       'Below are specialist outputs. Produce the final answer using ONLY claims supported by those outputs. Resolve contradictions conservatively. Never invent missing prices, dates, URLs, or actions.',
+      'For every finding, use the most specific source URL actually present in the evidence. Prefer the exact article, product, listing, provider, event, route/search, or booking page. Do not replace a direct source with a site homepage or generic landing page. If only a homepage is available, leave the URL empty.',
       'If a consequential action still needs approval, say so rather than implying it happened.',
       JSON.stringify(evidence).slice(0, 28000),
     ].join('\n'),
@@ -314,7 +315,7 @@ export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], 
   const job = await base44.asServiceRole.entities.BuddyJob.create({
     owner_id: buddy.owner_id,
     buddy_id: buddy.id,
-    goal: goal.slice(0, 1000),
+    goal: goal.slice(0, 8000),
     status: 'running',
     complexity: plan.complexity,
     started_at: new Date().toISOString(),
