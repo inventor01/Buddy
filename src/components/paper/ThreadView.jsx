@@ -11,6 +11,7 @@ import { relevantProfileFacts } from "@/lib/personalization";
 // The note's thread — what you wrote, pinned at the top, then everything
 // it did and said, oldest to newest. You can pause it, rewrite the note,
 // or ask it something.
+const BUDDY_REQUEST_MAX = 8000;
 const fmtAt = (at) => moment(at).format("MMM D, h:mm A");
 const STEP_LABELS = {
   domain_property: "Checked live property data",
@@ -193,8 +194,9 @@ export default function ThreadView({ buddy, profile, receipt, job, onPause, onTa
           <textarea
             value={edited}
             onChange={(e) => setEdited(e.target.value)}
-            rows={3}
-            className="w-full resize-none bg-transparent text-[15px] leading-snug text-neutral-900 outline-none"
+            rows={5}
+            maxLength={BUDDY_REQUEST_MAX}
+            className="w-full resize-y bg-transparent text-[15px] leading-snug text-neutral-900 outline-none"
           />
           <div className="mt-2 flex gap-3 text-[12px]">
             <button
@@ -289,22 +291,34 @@ export default function ThreadView({ buddy, profile, receipt, job, onPause, onTa
       </div>
 
       {/* talk to it */}
-      <div className="glass mt-6 flex items-center gap-2 rounded-full py-1.5 pl-4 pr-1.5">
-        <input
+      <div className="glass mt-6 rounded-2xl p-2.5">
+        <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          }}
+          rows={2}
+          maxLength={BUDDY_REQUEST_MAX}
           placeholder="Change the request or ask a follow-up…"
-          className="flex-1 bg-transparent text-[14px] text-neutral-900 outline-none placeholder:text-neutral-400"
+          className="w-full resize-y bg-transparent px-2 py-1.5 text-[14px] leading-relaxed text-neutral-900 outline-none placeholder:text-neutral-400"
         />
-        <button
-          type="button"
-          onClick={send}
-          disabled={busy || !draft.trim()}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-neutral-900 text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-        </button>
+        <div className="flex items-center justify-between gap-3 px-1">
+          <span className="text-[10px] tabular-nums text-neutral-400">
+            {draft.length.toLocaleString()}/{BUDDY_REQUEST_MAX.toLocaleString()}
+          </span>
+          <button
+            type="button"
+            onClick={send}
+            disabled={busy || !draft.trim()}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-neutral-900 text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
       <p className="mt-2 text-[11.5px] text-neutral-400">
         When Buddy uses the web, it shows where the answer came from. If nothing meaningful changed, it stays quiet.
