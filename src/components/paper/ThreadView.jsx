@@ -12,8 +12,17 @@ import { relevantProfileFacts } from "@/lib/personalization";
 // it did and said, oldest to newest. You can pause it, rewrite the note,
 // or ask it something.
 const fmtAt = (at) => moment(at).format("MMM D, h:mm A");
+const STEP_LABELS = {
+  domain_property: "Checked live property data",
+  web_research: "Researched current sources",
+  browser_fetch: "Checked the live page",
+  reasoning: "Analyzed the details",
+  calculation: "Ran the numbers",
+  connected_action: "Prepared the next step",
+  verify: "Verified the result",
+};
 
-export default function ThreadView({ buddy, profile, receipt, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, busy }) {
+export default function ThreadView({ buddy, profile, receipt, job, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, busy }) {
   const done = buddy.status === "done";
   const active = buddy.status === "active";
   const [draft, setDraft] = useState("");
@@ -81,6 +90,36 @@ export default function ThreadView({ buddy, profile, receipt, onPause, onTakeDow
             ))}
           </div>
           <a href="/settings" className="mt-2 inline-block text-[11px] font-medium text-emerald-700 hover:text-emerald-900">Change what Buddy knows</a>
+        </div>
+      )}
+
+      {job && Array.isArray(job.steps) && job.steps.length > 1 && (
+        <div className="glass mt-6 rounded-2xl p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-sky-700">How Buddy handled this</p>
+              <h3 className="mt-1.5 font-heading text-[18px] font-semibold text-neutral-900">
+                {job.status === "completed" ? "Checked, combined, and verified." : job.status === "failed" ? "Buddy saved the work it completed." : "Buddy is working through the checks."}
+              </h3>
+            </div>
+            <span className={`rounded-full px-2.5 py-1 text-[10.5px] font-semibold ${job.status === "completed" ? "bg-emerald-50 text-emerald-700" : job.status === "failed" ? "bg-rose-50 text-rose-700" : "bg-sky-50 text-sky-700"}`}>
+              {job.status === "completed" ? "Verified" : job.status === "failed" ? "Needs another way" : "In progress"}
+            </span>
+          </div>
+          <div className="mt-4 space-y-2">
+            {job.steps.map((step, index) => (
+              <div key={`${step.id || step.kind}-${index}`} className="flex items-start gap-2.5 rounded-xl border border-white/70 bg-white/55 px-3 py-2.5">
+                <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-semibold ${step.status === "completed" ? "bg-emerald-50 text-emerald-700" : step.status === "failed" ? "bg-rose-50 text-rose-700" : "bg-neutral-100 text-neutral-500"}`}>
+                  {step.status === "completed" ? "✓" : step.status === "failed" ? "!" : index + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[12.5px] font-medium text-neutral-800">{STEP_LABELS[step.kind] || "Handled a specialist step"}</p>
+                  {step.status === "failed" && step.error && <p className="mt-0.5 line-clamp-2 text-[11px] text-rose-600">{step.error}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+          {job.verification_summary && <p className="mt-3 text-[11.5px] leading-relaxed text-neutral-500">{job.verification_summary}</p>}
         </div>
       )}
 
