@@ -7,6 +7,36 @@
 import { secrets } from "base44:runtime";
 import { parseDelivery } from "./plan.ts";
 
+// The clock where the person actually is. A note set for 9 in the morning
+// should run at their 9, and "already ran today" means their today — so both
+// the hour and the calendar date come from their zone, not the server's.
+export function nowInZone(timeZone) {
+  const read = (tz) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit"
+    }).formatToParts(new Date());
+
+  let parts;
+  try {
+    parts = read(typeof timeZone === "string" && timeZone ? timeZone : "UTC");
+  } catch (_) {
+    // An unknown zone should never stop the sweep — fall back to UTC.
+    parts = read("UTC");
+  }
+  const get = (type) => parts.find((p) => p.type === type)?.value || "";
+  const hour = parseInt(get("hour"), 10);
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    // some runtimes render midnight as 24
+    hour: Number.isNaN(hour) ? 0 : hour % 24
+  };
+}
+
 export function parseScheduleHour(scheduleTime) {
   const m = typeof scheduleTime === "string" ? scheduleTime.match(/(\d{1,2})/) : null;
   if (!m) return 9; // sensible default: mornings
@@ -146,7 +176,7 @@ async function sendSms(to, body) {
   return true;
 }
 
-export async function runBuddy({ client, entityClient, buddy, userEmail, notifyEmail, smsPhone }) {
+export async function runBuddy({ client, entityClient, buddy, userEmail, notifyEmail, smsPhone, timeZone }) {
   // A photo pinned to the note rides along every run — reverse-search style.
   const imageUrl =
     typeof buddy.image_url === "string" && /^https?:\/\//i.test(buddy.image_url.trim())
@@ -179,7 +209,7 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
   }
   const lines = toLines(items);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = nowInZone(timeZone).date;
   await entityClient.entities.Buddy.update(buddy.id, { last_result: lines, last_run_date: today });
 
   // The TELLS line decides the channel: "text me" → SMS only,
