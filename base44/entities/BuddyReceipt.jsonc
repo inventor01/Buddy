@@ -1,0 +1,77 @@
+{
+  "name": "BuddyReceipt",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string"
+    },
+    "buddy_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "outcome": {
+      "type": "string"
+    },
+    "completed_at": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "why_chosen": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "used_context": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "changes_made": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "confirmation": {
+      "type": "string"
+    },
+    "source_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "estimated_time_saved_minutes": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "owner_id",
+    "buddy_id",
+    "title",
+    "completed_at"
+  ],
+  "rls": {
+    "create": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "read": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "update": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "delete": {
+      "data.owner_id": "{{user.id}}"
+    }
+  }
+}

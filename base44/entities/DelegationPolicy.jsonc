@@ -1,0 +1,63 @@
+{
+  "name": "DelegationPolicy",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "general",
+        "travel",
+        "shopping",
+        "home_services",
+        "calendar",
+        "email",
+        "tasks",
+        "household"
+      ]
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "find",
+        "recommend",
+        "prepare",
+        "approve",
+        "auto"
+      ],
+      "default": "approve"
+    },
+    "max_amount": {
+      "type": "number",
+      "description": "Optional future auto-handle spending ceiling in dollars."
+    },
+    "notes": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "owner_id",
+    "category",
+    "level"
+  ],
+  "rls": {
+    "create": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "read": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "update": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "delete": {
+      "data.owner_id": "{{user.id}}"
+    }
+  }
+}
