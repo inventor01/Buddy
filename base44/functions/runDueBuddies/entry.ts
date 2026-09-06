@@ -13,11 +13,25 @@ export default async function(req) {
     try { user = await base44.auth.me(); } catch (e) { user = null; }
     if (user) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-    const buddies = await base44.asServiceRole.entities.Buddy.filter(
-      { status: 'active' },
-      '-created_date',
-      100
-    );
+    // Scan active work in pages instead of only the newest 100. We stop once
+    // enough due work is collected or after a bounded scan so one sweep stays
+    // predictable under load. Missed-at-the-exact-hour items can catch up
+    // later the same local day instead of silently disappearing.
+    const PAGE_SIZE = 250;
+    const MAX_SCAN = 5000;
+    const MAX_DUE = 50;
+    const buddies = [];
+    for (let skip = 0; skip < MAX_SCAN; skip += PAGE_SIZE) {
+      const page = await base44.asServiceRole.entities.Buddy.filter(
+        { status: 'active' },
+        '-created_date',
+        PAGE_SIZE,
+        skip
+      );
+      if (!Array.isArray(page) || page.length === 0) break;
+      buddies.push(...page);
+      if (page.length < PAGE_SIZE) break;
+    }
 
     // "9 in the morning" means the owner's morning, and "already ran today"
     // their today — so the hour and the date are read on their clock. One
@@ -37,18 +51,19 @@ export default async function(req) {
 
     const due = [];
     for (const buddy of buddies) {
-      if (due.length >= 25) break;
+      if (due.length >= MAX_DUE) break;
       const owner = await ownerOf(buddy.created_by_id);
       const local = nowInZone(owner?.timezone);
-      const rightHour = parseScheduleHour(buddy.schedule_time) === local.hour;
+      const scheduledHour = parseScheduleHour(buddy.schedule_time);
+      const reachedTimeToday = local.hour >= scheduledHour;
       const rightDay = buddy.run_mode !== 'repeat' || scheduleMatchesToday(buddy.when_line, owner?.timezone);
-      if (rightHour && rightDay && buddy.last_run_date !== local.date) {
+      if (reachedTimeToday && rightDay && buddy.last_run_date !== local.date) {
         due.push({ buddy, owner });
       }
     }
 
     const results = [];
-    for (const { buddy, owner } of due) {
+    const runOne = async ({ buddy, owner }) => {
       try {
         const result = await runBuddy({
           client: base44,
@@ -62,13 +77,20 @@ export default async function(req) {
           metaAccount: typeof owner?.meta_ad_account === 'string' ? owner.meta_ad_account : '',
           metaPage: typeof owner?.meta_page_id === 'string' ? owner.meta_page_id : ''
         });
-        results.push({ id: buddy.id, name: buddy.name, ok: true, count: result.lines.length });
+        return { id: buddy.id, name: buddy.name, ok: true, count: result.lines.length };
       } catch (e) {
-        results.push({ id: buddy.id, name: buddy.name, ok: false, error: String(e.message || e) });
+        return { id: buddy.id, name: buddy.name, ok: false, error: String(e.message || e) };
       }
+    };
+
+    // Small concurrency keeps the sweep fast without stampeding external APIs.
+    for (let i = 0; i < due.length; i += 5) {
+      const batch = await Promise.all(due.slice(i, i + 5).map(runOne));
+      results.push(...batch);
     }
 
     return Response.json({
+      scanned: buddies.length,
       due: due.length,
       ran: results.filter((r) => r.ok).length,
       results
