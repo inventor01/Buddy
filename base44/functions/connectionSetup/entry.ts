@@ -14,6 +14,7 @@ export default async function(req: Request) {
     };
 
     return Response.json({
+      property_data_ready: !!secrets.get('RENTCAST_API_KEY'),
       abilities: Object.entries(values).map(([key, connectorId]) => ({
         key,
         ready: !!connectorId,
