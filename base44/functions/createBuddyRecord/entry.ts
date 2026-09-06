@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { checkUsageLimit } from '../../shared/rateLimit.ts';
+import { normalizeTaskSteps } from '../../shared/taskChain.ts';
 
 const CREATURES = ['sam', 'sid', 'bells', 'med'];
 const RUN_MODES = ['once', 'watch', 'repeat'];
@@ -29,6 +30,7 @@ function cleanPayload(raw: any) {
     end: clean(raw?.end, 100),
     due: clean(raw?.due, 100),
     notes: clean(raw?.notes, 2000),
+    thread_id: clean(raw?.thread_id, 300),
   };
 }
 
@@ -85,6 +87,18 @@ export default async function(req: Request) {
     if (writeAction) approvalStatus = deferredAction ? 'not_needed' : 'pending';
     else if (approvalStatus === 'pending' || approvalStatus === 'approved' || approvalStatus === 'executing') approvalStatus = 'not_needed';
 
+    const requestedLinkedIds = Array.isArray(body.linked_buddy_ids)
+      ? body.linked_buddy_ids.filter((x: unknown) => typeof x === 'string' && x).slice(0, 8)
+      : [];
+    let linkedBuddyIds: string[] = [];
+    if (requestedLinkedIds.length) {
+      const owned = await base44.asServiceRole.entities.Buddy.filter({ owner_id: user.id }, '-updated_date', 100);
+      const ownedIds = new Set((Array.isArray(owned) ? owned : []).map((b: any) => b?.id).filter(Boolean));
+      linkedBuddyIds = requestedLinkedIds.filter((id: string) => ownedIds.has(id));
+    }
+    const taskSteps = normalizeTaskSteps(body.task_steps);
+    const executionMode = body.execution_mode === 'chain' && taskSteps.length > 1 ? 'chain' : 'single';
+
     const record: any = {
       // Service-role writes are stamped as created by the service identity, so
       // persist the authenticated app user explicitly for ownership/RLS.
@@ -99,6 +113,9 @@ export default async function(req: Request) {
       action_payload: cleanPayload(body.action_payload || {}),
       approval_status: approvalStatus,
       deferred_action: deferredAction,
+      linked_buddy_ids: linkedBuddyIds,
+      execution_mode: executionMode,
+      task_steps: executionMode === 'chain' ? taskSteps : [],
       when_line: text(body.when_line, 120),
       what_line: text(body.what_line, 200),
       how_line: text(body.how_line, 200),
