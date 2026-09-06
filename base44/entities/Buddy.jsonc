@@ -94,6 +94,11 @@
       "default": "not_needed",
       "description": "Safety gate for actions that change something outside Buddy."
     },
+    "deferred_action": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when a write must wait for a user choice or missing dependency before approval can be requested."
+    },
     "note": {
       "type": "string",
       "description": "The original one-sentence note the user pinned"
