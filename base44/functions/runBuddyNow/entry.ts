@@ -4,6 +4,7 @@ import { runAdsBuddy } from '../../shared/ads.ts';
 import { runSocialBuddy } from '../../shared/social.ts';
 import { secrets } from 'base44:runtime';
 import { checkUsageLimit } from '../../shared/rateLimit.ts';
+import { loadProfile, profilePromptLines, relevantProfileFacts } from '../../shared/personalization.ts';
 
 async function currentUserConnection(base44, capability) {
   const envName = capability === 'gmail'
@@ -130,8 +131,11 @@ export default async function (req) {
       return Response.json({ error: 'That Buddy is not yours.' }, { status: 403 });
     }
 
+    const profile = await loadProfile(base44, user.id);
+    const personalFacts = relevantProfileFacts(profile, `${buddy.note || ''} ${buddy.what_line || ''}`);
+
     // ── Mode 2: user sent a specific message ──────────────────────────────
-    const userMessage = typeof body?.message === 'string' ? body.message.trim().slice(0, 500) : '';
+    const userMessage = typeof body?.message === 'string' ? body.message.trim().slice(0, 500) : ''; 
     if (userMessage) {
       // Answer the question in the context of the buddy, with web search.
       // Don't update last_result or last_run_date — this is a conversation
@@ -253,6 +257,7 @@ export default async function (req) {
           'You are ' + buddy.name + ', a helper for one person.',
           'Their original request: "' + buddy.note + '"',
           'Your daily job: ' + (buddy.what_line || buddy.note),
+          ...profilePromptLines(profile, `${buddy.note || ''} ${userMessage}`),
           ...contextLines(buddy),
           'The user is now asking you a follow-up question: "' + userMessage + '"',
           'Answer the question concretely and helpfully, using today\'s web data where relevant.',
@@ -289,6 +294,7 @@ export default async function (req) {
       metaToken: typeof user.meta_token === 'string' ? user.meta_token : '',
       metaAccount: typeof user.meta_ad_account === 'string' ? user.meta_ad_account : '',
       metaPage: typeof user.meta_page_id === 'string' ? user.meta_page_id : '',
+      personalFacts,
     });
 
     if (result?.question) {
