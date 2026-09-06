@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-09-06 — Intelligence Gate + Performance-Based Specialist Routing
+
+### Root causes
+- **Specialist selection was still mostly hardcoded.** Buddy preferred a configured provider by fixed order rather than learning which worker actually performs best for a particular capability.
+- **There was no repeatable intelligence release gate.** Complex-request quality was judged manually, so regressions in decomposition, verification, safety, or evidence quality could ship unnoticed.
+- **Provider outcomes were not aggregated into routing decisions.** BuddyJob stored the execution trail, but success/failure/latency/fallback history did not improve future selection.
+
+### Permanent fixes
+- Added admin-only `ProviderPerformance` records keyed by provider + capability with run count, success/failure, verified successes, fallbacks, average latency, and a smoothed performance score.
+- Added performance-aware provider ranking with conservative priors and sample-size smoothing so a provider cannot become the permanent winner or loser from one run.
+- Every specialist attempt now records success/failure, latency, and fallback usage without being allowed to break the user's request if metrics storage fails.
+- Successful final verification feeds back into the provider score.
+- BuddyJob steps now retain latency and attempted-provider history for auditability.
+- Added a 25-case Intelligence Gate spanning real estate, travel, local services, shopping, research, planning, recurring work, ambiguity, and approval-sensitive requests.
+- Added structural scoring for orchestration, required specialist step types, bounded decomposition, verification, and approval-preserving consequential work.
+- Added an optional live gate that executes a controlled subset, judges results against the actual specialist evidence, and treats unsupported critical facts as automatic failures.
+- Added admin-only Settings controls for the latest pass rate, case count, critical-fact failures, the full structural gate, and a five-case live sample.
+- Release target is encoded as >=90% passing with zero unsupported critical facts.
+
+### QA
+- `npm run build` passes.
+- `npm run lint` passes.
+- Backend bundles pass for run-now, scheduled runs, and the Intelligence Gate.
+- Static release checks confirm exactly 25 gate cases and the adaptive ranking/recording/verification hooks.
+
+
 ## 2026-09-06 — Buddy Orchestration Engine + Confirmed Phone Delivery
 
 ### Root causes
