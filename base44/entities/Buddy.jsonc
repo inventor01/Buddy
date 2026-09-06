@@ -12,6 +12,16 @@
       "default": "web",
       "description": "What kind of job this note does: web = search the web every day, ads = watch and manage the person's Facebook & Instagram ad account, social = post on and run the person's Facebook Page"
     },
+    "run_mode": {
+      "type": "string",
+      "enum": [
+        "once",
+        "watch",
+        "repeat"
+      ],
+      "default": "watch",
+      "description": "How this thing behaves: once = handle it now and finish, watch = keep checking until something matters, repeat = do it on a recurring schedule"
+    },
     "note": {
       "type": "string",
       "description": "The original one-sentence note the user pinned"
@@ -66,7 +76,8 @@
       "type": "string",
       "enum": [
         "active",
-        "paused"
+        "paused",
+        "done"
       ],
       "default": "active"
     },
