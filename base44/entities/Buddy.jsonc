@@ -209,6 +209,9 @@
                 "source": {
                   "type": "string"
                 },
+                "why_fit": {
+                  "type": "string"
+                },
                 "product": {
                   "type": "object",
                   "properties": {
