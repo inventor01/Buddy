@@ -7,10 +7,10 @@ import { Image } from "@/components/ui/image";
 // to do the thing. Suggestion pills fill the input; they don't submit.
 // A photo can ride along too — the note hunts for that exact thing daily.
 const SUGGESTIONS = [
-  "Watch for chicken thighs under $1.50 and text me",
-  "Remind Mom about her pills at eight, tell me she saw it",
-  "Check the permit page every morning, ping me the day it opens",
-  "Warn me a week before anything renews",
+  "Find me the best nonstop flight to Miami next month under $300",
+  "Tell me when a PS6 preorder opens at a major retailer",
+  "Compare three well-rated plumbers near me",
+  "Plan a birthday dinner for 8 people under $250",
 ];
 
 export default function Composer({ onPin, busy }) {
@@ -62,7 +62,7 @@ export default function Composer({ onPin, busy }) {
   return (
     <div className="mx-auto max-w-[640px]">
       <h2 className="font-heading text-[26px] font-semibold tracking-tight text-neutral-900">
-        What do you keep doing yourself?
+        What do you want off your plate?
       </h2>
 
       <div className="glass mt-5 rounded-[20px] p-4">
@@ -71,7 +71,7 @@ export default function Composer({ onPin, busy }) {
           onChange={(e) => setNote(e.target.value)}
           rows={2}
           maxLength={300}
-          placeholder="Ask for anything you keep doing yourself…"
+          placeholder="Tell Buddy what you want handled…"
           className="w-full resize-none bg-transparent px-1 text-[16px] leading-snug text-neutral-900 outline-none placeholder:text-neutral-400"
         />
         {image && (
@@ -94,7 +94,7 @@ export default function Composer({ onPin, busy }) {
         )}
         <div className="mt-2 flex items-center justify-between gap-3">
           <span className="font-mono text-[9.5px] tracking-[0.14em] text-neutral-400">
-            IT'LL SHOW YOU WHEN AND HOW BEFORE IT RUNS
+            YOU’LL SEE HOW IT PLANS TO HANDLE IT FIRST
           </span>
           <div className="flex items-center gap-1.5">
             <input
@@ -150,7 +150,7 @@ export default function Composer({ onPin, busy }) {
       </div>
 
       <p className="mt-6 text-[13px] text-neutral-500">
-        Write it like you'd text a friend. Each note becomes its own thread — you can talk to it later.
+        Write it like you’d text a friend. Buddy can handle it once, keep watch, or keep doing it on a schedule.
       </p>
     </div>
   );
