@@ -328,6 +328,10 @@ export default function Home() {
           message: text,
         });
         const lines = res.data?.lines || [];
+        const buddyPatch = res.data?.buddy_patch;
+        if (buddyPatch && typeof buddyPatch === "object") {
+          setBuddies((p) => p.map((x) => (x.id === b.id ? { ...x, ...buddyPatch } : x)));
+        }
         if (lines.length) {
           const foundItems = res.data?.items || [];
           const noteMsg = {
