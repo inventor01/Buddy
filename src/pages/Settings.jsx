@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Mail, Type, Loader2, MessageCircle, Check, Clock } from "lucide-react";
+import { ArrowLeft, Mail, Type, Loader2, MessageCircle, Check, Clock, UserRound, MapPin, Plane, ShoppingBag } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Switch } from "@/components/ui/switch";
 import { readBigText, applyBigText } from "@/lib/bigText";
@@ -20,12 +20,30 @@ export default function Settings() {
   const [phoneError, setPhoneError] = useState("");
   const [abilities, setAbilities] = useState([]);
   const [connecting, setConnecting] = useState("");
+  const [profile, setProfile] = useState(null);
+  const [profileDraft, setProfileDraft] = useState({ display_name: "", home_city: "", home_airport: "", travel_preferences: "", shopping_preferences: "", general_preferences: "" });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
 
   useEffect(() => {
     base44
       .auth.me()
       .then(async (u) => {
         setMe(u);
+        setNotifyEmail(!!u?.notify_email);
+        try {
+          const rows = await base44.entities.BuddyProfile.filter({ owner_id: u.id }, "-updated_date", 1);
+          const p = Array.isArray(rows) ? rows[0] || null : null;
+          setProfile(p);
+          setProfileDraft({
+            display_name: p?.display_name || "",
+            home_city: p?.home_city || "",
+            home_airport: p?.home_airport || "",
+            travel_preferences: Array.isArray(p?.travel_preferences) ? p.travel_preferences.join(", ") : "",
+            shopping_preferences: Array.isArray(p?.shopping_preferences) ? p.shopping_preferences.join(", ") : "",
+            general_preferences: Array.isArray(p?.general_preferences) ? p.general_preferences.join(", ") : "",
+          });
+        } catch (_) {}
         setNotifyEmail(!!u?.notify_email);
         setSmsPhone(u?.sms_phone || "");
         // Keep the zone current — it's the clock every note runs on.
@@ -85,6 +103,36 @@ export default function Settings() {
     }
   };
 
+  const saveProfile = async () => {
+    if (!me?.id || savingProfile) return;
+    setSavingProfile(true);
+    setProfileSaved(false);
+    const list = (value) => String(value || "").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 12);
+    const data = {
+      owner_id: me.id,
+      display_name: profileDraft.display_name.trim().slice(0, 60),
+      home_city: profileDraft.home_city.trim().slice(0, 80),
+      home_airport: profileDraft.home_airport.trim().slice(0, 40),
+      travel_preferences: list(profileDraft.travel_preferences),
+      shopping_preferences: list(profileDraft.shopping_preferences),
+      general_preferences: list(profileDraft.general_preferences),
+    };
+    try {
+      const saved = profile?.id
+        ? await base44.entities.BuddyProfile.update(profile.id, data)
+        : await base44.entities.BuddyProfile.create(data);
+      setProfile(saved);
+      setProfileSaved(true);
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const changeProfile = (key, value) => {
+    setProfileSaved(false);
+    setProfileDraft((p) => ({ ...p, [key]: value }));
+  };
+
   const toggleBig = () => {
     const next = !bigText;
     setBigText(next);
@@ -112,6 +160,51 @@ export default function Settings() {
         </p>
 
         <div className="mt-8 space-y-4">
+          <div className="glass rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <UserRound className="mt-0.5 h-5 w-5 text-neutral-400" />
+              <div className="flex-1">
+                <h3 className="font-medium text-neutral-900">What Buddy knows</h3>
+                <p className="mt-0.5 text-sm leading-relaxed text-neutral-500">
+                  Save the basics once so Buddy can stop asking the same questions. It only uses these when they actually help a request, and you can change them anytime.
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-[11px] font-medium text-neutral-500">What should Buddy call you?</span>
+                    <input value={profileDraft.display_name} onChange={(e) => changeProfile("display_name", e.target.value)} placeholder="Jay" className="mt-1.5 w-full rounded-xl border border-white/70 bg-white/70 px-3 py-2.5 text-sm outline-none focus:border-neutral-400" />
+                  </label>
+                  <label className="block">
+                    <span className="flex items-center gap-1 text-[11px] font-medium text-neutral-500"><MapPin className="h-3 w-3" /> Home city</span>
+                    <input value={profileDraft.home_city} onChange={(e) => changeProfile("home_city", e.target.value)} placeholder="Detroit, MI" className="mt-1.5 w-full rounded-xl border border-white/70 bg-white/70 px-3 py-2.5 text-sm outline-none focus:border-neutral-400" />
+                  </label>
+                  <label className="block">
+                    <span className="flex items-center gap-1 text-[11px] font-medium text-neutral-500"><Plane className="h-3 w-3" /> Usual airport</span>
+                    <input value={profileDraft.home_airport} onChange={(e) => changeProfile("home_airport", e.target.value)} placeholder="DTW" className="mt-1.5 w-full rounded-xl border border-white/70 bg-white/70 px-3 py-2.5 text-sm uppercase outline-none focus:border-neutral-400" />
+                  </label>
+                  <label className="block">
+                    <span className="flex items-center gap-1 text-[11px] font-medium text-neutral-500"><Plane className="h-3 w-3" /> Travel preferences</span>
+                    <input value={profileDraft.travel_preferences} onChange={(e) => changeProfile("travel_preferences", e.target.value)} placeholder="nonstop, after 9 AM, avoid Spirit" className="mt-1.5 w-full rounded-xl border border-white/70 bg-white/70 px-3 py-2.5 text-sm outline-none focus:border-neutral-400" />
+                  </label>
+                  <label className="block sm:col-span-2">
+                    <span className="flex items-center gap-1 text-[11px] font-medium text-neutral-500"><ShoppingBag className="h-3 w-3" /> Shopping preferences</span>
+                    <input value={profileDraft.shopping_preferences} onChange={(e) => changeProfile("shopping_preferences", e.target.value)} placeholder="lowest total price, Target pickup, free delivery" className="mt-1.5 w-full rounded-xl border border-white/70 bg-white/70 px-3 py-2.5 text-sm outline-none focus:border-neutral-400" />
+                  </label>
+                  <label className="block sm:col-span-2">
+                    <span className="text-[11px] font-medium text-neutral-500">Anything else Buddy should keep in mind</span>
+                    <input value={profileDraft.general_preferences} onChange={(e) => changeProfile("general_preferences", e.target.value)} placeholder="prefer simple options, don't call before 9 AM" className="mt-1.5 w-full rounded-xl border border-white/70 bg-white/70 px-3 py-2.5 text-sm outline-none focus:border-neutral-400" />
+                  </label>
+                </div>
+                <div className="mt-4 flex items-center gap-3">
+                  <button type="button" onClick={saveProfile} disabled={savingProfile} className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-2 text-[13px] font-medium text-white disabled:opacity-50">
+                    {savingProfile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : profileSaved ? <Check className="h-3.5 w-3.5" /> : null}
+                    {profileSaved ? "Saved" : "Save what Buddy knows"}
+                  </button>
+                  <span className="text-[11.5px] text-neutral-400">Comma-separate multiple preferences.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* email notifications */}
           <div className="glass flex items-center justify-between gap-4 rounded-2xl p-5">
             <div className="flex items-start gap-3">
