@@ -11,10 +11,9 @@ export default async function(req) {
     const when = typeof body?.when_line === 'string' ? body.when_line.slice(0, 200) : '';
     const how = typeof body?.how_line === 'string' ? body.how_line.slice(0, 200) : '';
 
-    return Response.json({
-      schedule_time: parseScheduleFromWhen(when),
-      delivery: parseDelivery(how)
-    });
+    const schedule_time = parseScheduleFromWhen(when, '9:00 AM');
+    const delivery = parseDelivery(how);
+    return Response.json({ schedule_time, delivery });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
