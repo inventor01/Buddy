@@ -96,6 +96,15 @@ export default async function(req) {
       }
     });
 
+    const explicitMoney = note.match(/\$\s*\d+(?:\.\d+)?/g) || [];
+    let question = typeof plan?.question === 'string' ? plan.question.trim().slice(0, 200) : '';
+    if (explicitMoney.length && /price|budget|maximum|max|dollar|cost/i.test(question)) question = '';
+
+    const rawPayload = plan?.action_payload && typeof plan.action_payload === 'object' ? plan.action_payload : {};
+    const safeQuery = String(rawPayload.query || '').slice(0, 300);
+    const queryMoney = safeQuery.match(/\$\s*\d+(?:\.\d+)?/g) || [];
+    const moneyMismatch = explicitMoney.length && queryMoney.some((m) => !explicitMoney.includes(m.replace(/\s+/g, '')) && !explicitMoney.includes(m));
+
     const safePlan = {
       name: typeof plan?.buddy_name === 'string' && plan.buddy_name.trim()
         ? plan.buddy_name.trim().slice(0, 40)
@@ -106,22 +115,22 @@ export default async function(req) {
       capability: ['gmail', 'calendar', 'tasks'].includes(plan?.capability) ? plan.capability : 'web',
       action_type: ['email_read', 'email_send', 'calendar_read', 'calendar_create', 'task_create'].includes(plan?.action_type) ? plan.action_type : 'none',
       approval_required: plan?.approval_required === true,
-      action_payload: plan?.action_payload && typeof plan.action_payload === 'object' ? {
-        recipient: String(plan.action_payload.recipient || '').slice(0, 200),
-        subject: String(plan.action_payload.subject || '').slice(0, 200),
-        body: String(plan.action_payload.body || '').slice(0, 1200),
-        query: String(plan.action_payload.query || '').slice(0, 300),
-        title: String(plan.action_payload.title || '').slice(0, 200),
-        start: String(plan.action_payload.start || '').slice(0, 100),
-        end: String(plan.action_payload.end || '').slice(0, 100),
-        due: String(plan.action_payload.due || '').slice(0, 100),
-        notes: String(plan.action_payload.notes || '').slice(0, 600)
-      } : {},
+      action_payload: {
+        recipient: String(rawPayload.recipient || '').slice(0, 200),
+        subject: String(rawPayload.subject || '').slice(0, 200),
+        body: String(rawPayload.body || '').slice(0, 1200),
+        query: moneyMismatch ? note.slice(0, 300) : safeQuery,
+        title: String(rawPayload.title || '').slice(0, 200),
+        start: String(rawPayload.start || '').slice(0, 100),
+        end: String(rawPayload.end || '').slice(0, 100),
+        due: String(rawPayload.due || '').slice(0, 100),
+        notes: String(rawPayload.notes || '').slice(0, 600)
+      },
       when_line: String(plan?.when_line || 'Right now').slice(0, 120),
       what_line: String(plan?.what_line || 'Runs your note for you').slice(0, 200),
       how_line: String(plan?.how_line || 'Pins the answer back to your garden').slice(0, 200),
       schedule_time: String(plan?.schedule_time || '9:00 AM').slice(0, 40),
-      question: typeof plan?.question === 'string' ? plan.question.trim().slice(0, 200) : ''
+      question
     };
 
     return Response.json({ plan: safePlan });
