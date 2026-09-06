@@ -19,6 +19,9 @@ export default function FindingRow({ item }) {
         ) : (
           <p className="text-[14.5px] leading-snug text-neutral-900">{item.text}</p>
         )}
+        {item.why_fit && (
+          <p className="mt-1.5 text-[12px] font-medium text-emerald-700">Why this fits you: {item.why_fit}</p>
+        )}
         {item.url && (
           <a
             href={item.url}
