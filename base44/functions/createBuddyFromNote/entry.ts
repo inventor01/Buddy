@@ -2,6 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { checkUsageLimit } from '../../shared/rateLimit.ts';
 import { loadProfile, loadHousehold, householdFacts, profilePromptLines, relevantProfileFacts } from '../../shared/personalization.ts';
 import { requestCategory, loadDelegationPolicy, delegationPromptLines } from '../../shared/delegation.ts';
+import { resolveBuddyMentions, linkedBuddyPromptLines } from '../../shared/linkedBuddies.ts';
+import { looksLikeComplexChain, normalizeTaskSteps } from '../../shared/taskChain.ts';
 
 // Turns one plain sentence into a plain-language plan. The consumer never
 // needs to know about agents, workflows, or automation — they only see what
@@ -52,6 +54,10 @@ export default async function(req) {
     const personalFacts = [...relevantProfileFacts(profile, note), ...householdFacts(household, note)].slice(0, 14);
     const category = requestCategory(note);
     const delegation = signedInUser?.id ? await loadDelegationPolicy(base44, signedInUser.id, category) : null;
+    const linked = signedInUser?.id
+      ? await resolveBuddyMentions(base44, signedInUser.id, note)
+      : { ids: [], names: [], unresolved: [], buddies: [] };
+    const linkedLines = linkedBuddyPromptLines(linked.buddies);
 
     const plan = await base44.asServiceRole.integrations.Core.InvokeLLM({
       ...(imageUrl ? { file_urls: [imageUrl] } : {}),
@@ -65,6 +71,12 @@ export default async function(req) {
           ...householdFacts(household, note).map((f) => `- ${f}`)
         ] : []),
         ...delegationPromptLines(delegation),
+        ...linkedLines,
+        'If the current request references another Buddy conversation with @, use that linked conversation as input. Never invent or substitute a different conversation.',
+        'For a request with multiple dependent stages — for example find → review → prepare a message → send after approval → check/handle responses — set execution_mode = "chain" and return 2 to 5 ordered task_steps. Otherwise execution_mode = "single" and task_steps = [].',
+        'Allowed task step types: research, review, prepare_message, send_email, handle_responses, action, verify. Each step must have id, label, type, instruction, depends_on, and approval_required.',
+        'Later steps must depend on the step whose output they need. Never make a review or message step independent when it is supposed to use earlier findings.',
+        'send_email always requires approval. handle_responses may check and draft while the user is present, but never imply background email access or an outgoing reply happened unless the connection and approval flow actually completed.',
         'CRITICAL: preserve every explicit constraint exactly as written — prices, dates, times, locations, names, quantities, thresholds, recipients, and frequency. Never loosen, round, substitute, or invent a constraint.',
         'Do not ask a question for information already present in the note. Only ask when a genuinely required detail is missing.',
         ...(imageUrl
@@ -110,6 +122,22 @@ export default async function(req) {
           capability: { type: 'string', enum: ['web', 'gmail', 'calendar', 'tasks'] },
           action_type: { type: 'string', enum: ['none', 'email_read', 'email_send', 'calendar_read', 'calendar_create', 'task_create'] },
           approval_required: { type: 'boolean' },
+          execution_mode: { type: 'string', enum: ['single', 'chain'] },
+          task_steps: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                label: { type: 'string' },
+                type: { type: 'string', enum: ['research', 'review', 'prepare_message', 'send_email', 'handle_responses', 'action', 'verify'] },
+                instruction: { type: 'string' },
+                depends_on: { type: 'array', items: { type: 'string' } },
+                approval_required: { type: 'boolean' }
+              },
+              required: ['id', 'label', 'type', 'instruction', 'depends_on', 'approval_required']
+            }
+          },
           action_payload: {
             type: 'object',
             properties: {
@@ -140,6 +168,12 @@ export default async function(req) {
     if (profile?.home_airport && looksLikeFlightRequest(note) && /\b(from|departure|departing|airport|city)\b/i.test(question)) question = '';
     if (profile?.home_city && /\b(near me|nearby|plumber|electrician|mechanic|cleaner|dentist|contractor|roofer|salon|barber|restaurant)\b/i.test(note) && /\b(city|zip|location|area)\b/i.test(question)) question = '';
 
+    const normalizedTaskSteps = normalizeTaskSteps(plan?.task_steps);
+    const executionMode = normalizedTaskSteps.length > 1 && (plan?.execution_mode === 'chain' || looksLikeComplexChain(note))
+      ? 'chain'
+      : 'single';
+    const taskSteps = executionMode === 'chain' ? normalizedTaskSteps : [];
+
     const lowerNote = note.toLowerCase();
     const explicitEmail = /\b(email|gmail|inbox|mail)\b/.test(lowerNote);
     const explicitCalendar = /\b(calendar|schedule)\b/.test(lowerNote);
@@ -168,12 +202,13 @@ export default async function(req) {
     const connectedBackgroundUnsupported = guardedCapability !== 'web' && guardedRunMode !== 'once';
     const effectiveRunMode = connectedBackgroundUnsupported ? 'once' : guardedRunMode;
     const rawPayload = plan?.action_payload && typeof plan.action_payload === 'object' ? plan.action_payload : {};
-    const dependencyLanguage = /\b(one i choose|one i pick|the one i choose|the one i pick|after i choose|after i pick|once i choose|once i pick|after you show me|after you find|then (send|add|put|schedule|create))\b/.test(lowerNote);
+    const dependencyLanguage = /\b(one i choose|one i pick|the one i choose|the one i pick|after i choose|after i pick|once i choose|once i pick|after you show me|after you find|after (?:you )?review|after reviewing|based on (?:that|the review|the results)|then (send|add|put|schedule|create))\b/.test(lowerNote);
+    const chainHasDeferredSend = executionMode === 'chain' && taskSteps.some((step) => step.type === 'send_email');
     const emailNeedsAddress = guardedActionType === 'email_send' && !/@/.test(String(rawPayload.recipient || ''));
     const calendarNeedsStart = guardedActionType === 'calendar_create' && !String(rawPayload.start || '').trim();
     const taskNeedsTitle = guardedActionType === 'task_create' && !String(rawPayload.title || '').trim();
     const deferredAction = ['email_send', 'calendar_create', 'task_create'].includes(guardedActionType) &&
-      (dependencyLanguage || emailNeedsAddress || calendarNeedsStart || taskNeedsTitle);
+      (dependencyLanguage || chainHasDeferredSend || emailNeedsAddress || calendarNeedsStart || taskNeedsTitle);
     const cleanField = (value, max) => {
       const text = String(value || '').trim().slice(0, max);
       return /^(n\/?a|none|null|not applicable|unknown)$/i.test(text) ? '' : text;
@@ -205,6 +240,11 @@ export default async function(req) {
       action_type: guardedActionType,
       approval_required: ['email_send', 'calendar_create', 'task_create'].includes(guardedActionType) && !deferredAction,
       deferred_action: deferredAction,
+      linked_buddy_ids: linked.ids,
+      linked_buddy_names: linked.names,
+      unresolved_references: linked.unresolved,
+      execution_mode: executionMode,
+      task_steps: taskSteps,
       action_payload: {
         recipient: cleanField(rawPayload.recipient, 200),
         subject: cleanField(rawPayload.subject, 200),
