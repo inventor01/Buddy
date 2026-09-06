@@ -6,6 +6,10 @@ import { checkUsageLimit } from '../../shared/rateLimit.ts';
 // will happen, when it will happen, and how they'll hear about it.
 const CREATURES = ["sam", "sid", "bells", "med"];
 
+function looksLikeFlightRequest(value) {
+  return /\b(flight|flights|airfare|plane ticket|airline)\b/i.test(String(value || ''));
+}
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
