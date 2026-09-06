@@ -80,6 +80,7 @@ async function planSteps(base44: any, buddy: any, personalFacts: string[], deleg
       should_orchestrate: true,
       steps: [
         { id: 'property-data', kind: 'domain_property', instruction: 'Find and underwrite the strongest wholesale property candidates using live property data and comparable sales.' },
+        { id: 'listing-check', kind: 'browser_fetch', instruction: 'Open the strongest candidate listing page and verify the visible address, asking price, listing status, and any distress signals. Do not infer repairs from photos.', target_url: '$top_listing' },
         { id: 'verify', kind: 'verify', instruction: 'Verify the underwriting math, evidence, and that the result actually matches the requested geography and constraints.' },
       ],
     };
@@ -196,13 +197,22 @@ async function runBase44Research(base44: any, instruction: string, goal: string,
   };
 }
 
-async function executeStep({ base44, buddy, step, goal }: any) {
+async function executeStep({ base44, buddy, step, goal, priorResults = [] }: any) {
   const ready = providerReadiness();
   if (step.kind === 'domain_property') {
     const raw = await runWholesaleDealFinder({ base44, buddy });
     return { output: JSON.stringify(raw).slice(0, 16000), urls: uniq(collectUrls(raw)).slice(0, 20), confidence: 0.92, provider: 'rentcast', raw };
   }
-  if (step.kind === 'browser_fetch' && step.target_url && ready.browserbase) return runBrowserbase(step.target_url, step.instruction);
+  if (step.kind === 'browser_fetch') {
+    let targetUrl = step.target_url;
+    if (targetUrl === '$top_listing' || !/^https?:\/\//i.test(String(targetUrl || ''))) {
+      const domain = priorResults.find((r: any) => r?.raw?.findings);
+      const top = domain?.raw?.findings?.[0];
+      targetUrl = top?.deal?.listing_url || top?.url || '';
+    }
+    if (targetUrl && ready.browserbase) return runBrowserbase(targetUrl, `${step.instruction}\nTarget: ${targetUrl}`);
+    if (targetUrl && ready.openai) return runOpenAI(`${step.instruction}\nCheck this exact page and corroborate it with current web evidence: ${targetUrl}`, goal);
+  }
   if (['web_research','browser_fetch','reasoning'].includes(step.kind) && ready.openai) return runOpenAI(step.instruction, goal);
   if (step.kind === 'connected_action') {
     return { output: 'This step requires Buddy’s existing connection and approval flow. It was prepared but not executed automatically.', urls: [], confidence: 1, provider: 'buddy-safety' };
@@ -279,7 +289,7 @@ export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], 
       steps[i] = { ...step, status: 'running' };
       await base44.asServiceRole.entities.BuddyJob.update(job.id, { steps });
       try {
-        const r = await executeStep({ base44, buddy, step, goal });
+        const r = await executeStep({ base44, buddy, step, goal, priorResults: results });
         results.push(r);
         providers.push(r.provider);
         steps[i] = { ...step, provider: r.provider, status: 'completed', output: trim(r.output, 8000), evidence_urls: (r.urls || []).slice(0, 12), confidence: r.confidence || 0 };
