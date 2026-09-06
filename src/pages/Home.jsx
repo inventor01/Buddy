@@ -150,7 +150,7 @@ export default function Home() {
       // Notes run on the clock where they are, so the account keeps the zone.
       user = await ensureTimezone(base44, user);
       setMe(user);
-      const list = await base44.entities.Buddy.filter({ created_by_id: user.id }, "-updated_date", 50);
+      const list = await base44.entities.Buddy.filter({ owner_id: user.id }, "-updated_date", 50);
       setBuddies(list);
       await claimPendingNote(user, list);
     } catch (e) {
