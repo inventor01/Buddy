@@ -42,9 +42,10 @@ function Section({ title, children }) {
   );
 }
 
-export default function CommandCenter({ me, profile, buddies, receipts = [], onOpen, onPin, busy }) {
+export default function CommandCenter({ me, profile, buddies, receipts = [], escalations = [], onOpen, onPin, busy }) {
   const name = String(profile?.display_name || me?.name || me?.email?.split("@")[0] || "there").trim();
   const needsYou = buddies.filter((b) => b.approval_status === "pending" || b.approval_status === "needs_connection" || b.open_question);
+  const unresolved = escalations.filter((e) => e.status === "open").slice(0, 4);
   const handled = buddies.filter((b) => b.status === "done").slice(0, 3);
   const watching = buddies.filter((b) => b.status === "active" && b.run_mode === "watch").slice(0, 3);
   const repeating = buddies.filter((b) => b.status === "active" && b.run_mode === "repeat").slice(0, 3);
@@ -63,8 +64,8 @@ export default function CommandCenter({ me, profile, buddies, receipts = [], onO
           Good to see you, {name}.
         </h1>
         <p className="mt-2 text-[14px] text-neutral-500">
-          {needsYou.length
-            ? `${needsYou.length} ${needsYou.length === 1 ? "thing needs" : "things need"} you. Buddy is handling ${activeCount} more.`
+          {needsYou.length || unresolved.length
+            ? `${needsYou.length + unresolved.length} ${needsYou.length + unresolved.length === 1 ? "thing needs" : "things need"} you. Buddy is handling ${activeCount} more.`
             : activeCount
               ? `Nothing needs you right now. Buddy is handling ${activeCount} ${activeCount === 1 ? "thing" : "things"}.`
               : handledCount
@@ -78,6 +79,28 @@ export default function CommandCenter({ me, profile, buddies, receipts = [], onO
           </div>
         )}
       </div>
+
+      {unresolved.length > 0 && (
+        <div className="rounded-[24px] border border-rose-100 bg-rose-50/50 p-4 sm:p-5">
+          <div className="mb-3 flex items-center gap-2 text-rose-800">
+            <Hand className="h-4 w-4" />
+            <h2 className="text-[13px] font-semibold">Needs another way</h2>
+          </div>
+          <div className="space-y-2">
+            {unresolved.map((e) => {
+              const buddy = buddies.find((b) => b.id === e.buddy_id);
+              if (!buddy) return null;
+              return (
+                <button key={e.id} type="button" onClick={() => onOpen(buddy.id)} className="w-full rounded-2xl border border-white/70 bg-white/65 px-4 py-3 text-left hover:bg-white">
+                  <p className="text-[13.5px] font-semibold text-neutral-900">{e.title || buddy.name}</p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-neutral-600">{e.reason}</p>
+                  {e.next_step && <p className="mt-1.5 text-[11.5px] font-medium text-rose-700">Next: {e.next_step}</p>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {needsYou.length > 0 && (
         <div className="rounded-[24px] border border-amber-100 bg-amber-50/55 p-4 sm:p-5">
