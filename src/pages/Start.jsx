@@ -65,6 +65,10 @@ export default function Start() {
   const [result, setResult] = useState(null); // { text, source }
   const [createdId, setCreatedId] = useState(null);
   const [phone, setPhone] = useState("");
+  const [phoneCode, setPhoneCode] = useState("");
+  const [phoneCodeSent, setPhoneCodeSent] = useState(false);
+  const [phoneMasked, setPhoneMasked] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [authed, setAuthed] = useState(null); // null while checking
 
   // No account needed to try it — things only get saved once someone is
@@ -292,31 +296,46 @@ export default function Start() {
 
   const pinPhone = async () => {
     if (busy) return;
+    setPhoneError("");
+    const raw = phone.trim();
+    const normalised = raw ? (raw.startsWith('+') ? raw : '+1' + raw.replace(/\D/g, '')) : '';
+
+    if (authed === false) {
+      // The request still needs an account before it can be saved. Carry the
+      // number across sign-in, but do not mark it usable for texts until the
+      // confirmation code is completed after sign-in.
+      savePendingNote({
+        note: note.trim(),
+        image,
+        lines: { ...lines, answer: answer.trim() },
+        phone: normalised,
+      });
+      base44.auth.redirectToLogin("/notes");
+      return;
+    }
+
+    if (!normalised) {
+      setStep("done");
+      return;
+    }
+
     setBusy(true);
     try {
-      const raw = phone.trim();
-      // Normalise: if the user typed digits only (no +), prepend +1 (US).
-      // If they already typed a country code starting with +, use as-is.
-      const normalised = raw ? (raw.startsWith('+') ? raw : '+1' + raw.replace(/\D/g, '')) : '';
-
-      if (authed === false) {
-        // Nothing a visitor typed has been saved — there was no account to
-        // save it to. Carry the note and the number across the sign-in and
-        // let the home page start it for real on the way back.
-        savePendingNote({
-          note: note.trim(),
-          image,
-          lines: { ...lines, answer: answer.trim() },
-          phone: normalised,
-        });
-        base44.auth.redirectToLogin("/notes");
+      if (!phoneCodeSent) {
+        const res = await base44.functions.invoke("phoneVerification", { action: "start", phone: normalised });
+        setPhoneMasked(res.data?.phone_masked || "");
+        setPhoneCodeSent(true);
+        setPhoneCode("");
         return;
       }
-
-      if (normalised) await base44.auth.updateMe({ sms_phone: normalised });
+      if (phoneCode.replace(/\D/g, "").length !== 6) {
+        setPhoneError("Enter the 6-digit code we texted you.");
+        return;
+      }
+      await base44.functions.invoke("phoneVerification", { action: "verify", code: phoneCode });
       setStep("done");
-    } catch (_) {
-      setStep("done");
+    } catch (e) {
+      setPhoneError(e?.response?.data?.error || e?.message || "That number couldn't be confirmed.");
     } finally {
       setBusy(false);
     }
