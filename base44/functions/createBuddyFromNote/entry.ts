@@ -133,11 +133,20 @@ export default async function(req) {
     const recurring = /\b(every|daily|weekly|monthly|each (day|week|month|morning|evening)|every (day|week|month|monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b/.test(lowerNote);
     const watching = /\b(tell me when|let me know when|notify me when|watch for|keep an eye on|when .* (opens?|drops?|changes?|available|in stock))\b/.test(lowerNote);
     const guardedRunMode = recurring ? 'repeat' : watching ? 'watch' : 'once';
+    const connectedBackgroundUnsupported = guardedCapability !== 'web' && guardedRunMode !== 'once';
+    const effectiveRunMode = connectedBackgroundUnsupported ? 'once' : guardedRunMode;
     const deferredAction = ['email_send', 'calendar_create', 'task_create'].includes(guardedActionType) &&
       /\b(one i choose|one i pick|the one i choose|the one i pick|after i choose|after i pick|once i choose|once i pick|after you show me|after you find|then (send|add|put|schedule|create))\b/.test(lowerNote);
 
     const rawPayload = plan?.action_payload && typeof plan.action_payload === 'object' ? plan.action_payload : {};
-    const safeQuery = explicitMoney.length ? note.slice(0, 300) : String(rawPayload.query || '').slice(0, 300);
+    const cleanField = (value, max) => {
+      const text = String(value || '').trim().slice(0, max);
+      return /^(n\/?a|none|null|not applicable|unknown)$/i.test(text) ? '' : text;
+    };
+    const safeQuery = explicitMoney.length ? note.slice(0, 300) : cleanField(rawPayload.query, 300);
+    if (connectedBackgroundUnsupported) {
+      question = `I can handle this while you're here, but I can't keep checking your ${guardedCapability === 'gmail' ? 'Email' : guardedCapability === 'calendar' ? 'Calendar' : 'Tasks'} in the background yet. Want me to handle it now?`;
+    }
 
     const safePlan = {
       name: typeof plan?.buddy_name === 'string' && plan.buddy_name.trim()
@@ -145,21 +154,21 @@ export default async function(req) {
         : 'Helpful Buddy',
       creature: CREATURES.includes(plan?.creature) ? plan.creature : 'sam',
       kind: ['ads', 'social'].includes(plan?.kind) ? plan.kind : 'web',
-      run_mode: guardedRunMode,
+      run_mode: effectiveRunMode,
       capability: guardedCapability,
       action_type: guardedActionType,
       approval_required: ['email_send', 'calendar_create', 'task_create'].includes(guardedActionType) && !deferredAction,
       deferred_action: deferredAction,
       action_payload: {
-        recipient: String(rawPayload.recipient || '').slice(0, 200),
-        subject: String(rawPayload.subject || '').slice(0, 200),
-        body: String(rawPayload.body || '').slice(0, 1200),
+        recipient: cleanField(rawPayload.recipient, 200),
+        subject: cleanField(rawPayload.subject, 200),
+        body: cleanField(rawPayload.body, 1200),
         query: safeQuery,
-        title: String(rawPayload.title || '').slice(0, 200),
-        start: String(rawPayload.start || '').slice(0, 100),
-        end: String(rawPayload.end || '').slice(0, 100),
-        due: String(rawPayload.due || '').slice(0, 100),
-        notes: String(rawPayload.notes || '').slice(0, 600)
+        title: cleanField(rawPayload.title, 200),
+        start: cleanField(rawPayload.start, 100),
+        end: cleanField(rawPayload.end, 100),
+        due: cleanField(rawPayload.due, 100),
+        notes: cleanField(rawPayload.notes, 600)
       },
       when_line: String(plan?.when_line || 'Right now').slice(0, 120),
       what_line: String(plan?.what_line || 'Runs your note for you').slice(0, 200),
