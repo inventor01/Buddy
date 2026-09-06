@@ -44,6 +44,36 @@ export async function loadProfile(base44: any, userId: string) {
   }
 }
 
+export async function loadHousehold(base44: any, userId: string) {
+  if (!userId) return null;
+  try {
+    const rows = await base44.asServiceRole.entities.HouseholdProfile.filter({ owner_id: userId }, '-updated_date', 1);
+    return Array.isArray(rows) ? rows[0] || null : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+export function householdFacts(household: any, text: string) {
+  if (!household) return [];
+  const lower = String(text || '').toLowerCase();
+  const facts: string[] = [];
+  const members = Array.isArray(household.members) ? household.members : [];
+  for (const member of members.slice(0, 12)) {
+    const name = String(member?.name || '').trim();
+    const relation = String(member?.relation || '').trim();
+    if ((name && lower.includes(name.toLowerCase())) || (relation && lower.includes(relation.toLowerCase()))) {
+      const note = String(member?.notes || '').trim();
+      facts.push(`Household: ${relation || name}${name && relation ? ` ${name}` : ''}${note ? ` — ${note}` : ''}`);
+    }
+  }
+  if (/\b(family|household|home|everyone|we|our)\b/.test(lower)) {
+    for (const p of Array.isArray(household.shared_preferences) ? household.shared_preferences.slice(0, 6) : []) facts.push(`Household preference: ${String(p).slice(0, 180)}`);
+    for (const n of Array.isArray(household.shared_notes) ? household.shared_notes.slice(0, 4) : []) facts.push(`Household note: ${String(n).slice(0, 180)}`);
+  }
+  return facts.slice(0, 10);
+}
+
 export function profilePromptLines(profile: any, requestText: string) {
   const facts = relevantProfileFacts(profile, requestText);
   if (!facts.length) return [];
