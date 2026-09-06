@@ -48,7 +48,7 @@ export default async function(req: Request) {
     // billing boundary. Deleted records no longer count; all existing things do.
     if (user.plan !== 'pro' && user.role !== 'admin') {
       const existing = await base44.asServiceRole.entities.Buddy.filter(
-        { created_by_id: user.id },
+        { owner_id: user.id },
         '-created_date',
         4
       );
@@ -77,10 +77,9 @@ export default async function(req: Request) {
     else if (approvalStatus === 'pending' || approvalStatus === 'approved' || approvalStatus === 'executing') approvalStatus = 'not_needed';
 
     const record: any = {
-      // Service-role writes must still be owned by the authenticated app user,
-      // otherwise owner-only RLS would make the record inaccessible.
-      created_by_id: user.id,
-      created_by: user.email || null,
+      // Service-role writes are stamped as created by the service identity, so
+      // persist the authenticated app user explicitly for ownership/RLS.
+      owner_id: user.id,
       note,
       name,
       creature: CREATURES.includes(body.creature) ? body.creature : 'sam',
