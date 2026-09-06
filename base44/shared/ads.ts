@@ -126,68 +126,6 @@ const ADS_SCHEMA = {
   required: ["findings"]
 };
 
-// Builds a complete new ad: campaign → ad set → creative (with a
-// generated image) → ad. Created paused unless the person clearly said
-// to start it, so nothing spends money without a second look.
-async function createAd({ client, token, actId, spec }) {
-  const budgetUsd = Math.max(5, Math.min(500, Number(spec.budget_usd) || 10));
-  const country = String(spec.country_code || "US").toUpperCase().slice(0, 2);
-  const headline = String(spec.headline || "New ad").slice(0, 40);
-  const name = headline + " — " + new Date().toISOString().slice(0, 10);
-
-  // An ad needs a Page to run from — the first one this token manages.
-  const pages = await graphGet(token, "me/accounts", { fields: "id,name", limit: "5" });
-  const page = (pages.data || [])[0];
-  if (!page) throw new Error("no Facebook Page found — the ad needs a Page to run from");
-
-  const img = await client.asServiceRole.integrations.Core.GenerateImage({
-    prompt:
-      String(spec.image_prompt || headline).slice(0, 300) +
-      " — square social media ad creative, clean and modern, product-focused, uncluttered"
-  });
-
-  const campaign = await graphPost(token, `${actId}/campaigns`, {
-    name,
-    objective: "OUTCOME_TRAFFIC",
-    status: "PAUSED",
-    special_ad_categories: []
-  });
-  const adset = await graphPost(token, `${actId}/adsets`, {
-    name: name + " (set)",
-    campaign_id: campaign.id,
-    daily_budget: Math.round(budgetUsd * 100),
-    billing_event: "IMPRESSIONS",
-    optimization_goal: "LINK_CLICKS",
-    bid_strategy: "LOWEST_COST_WITHOUT_CAP",
-    targeting: { geo_locations: { countries: [country] } },
-    status: "PAUSED"
-  });
-  const creative = await graphPost(token, `${actId}/adcreatives`, {
-    name,
-    object_story_spec: {
-      page_id: page.id,
-      link_data: {
-        message: String(spec.primary_text || "").slice(0, 125),
-        link: spec.link,
-        name: headline,
-        picture: img.url
-      }
-    }
-  });
-  const ad = await graphPost(token, `${actId}/ads`, {
-    name,
-    adset_id: adset.id,
-    creative: { creative_id: creative.id },
-    status: "PAUSED"
-  });
-  if (spec.run_now === true) {
-    await graphPost(token, campaign.id, { status: "ACTIVE" });
-    await graphPost(token, adset.id, { status: "ACTIVE" });
-    await graphPost(token, ad.id, { status: "ACTIVE" });
-  }
-  return { name: headline, budget: budgetUsd, running: spec.run_now === true };
-}
-
 // One ad run: read the account, decide with the note's rules, act
 // within strict bounds. Returns the same { findings, needs_context }
 // shape as a web run, so pinning and delivery work unchanged.
