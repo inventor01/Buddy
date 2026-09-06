@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-09-06 — Connected chats + multi-step handoff QA hardening
+
+### Root causes found during QA
+- **Email reads could be misclassified as sends.** The word `email` itself was included in the write-intent regex, so a request such as “check my email” could enter the send path.
+- **A dependent step could continue after an earlier dependency failed or was still waiting for approval.** The orchestrator carried prior output forward but did not require every declared dependency to have actually completed.
+- **The job audit trail could say completed while an outside action was still waiting for approval.** Prepared connected-action placeholders were being marked as completed even though nothing had been sent or changed yet.
+
+### Permanent fixes
+- Split email read intent from email send intent. Reading/reviewing/checking an inbox cannot become `email_send` merely because the request contains the word “email.”
+- Enforced dependency completion before a downstream chain step can execute. Failed prerequisites block dependents; approval-gated prerequisites leave dependents pending.
+- Approval-gated connected steps now use `waiting_approval`, and the overall BuddyJob uses `needs_approval` until the real action succeeds.
+- After an approved connected action succeeds, the latest BuddyJob is advanced to completed/waiting state so the audit trail matches the real outside action.
+- The thread UI now distinguishes Verified, Needs approval, Waiting, In progress, and Needs another way.
+- @-linked context remains owner-scoped and older exact references are resolved directly rather than only from the newest 100 handoffs.
+- Gmail response chains preserve thread ID plus Message-ID/References headers; background scheduler skips reply-wait states that require per-user OAuth context.
+
+### QA
+- Production build passes.
+- ESLint passes.
+- Buddy and BuddyJob schemas parse successfully.
+- Backend bundles pass for planning, creation, run-now, connected actions, scheduled runs, preview, shared runner, orchestration, linked-chat resolution, and task-chain helpers.
+- Unit checks pass for @ parsing/deduplication, older-chat lookup, cross-user reference rejection, owner-scoped loading, dependency preservation, and mandatory approval on send steps.
+- Regression guards confirm failed dependencies cannot continue, approval states are not falsely marked complete, Gmail threading headers are present, and reply-wait chains are excluded from background execution.
+- `git diff --check` passes.
+
+
 ## 2026-09-06 — Longer requests and better result links
 
 ### Root causes
