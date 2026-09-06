@@ -8,6 +8,7 @@ import { loadProfile, loadHousehold, householdFacts, profilePromptLines, relevan
 import { requestCategory, loadDelegationPolicy, delegationPromptLines } from '../../shared/delegation.ts';
 import { createReceiptOnce } from '../../shared/receipts.ts';
 import { recordEscalationOnce, resolveEscalation } from '../../shared/escalation.ts';
+import { loadVerifiedPhone } from '../../shared/phone.ts';
 
 async function currentUserConnection(base44, capability) {
   const envName = capability === 'gmail'
@@ -346,13 +347,14 @@ export default async function (req) {
       return Response.json(read);
     }
 
+    const verifiedPhone = await loadVerifiedPhone(base44, user.id);
     const result = await runBuddy({
       client: base44,
       entityClient: base44,
       buddy,
       userEmail: user.email,
       notifyEmail: !!user.notify_email,
-      smsPhone: typeof user.sms_phone === 'string' ? user.sms_phone : '',
+      smsPhone: verifiedPhone,
       timeZone: typeof user.timezone === 'string' ? user.timezone : '',
       metaToken: typeof user.meta_token === 'string' ? user.meta_token : '',
       metaAccount: typeof user.meta_ad_account === 'string' ? user.meta_ad_account : '',
