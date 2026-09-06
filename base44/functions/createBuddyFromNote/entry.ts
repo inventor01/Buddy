@@ -58,6 +58,7 @@ export default async function(req) {
       ? await resolveBuddyMentions(base44, signedInUser.id, note)
       : { ids: [], names: [], unresolved: [], buddies: [] };
     const linkedLines = linkedBuddyPromptLines(linked.buddies);
+    const linkedGmailThreadId = String(linked.buddies.find((b) => b?.chain_state?.gmail_thread_id)?.chain_state?.gmail_thread_id || '').trim();
 
     const plan = await base44.asServiceRole.integrations.Core.InvokeLLM({
       ...(imageUrl ? { file_urls: [imageUrl] } : {}),
@@ -76,7 +77,8 @@ export default async function(req) {
         'For a request with multiple dependent stages — for example find → review → prepare a message → send after approval → check/handle responses — set execution_mode = "chain" and return 2 to 5 ordered task_steps. Otherwise execution_mode = "single" and task_steps = [].',
         'Allowed task step types: research, review, prepare_message, send_email, handle_responses, action, verify. Each step must have id, label, type, instruction, depends_on, and approval_required.',
         'Later steps must depend on the step whose output they need. Never make a review or message step independent when it is supposed to use earlier findings.',
-        'send_email always requires approval. handle_responses may check and draft while the user is present, but never imply background email access or an outgoing reply happened unless the connection and approval flow actually completed.',
+        'send_email always requires approval. Only use send_email when the user explicitly means email/Gmail or an email address/channel is clearly identified; a generic request to “message” someone should prepare a message rather than pretend Buddy can send through an unspecified service.',
+        'handle_responses may check and draft while the user is present, but never imply background email access or an outgoing reply happened unless the connection and approval flow actually completed.',
         'CRITICAL: preserve every explicit constraint exactly as written — prices, dates, times, locations, names, quantities, thresholds, recipients, and frequency. Never loosen, round, substitute, or invent a constraint.',
         'Do not ask a question for information already present in the note. Only ask when a genuinely required detail is missing.',
         ...(imageUrl
@@ -149,7 +151,8 @@ export default async function(req) {
               start: { type: 'string' },
               end: { type: 'string' },
               due: { type: 'string' },
-              notes: { type: 'string' }
+              notes: { type: 'string' },
+              thread_id: { type: 'string' }
             }
           },
           when_line: { type: 'string' },
@@ -169,10 +172,10 @@ export default async function(req) {
     if (profile?.home_city && /\b(near me|nearby|plumber|electrician|mechanic|cleaner|dentist|contractor|roofer|salon|barber|restaurant)\b/i.test(note) && /\b(city|zip|location|area)\b/i.test(question)) question = '';
 
     const normalizedTaskSteps = normalizeTaskSteps(plan?.task_steps);
-    const executionMode = normalizedTaskSteps.length > 1 && (plan?.execution_mode === 'chain' || looksLikeComplexChain(note))
+    let executionMode = normalizedTaskSteps.length > 1 && (plan?.execution_mode === 'chain' || looksLikeComplexChain(note))
       ? 'chain'
       : 'single';
-    const taskSteps = executionMode === 'chain' ? normalizedTaskSteps : [];
+    let taskSteps = executionMode === 'chain' ? normalizedTaskSteps : [];
 
     const lowerNote = note.toLowerCase();
     const explicitEmail = /\b(email|gmail|inbox|mail)\b/.test(lowerNote);
@@ -194,6 +197,22 @@ export default async function(req) {
     } else if (explicitTasks) {
       guardedCapability = 'tasks';
       if (wantsWrite && /\b(add|create|put)\b/.test(lowerNote)) guardedActionType = 'task_create';
+    }
+
+    const linkedResponseIntent = /\b(handle|check|review|read|respond(?: to)?|reply to|watch)\b.*\b(repl(?:y|ies)|responses?)\b|\b(repl(?:y|ies)|responses?)\b.*\b(handle|check|review|read|respond|watch)\b/i.test(note);
+    if (linkedGmailThreadId && linkedResponseIntent) {
+      guardedCapability = 'gmail';
+      guardedActionType = 'email_read';
+      if (taskSteps.length < 2) {
+        taskSteps = [
+          { id: 'check-replies', label: 'Check replies', type: 'handle_responses', instruction: 'Check the linked email thread for new replies and capture what changed.', depends_on: [], approval_required: false, status: 'pending' },
+          { id: 'prepare-response', label: 'Review and prepare response', type: 'prepare_message', instruction: 'Review any new reply against the original goal and prepare the best next response when one is useful.', depends_on: ['check-replies'], approval_required: false, status: 'pending' },
+        ];
+        if (/\b(reply|respond|send)\b/i.test(note)) {
+          taskSteps.push({ id: 'send-response', label: 'Send after approval', type: 'send_email', instruction: 'Send the prepared response only after the user approves the exact recipient, subject, and message.', depends_on: ['prepare-response'], approval_required: true, status: 'pending' });
+        }
+        executionMode = 'chain';
+      }
     }
 
     const recurring = /\b(every|daily|weekly|monthly|each (day|week|month|morning|evening)|every (day|week|month|monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b/.test(lowerNote);
@@ -254,7 +273,8 @@ export default async function(req) {
         start: cleanField(rawPayload.start, 100),
         end: cleanField(rawPayload.end, 100),
         due: cleanField(rawPayload.due, 100),
-        notes: cleanField(rawPayload.notes, 2000)
+        notes: cleanField(rawPayload.notes, 2000),
+        thread_id: cleanField(rawPayload.thread_id || linkedGmailThreadId, 300)
       },
       when_line: effectiveRunMode === 'once' ? 'Right now' : String(plan?.when_line || 'Right now').slice(0, 120),
       what_line: looksLikeFlightRequest(note) && effectiveRunMode === 'once'
