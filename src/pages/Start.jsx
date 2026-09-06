@@ -15,10 +15,12 @@ import { ensureTimezone } from "@/lib/timezone";
 // quiet enough for a big company. No jargon on the screen, ever.
 
 const EXAMPLES = [
-  { label: "Bills on time", text: "Three days before my electric bill is due, text me a nudge" },
-  { label: "Expiring coupons", text: "When my coupons are about to expire, tell me which ones still work" },
-  { label: "Birthday nudges", text: "A week before anyone's birthday, text me a nudge" },
-  { label: "Price drops", text: "When chicken drops under $1.50, text me" },
+  { label: "Find it", text: "Find me the best nonstop flight to Miami next month under $300" },
+  { label: "Keep watch", text: "Tell me when a PS6 preorder opens at a major retailer" },
+  { label: "Compare it", text: "Find three well-rated plumbers near me and compare their prices and availability" },
+  { label: "Remember it", text: "A week before my mom's birthday, remind me and suggest three gifts under $75" },
+  { label: "Plan it", text: "Plan a simple birthday party for 12 people under $400 and make me a checklist" },
+  { label: "Handle weekly", text: "Every Monday morning, give me the five most important things I should remember this week" },
 ];
 
 const CATS = ["when", "what", "tells"];
@@ -297,12 +299,14 @@ export default function Start() {
           <div>
             <div className="text-center">
               <h1 className="font-heading text-[34px] font-semibold leading-[1.08] tracking-[-0.02em] text-neutral-900 sm:text-[44px]">
-                Your life needs <TypingWord /> This is where it starts.
+                Hand off what’s on your mind.
               </h1>
-              <p className="mx-auto mt-3.5 max-w-[460px] text-[15.5px] leading-relaxed text-neutral-500">
-                Stop putting plans in your calendar and forgetting about them. Say it once —
-                bills to pay, coupons about to expire, dates that sneak up — and it checks every
-                day, texting you right when it matters.
+              <p className="mx-auto mt-3.5 max-w-[500px] text-[15.5px] leading-relaxed text-neutral-500">
+                Write what you need in plain English. Buddy can handle it now, keep an eye on it,
+                or keep doing it for you — then bring the result back when there’s something worth your attention.
+              </p>
+              <p className="mx-auto mt-2 max-w-[500px] text-[13px] leading-relaxed text-neutral-400">
+                No setup language. No dashboards to learn. Just say what you want handled.
               </p>
             </div>
 
@@ -312,7 +316,7 @@ export default function Start() {
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
                 maxLength={300}
-                placeholder="Three days before my electric bill is due, text me…"
+                placeholder="What do you want handled?"
                 className="w-full resize-none bg-transparent px-3 pt-2.5 text-[16px] leading-relaxed text-neutral-900 outline-none placeholder:text-neutral-400"
               />
               {image && (
@@ -360,7 +364,7 @@ export default function Start() {
                   className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-2 text-[13.5px] font-medium text-white disabled:opacity-40"
                 >
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
-                  {busy ? "Reading…" : "Set it going"}
+                  {busy ? "Working it out…" : "Hand it off"}
                 </button>
               </div>
             </div>
@@ -386,7 +390,7 @@ export default function Start() {
             <p className="mt-1.5 font-heading text-[19px] leading-snug text-neutral-900">{note}</p>
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
-              <p className={kicker}>Here's the plan</p>
+              <p className={kicker}>Here’s how it’ll handle it</p>
               <p className="text-[11.5px] text-neutral-400">Drag to arrange · tap the pencil to reword</p>
             </div>
             <div className="mt-3">
@@ -419,7 +423,7 @@ export default function Start() {
             <div className="mt-7 flex flex-wrap items-center gap-4">
               <button type="button" onClick={runOnce} disabled={busy} className={primary}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-                {busy ? "Checking…" : "Run it once now"}
+                {busy ? "Handling it…" : "Try it now"}
               </button>
               <button type="button" onClick={() => setStep("compose")} className={ghost}>
                 Change the words
@@ -435,11 +439,11 @@ export default function Start() {
         {step === "phone" && (
           <div className={card}>
             <p className={kicker}>Last piece</p>
-            <h2 className={`mt-3 ${h2}`}>Where should we text you?</h2>
+            <h2 className={`mt-3 ${h2}`}>Where should Buddy reach you?</h2>
             <p className="mt-2 text-[14px] text-neutral-500">
               {authed === false
-                ? "One number and a quick account — that's what keeps it running every day."
-                : "One number — that's the whole setup. Nothing else to connect."}
+                ? "Add a number if you want important updates outside the app. A quick account keeps your requests saved."
+                : "Add a number if you want important updates outside the app. You can leave this blank and keep everything here."}
             </p>
             <div className="mt-5 flex items-stretch rounded-xl border border-neutral-300 bg-white focus-within:border-neutral-500">
               <span className="grid place-items-center px-4 text-[16px] text-neutral-400">+1</span>
@@ -454,14 +458,14 @@ export default function Start() {
             <div className="mt-5 flex flex-wrap items-center gap-4">
               <button type="button" onClick={pinPhone} disabled={busy} className={primary}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {authed === false ? "Start it — make my account" : "Start it"}
+                {authed === false ? "Save this and make my account" : "Save this"}
               </button>
               <button type="button" onClick={() => setStep("ran")} className={ghost}>
                 Back
               </button>
             </div>
             <p className="mt-4 text-[12.5px] text-neutral-400">
-              Only this one texts you. Nothing else, ever — and "stop" ends it in one word.
+              Buddy only reaches out when the request calls for it. You stay in control of what runs and what gets sent.
             </p>
           </div>
         )}
@@ -471,10 +475,10 @@ export default function Start() {
             <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-emerald-50">
               <Check className="h-5 w-5 text-emerald-600" />
             </span>
-            <h2 className={`mt-4 ${h2}`}>That's one less thing.</h2>
-            <p className="mx-auto mt-2 max-w-[420px] text-[14px] leading-relaxed text-neutral-500">
-              It runs every day, quietly — you'll hear about it only when there's news. Most
-              people start a second one within the hour.
+            <h2 className={`mt-4 ${h2}`}>That’s off your plate.</h2>
+            <p className="mx-auto mt-2 max-w-[440px] text-[14px] leading-relaxed text-neutral-500">
+              Buddy will handle it the way you asked — once, by keeping watch, or on a repeat schedule.
+              You can open it anytime to change the request or ask a follow-up.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <button type="button" onClick={restart} className={outline}>
