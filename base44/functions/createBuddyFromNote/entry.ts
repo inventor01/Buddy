@@ -181,14 +181,15 @@ export default async function(req) {
     const explicitEmail = /\b(email|gmail|inbox|mail)\b/.test(lowerNote);
     const explicitCalendar = /\b(calendar|schedule)\b/.test(lowerNote);
     const explicitTasks = /\b(tasks?|to-?do|google tasks)\b/.test(lowerNote);
-    const wantsWrite = /\b(send|email|add|create|put|schedule)\b/.test(lowerNote);
-    const wantsRead = /\b(read|check|search|find|summarize|summary|look through|show me)\b/.test(lowerNote);
+    const wantsWrite = /\b(send|add|create|put|schedule)\b/.test(lowerNote);
+    const wantsRead = /\b(read|check|search|find|summarize|summary|look through|show me|review)\b/.test(lowerNote);
+    const wantsEmailSend = /\b(send|reply|respond)\b/.test(lowerNote) || /\bemail\s+(?:to\s+)?(?:[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}|(?:him|her|them|me|us))\b/i.test(note);
 
     let guardedCapability = 'web';
     let guardedActionType = 'none';
     if (explicitEmail) {
       guardedCapability = 'gmail';
-      if (wantsWrite && /\b(send|email)\b/.test(lowerNote)) guardedActionType = 'email_send';
+      if (wantsEmailSend) guardedActionType = 'email_send';
       else if (wantsRead) guardedActionType = 'email_read';
     } else if (explicitCalendar) {
       guardedCapability = 'calendar';
