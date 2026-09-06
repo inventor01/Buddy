@@ -2,6 +2,15 @@
   "name": "Buddy",
   "type": "object",
   "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "web",
+        "ads"
+      ],
+      "default": "web",
+      "description": "What kind of job this note does: web = search the web every day, ads = watch and manage the person's Facebook & Instagram ad account"
+    },
     "note": {
       "type": "string",
       "description": "The original one-sentence note the user pinned"

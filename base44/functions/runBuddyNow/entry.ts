@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { runBuddy, FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines, contextLines } from '../../shared/runBuddy.ts';
+import { runAdsBuddy } from '../../shared/ads.ts';
 
 // "Run now" — two modes:
 //   1. buddyId only → standard daily run (same as the scheduler).
@@ -41,6 +42,24 @@ export default async function (req) {
         buddy.open_question = '';
       }
 
+      // Ad notes answer from the person's live ad account, not the web —
+      // the token they pasted in Settings, same thread shape back.
+      if (buddy.kind === 'ads') {
+        const ads = await runAdsBuddy({
+          client: base44,
+          buddy,
+          facts: contextLines(buddy),
+          token: typeof user.meta_token === 'string' ? user.meta_token : '',
+          account: typeof user.meta_ad_account === 'string' ? user.meta_ad_account : '',
+          message: userMessage
+        });
+        const items = toFindingItems(ads?.findings);
+        if (items.length === 0) {
+          items.push({ text: "I couldn't reach your ad account just now — try again.", url: '', source: '' });
+        }
+        return Response.json({ lines: toLines(items), items });
+      }
+
       const imageUrl =
         typeof buddy.image_url === 'string' && /^https?:\/\//i.test(buddy.image_url.trim())
           ? buddy.image_url.trim()
@@ -80,6 +99,8 @@ export default async function (req) {
       notifyEmail: !!user.notify_email,
       smsPhone: typeof user.sms_phone === 'string' ? user.sms_phone : '',
       timeZone: typeof user.timezone === 'string' ? user.timezone : '',
+      metaToken: typeof user.meta_token === 'string' ? user.meta_token : '',
+      metaAccount: typeof user.meta_ad_account === 'string' ? user.meta_ad_account : '',
     });
 
     return Response.json({ lines: result.lines, items: result.items });

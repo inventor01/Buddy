@@ -30,6 +30,14 @@
     "timezone": {
       "description": "IANA timezone of the person (like America/New_York), read from their browser. A note that says 9 in the morning means their morning, so the hourly sweep runs on this clock.",
       "type": "string"
+    },
+    "meta_token": {
+      "description": "Meta (Facebook) access token the person pasted in Settings, with ads_read / ads_management permission. Empty means no ad account is connected.",
+      "type": "string"
+    },
+    "meta_ad_account": {
+      "description": "The Meta ad account to act on, like act_1234567890. Picked automatically on connect unless the person chooses one.",
+      "type": "string"
     }
   },
   "required": [

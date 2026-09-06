@@ -29,6 +29,7 @@ export default async function(req) {
         ...(imageUrl
           ? ['A photo is attached — identify the product or thing it shows, and make what_line about finding that exact thing every day.']
           : []),
+        'If the note is about running ad campaigns — Facebook, Instagram, TikTok or Google ads, ad spend, budgets, ROAS, CPC, pausing or creating ads — kind = "ads". Any other note kind = "web".',
         'Pick the best creature:',
         'sam = shopping, errands, deals. sid = stores, products, prices. bells = dates, birthdays, greetings, reminders. med = medications, health check-ins.',
         'Give the buddy a friendly two-word name (like "Shopping Sam").',
@@ -44,6 +45,7 @@ export default async function(req) {
         properties: {
           buddy_name: { type: 'string' },
           creature: { type: 'string', enum: CREATURES },
+          kind: { type: 'string', enum: ['web', 'ads'] },
           when_line: { type: 'string' },
           what_line: { type: 'string' },
           how_line: { type: 'string' },
@@ -59,6 +61,7 @@ export default async function(req) {
         ? plan.buddy_name.trim().slice(0, 40)
         : 'Helpful Buddy',
       creature: CREATURES.includes(plan?.creature) ? plan.creature : 'sam',
+      kind: plan?.kind === 'ads' ? 'ads' : 'web',
       when_line: String(plan?.when_line || 'Every morning').slice(0, 120),
       what_line: String(plan?.what_line || 'Runs your note for you').slice(0, 200),
       how_line: String(plan?.how_line || 'Pins the answer back to your garden').slice(0, 200),

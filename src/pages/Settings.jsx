@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { Switch } from "@/components/ui/switch";
 import { readBigText, applyBigText } from "@/lib/bigText";
 import { browserTimezone, ensureTimezone } from "@/lib/timezone";
+import AdsCard from "@/components/paper/AdsCard";
 
 // Settings — notification and reading preferences, on the same light
 // glass surfaces as everything else.
@@ -150,6 +151,9 @@ export default function Settings() {
               </div>
             </div>
           </div>
+
+          {/* ad accounts — each person pastes their own token */}
+          <AdsCard />
 
           {/* the clock notes run on */}
           <div className="glass flex items-center justify-between gap-4 rounded-2xl p-5">

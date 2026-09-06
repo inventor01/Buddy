@@ -6,6 +6,7 @@
 
 import { secrets } from "base44:runtime";
 import { parseDelivery } from "./plan.ts";
+import { runAdsBuddy } from "./ads.ts";
 
 // The clock where the person actually is. A note set for 9 in the morning
 // should run at their 9, and "already ran today" means their today — so both
@@ -191,13 +192,25 @@ async function sendSms(to, body) {
   return true;
 }
 
-export async function runBuddy({ client, entityClient, buddy, userEmail, notifyEmail, smsPhone, timeZone }) {
+export async function runBuddy({ client, entityClient, buddy, userEmail, notifyEmail, smsPhone, timeZone, metaToken, metaAccount }) {
   // A photo pinned to the note rides along every run — reverse-search style.
   const imageUrl =
     typeof buddy.image_url === "string" && /^https?:\/\//i.test(buddy.image_url.trim())
       ? buddy.image_url.trim()
       : "";
-  const findings = await client.asServiceRole.integrations.Core.InvokeLLM({
+  let findings;
+  if (buddy.kind === "ads") {
+    // Ad notes read the person's own ad account, not the web — the
+    // token they pasted in Settings decides what they can touch.
+    findings = await runAdsBuddy({
+      client,
+      buddy,
+      facts: contextLines(buddy),
+      token: metaToken,
+      account: metaAccount
+    });
+  } else {
+  findings = await client.asServiceRole.integrations.Core.InvokeLLM({
     model: "gemini_3_flash",
     add_context_from_internet: true,
     ...(imageUrl ? { file_urls: [imageUrl] } : {}),
@@ -218,6 +231,7 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
     ].join("\n"),
     response_json_schema: FINDINGS_SCHEMA
   });
+  }
 
   // The one case where guessing is wrong: a detail the user could hand over
   // in one line is missing. Ask instead of invent — the question lands in
