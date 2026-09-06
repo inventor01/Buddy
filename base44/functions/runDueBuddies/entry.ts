@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { runBuddy, parseScheduleHour, nowInZone, scheduleMatchesToday } from '../../shared/runBuddy.ts';
+import { loadProfile, relevantProfileFacts } from '../../shared/personalization.ts';
 
 // Hourly sweep: runs every active buddy whose schedule time has arrived and
 // that hasn't already run today. Triggered by the platform's scheduler.
@@ -65,6 +66,8 @@ export default async function(req) {
     const results = [];
     const runOne = async ({ buddy, owner }) => {
       try {
+        const profile = await loadProfile(base44, buddy.owner_id);
+        const personalFacts = relevantProfileFacts(profile, `${buddy.note || ''} ${buddy.what_line || ''}`);
         const result = await runBuddy({
           client: base44,
           entityClient: base44.asServiceRole,
@@ -75,7 +78,8 @@ export default async function(req) {
           timeZone: typeof owner?.timezone === 'string' ? owner.timezone : '',
           metaToken: typeof owner?.meta_token === 'string' ? owner.meta_token : '',
           metaAccount: typeof owner?.meta_ad_account === 'string' ? owner.meta_ad_account : '',
-          metaPage: typeof owner?.meta_page_id === 'string' ? owner.meta_page_id : ''
+          metaPage: typeof owner?.meta_page_id === 'string' ? owner.meta_page_id : '',
+          personalFacts
         });
         return { id: buddy.id, name: buddy.name, ok: true, count: result.lines.length };
       } catch (e) {
