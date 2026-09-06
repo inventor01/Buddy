@@ -12,6 +12,7 @@ import PaymentSheet from "@/components/paper/PaymentSheet";
 import PlanPanel from "@/components/maker/PlanPanel";
 import { readBigText, applyBigText } from "@/lib/bigText";
 import { readPendingNote, clearPendingNote } from "@/lib/pendingNote";
+import { ensureTimezone } from "@/lib/timezone";
 
 // The home page IS the product (10a) — a rail of note threads on the left,
 // the composer or the open thread on the right.
@@ -128,7 +129,10 @@ export default function Home() {
 
   const load = useCallback(async () => {
     try {
-      const user = await base44.auth.me();
+      let user = await base44.auth.me();
+      setMe(user);
+      // Notes run on the clock where they are, so the account keeps the zone.
+      user = await ensureTimezone(base44, user);
       setMe(user);
       const list = await base44.entities.Buddy.filter({ created_by_id: user.id }, "-updated_date", 50);
       setBuddies(list);
