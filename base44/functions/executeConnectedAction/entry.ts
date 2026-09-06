@@ -26,6 +26,7 @@ function cleanPayload(raw: any) {
     due: s(raw?.due, 100),
     notes: s(raw?.notes, 2000),
     thread_id: s(raw?.thread_id, 300),
+    in_reply_to: s(raw?.in_reply_to, 500),
   };
 }
 
@@ -147,13 +148,13 @@ export default async function(req: Request) {
       if (!payload.recipient || !payload.subject || !payload.body) {
         return Response.json({ error: 'The email is missing a recipient, subject, or message.' }, { status: 400 });
       }
-      const mime = [
+      const mimeHeaders = [
         `To: ${payload.recipient}`,
         `Subject: ${payload.subject}`,
+        ...(payload.in_reply_to ? [`In-Reply-To: ${payload.in_reply_to}`, `References: ${payload.in_reply_to}`] : []),
         'Content-Type: text/plain; charset="UTF-8"',
-        '',
-        payload.body,
-      ].join('\r\n');
+      ];
+      const mime = [...mimeHeaders, '', payload.body].join('\r\n');
       const existingThreadId = payload.thread_id || String(buddy.chain_state?.gmail_thread_id || '');
       const sendBody: any = { raw: base64Url(mime) };
       if (existingThreadId) sendBody.threadId = existingThreadId;
