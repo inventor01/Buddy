@@ -25,7 +25,7 @@ export default function TopMenu({ onBook, authed = true, onSignIn = null }) {
             to="/start"
             className="hidden rounded-full px-3 py-2 transition-colors hover:text-neutral-900 sm:block"
           >
-            What notes can do
+            What Buddy can handle
           </Link>
           {authed ? (
             <>
@@ -34,7 +34,7 @@ export default function TopMenu({ onBook, authed = true, onSignIn = null }) {
                 onClick={onBook}
                 className="hidden rounded-full px-3 py-2 transition-colors hover:text-neutral-900 sm:block"
               >
-                Your book
+                History
               </button>
               <Link
                 to="/settings"
