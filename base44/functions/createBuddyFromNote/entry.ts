@@ -7,6 +7,8 @@ import { requestCategory, loadDelegationPolicy, delegationPromptLines } from '..
 // needs to know about agents, workflows, or automation — they only see what
 // will happen, when it will happen, and how they'll hear about it.
 const CREATURES = ["sam", "sid", "bells", "med"];
+const BUDDY_REQUEST_MAX = 8000;
+const ACTION_QUERY_MAX = 2000;
 
 function looksLikeFlightRequest(value) {
   return /\b(flight|flights|airfare|plane ticket|airline)\b/i.test(String(value || ''));
@@ -25,7 +27,14 @@ export default async function(req) {
 
     let body = {};
     try { body = await req.json(); } catch (e) { body = {}; }
-    const note = typeof body.note === 'string' ? body.note.trim().slice(0, 300) : '';
+    const rawNote = typeof body.note === 'string' ? body.note.trim() : '';
+    if (rawNote.length > BUDDY_REQUEST_MAX) {
+      return Response.json(
+        { error: `Keep the request under ${BUDDY_REQUEST_MAX.toLocaleString()} characters.` },
+        { status: 413 }
+      );
+    }
+    const note = rawNote;
     const imageUrl = typeof body.image_url === 'string' && /^https?:\/\//i.test(body.image_url.trim())
       ? body.image_url.trim().slice(0, 500)
       : '';
@@ -169,7 +178,7 @@ export default async function(req) {
       const text = String(value || '').trim().slice(0, max);
       return /^(n\/?a|none|null|not applicable|unknown)$/i.test(text) ? '' : text;
     };
-    const safeQuery = explicitMoney.length ? note.slice(0, 300) : cleanField(rawPayload.query, 300);
+    const safeQuery = explicitMoney.length ? note.slice(0, ACTION_QUERY_MAX) : cleanField(rawPayload.query, ACTION_QUERY_MAX);
     const simplePlanningRequest = /\b(plan|checklist|outline|ideas?)\b/.test(lowerNote) && guardedCapability === 'web' && guardedRunMode === 'once';
     if (simplePlanningRequest && /\b(whose|who'?s|date|when)\b/i.test(question)) {
       question = '';
@@ -199,13 +208,13 @@ export default async function(req) {
       action_payload: {
         recipient: cleanField(rawPayload.recipient, 200),
         subject: cleanField(rawPayload.subject, 200),
-        body: cleanField(rawPayload.body, 1200),
+        body: cleanField(rawPayload.body, 6000),
         query: safeQuery,
         title: cleanField(rawPayload.title, 200),
         start: cleanField(rawPayload.start, 100),
         end: cleanField(rawPayload.end, 100),
         due: cleanField(rawPayload.due, 100),
-        notes: cleanField(rawPayload.notes, 600)
+        notes: cleanField(rawPayload.notes, 2000)
       },
       when_line: effectiveRunMode === 'once' ? 'Right now' : String(plan?.when_line || 'Right now').slice(0, 120),
       what_line: looksLikeFlightRequest(note) && effectiveRunMode === 'once'
