@@ -6,7 +6,6 @@ import { Image } from "@/components/ui/image";
 import { useToast } from "@/components/ui/use-toast";
 import PlanBoard from "@/components/maker/PlanBoard";
 import FoundIt from "@/components/maker/FoundIt";
-import TypingWord from "@/components/maker/TypingWord";
 import { savePendingNote } from "@/lib/pendingNote";
 import { ensureTimezone } from "@/lib/timezone";
 
@@ -87,6 +86,7 @@ export default function Start() {
         name: plan.name,
         creature: plan.creature,
         kind: ["ads", "social"].includes(plan.kind) ? plan.kind : "web",
+        runMode: ["once", "watch", "repeat"].includes(plan.run_mode) ? plan.run_mode : "once",
         scheduleTime: plan.schedule_time,
         question: typeof plan.question === "string" ? plan.question : "",
       });
@@ -165,6 +165,7 @@ export default function Start() {
         note: note.trim(),
         image_url: image,
         kind: ["ads", "social"].includes(lines.kind) ? lines.kind : "web",
+        run_mode: ["once", "watch", "repeat"].includes(lines.runMode) ? lines.runMode : "once",
         ...(answer.trim() ? { context: [answer.trim()] } : {}),
         name: lines.name || "Your helper",
         creature: lines.creature || "sam",
