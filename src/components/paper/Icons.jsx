@@ -3,7 +3,7 @@ import React from "react";
 // The two hand-drawn icons from the approved reference (10a rail).
 // Verbatim paths — do not substitute icon-library glyphs.
 
-export function PencilIcon({ size = 15, className }) {
+export function PencilIcon({ size = 15, className = "" }) {
   return (
     <svg
       width={size}
@@ -24,7 +24,7 @@ export function PencilIcon({ size = 15, className }) {
   );
 }
 
-export function BookIcon({ size = 16, className }) {
+export function BookIcon({ size = 16, className = "" }) {
   return (
     <svg
       width={size}
