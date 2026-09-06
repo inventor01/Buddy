@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-09-06 — Longer requests and better result links
+
+### Root causes
+- Buddy had separate 300-character limits in the UI, planning, preview, and save paths, so longer requests could be cut before execution.
+- Follow-up messages had a smaller limit than the new request size.
+- Result URLs were checked for validity, but generic homepages could still appear instead of the specific result page.
+
+### Permanent fixes
+- Raised Buddy request length to 8,000 characters across compose, plan, preview, save, edit, and follow-up paths.
+- Added character counters and a multiline follow-up composer.
+- Result handling now removes bare homepages and asks research paths to return the most specific verified article, product, listing, provider, route/search, or booking page available.
+- Product and property destinations use the same shared URL cleanup before they are shown.
+
+### QA
+- Production build passes.
+- ESLint completes with no errors.
+- Regression scan found no remaining 300-character Buddy note limit or 500-character follow-up limit in active handoff paths.
+
 ## 2026-09-06 — Intelligence Gate + Performance-Based Specialist Routing
 
 ### Root causes
