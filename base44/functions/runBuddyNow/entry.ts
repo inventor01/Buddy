@@ -3,6 +3,7 @@ import { runBuddy, FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines, con
 import { runAdsBuddy } from '../../shared/ads.ts';
 import { runSocialBuddy } from '../../shared/social.ts';
 import { secrets } from 'base44:runtime';
+import { checkUsageLimit } from '../../shared/rateLimit.ts';
 
 async function currentUserConnection(base44, capability) {
   const envName = capability === 'gmail'
@@ -110,6 +111,13 @@ export default async function (req) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const quota = await checkUsageLimit({ base44, req, scope: 'run-now', minuteLimit: 20, dayLimit: 300 });
+    if (!quota.ok) {
+      return Response.json(
+        { error: 'Too many runs right now. Try again shortly.' },
+        { status: 429, headers: { 'Retry-After': String(quota.retryAfter || 60) } }
+      );
+    }
 
     let body: Record<string, unknown> = {};
     try { body = await req.json(); } catch (_) { body = {}; }
