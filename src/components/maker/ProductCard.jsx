@@ -41,6 +41,9 @@ export default function ProductCard({ item }) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[14px] font-semibold text-neutral-900">{p.name || item.text}</p>
+        {item.why_fit && (
+          <p className="mt-1 text-[11.5px] font-medium leading-snug text-emerald-700">Why this fits you: {item.why_fit}</p>
+        )}
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           {p.price && (
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[12px] font-semibold text-emerald-700">
