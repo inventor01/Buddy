@@ -71,12 +71,37 @@ export default function Start() {
   const [phoneMasked, setPhoneMasked] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [authed, setAuthed] = useState(null); // null while checking
+  const [mentionBuddies, setMentionBuddies] = useState([]);
+  const mentionMatch = note.match(/(?:^|\s)@([^\s\[]*)$/);
+  const mentionQuery = mentionMatch ? String(mentionMatch[1] || "").toLowerCase() : null;
+  const mentionChoices = mentionQuery === null
+    ? []
+    : mentionBuddies.filter((b) => b?.name && String(b.name).toLowerCase().includes(mentionQuery)).slice(0, 6);
+  const insertMention = (name) => setNote((current) => current.replace(/(^|\s)@[^\s\[]*$/, (_, lead) => `${lead}@[${name}] `));
 
   // No account needed to try it — things only get saved once someone is
   // signed in.
   useEffect(() => {
     base44.auth.isAuthenticated().then(setAuthed).catch(() => setAuthed(false));
   }, []);
+
+  useEffect(() => {
+    if (authed !== true) {
+      setMentionBuddies([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const user = await base44.auth.me();
+        const rows = await base44.entities.Buddy.filter({ owner_id: user.id }, "-updated_date", 100);
+        if (!cancelled) setMentionBuddies(Array.isArray(rows) ? rows : []);
+      } catch (_) {
+        if (!cancelled) setMentionBuddies([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [authed]);
 
   // Attach a photo — it rides along and gets hunted down like a reverse
   // image search every day.
@@ -452,6 +477,17 @@ export default function Start() {
                 placeholder="What do you want handled?"
                 className="w-full resize-none bg-transparent px-3 pt-2.5 text-[16px] leading-relaxed text-neutral-900 outline-none placeholder:text-neutral-400"
               />
+              {mentionChoices.length > 0 && (
+                <div className="mx-1.5 mb-2 rounded-2xl border border-white/80 bg-white/90 p-1.5 shadow-sm">
+                  <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Connect another thing</p>
+                  {mentionChoices.map((linked) => (
+                    <button key={linked.id} type="button" onClick={() => insertMention(linked.name)} className="flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-[12.5px] text-neutral-700 hover:bg-neutral-50">
+                      <span className="truncate font-medium">@{linked.name}</span>
+                      <span className="ml-3 shrink-0 text-[10.5px] text-neutral-400">use this chat</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {image && (
                 <div className="mx-1.5 mb-1 flex items-center gap-2.5 rounded-xl border border-white/70 bg-white/60 p-2">
                   <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-white/70">
