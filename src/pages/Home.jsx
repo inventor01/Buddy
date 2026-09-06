@@ -9,6 +9,7 @@ import CommandCenter from "@/components/paper/CommandCenter";
 import ThreadView from "@/components/paper/ThreadView";
 import BookPage from "@/components/paper/BookPage";
 import PlanPanel from "@/components/maker/PlanPanel";
+import PaymentSheet from "@/components/paper/PaymentSheet";
 import { readBigText, applyBigText } from "@/lib/bigText";
 import { readPendingNote, clearPendingNote } from "@/lib/pendingNote";
 import { ensureTimezone } from "@/lib/timezone";
@@ -30,6 +31,7 @@ export default function Home() {
   const [pinning, setPinning] = useState(false);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState(null); // note + plan awaiting the run button
+  const [paymentOpen, setPaymentOpen] = useState(false);
 
   const selectedId = params.get("note");
   const selected = (buddies || []).find((b) => b.id === selectedId) || null;
@@ -49,7 +51,9 @@ export default function Home() {
     } catch (_) {
       /* the first reading of the schedule still stands */
     }
-    const createRes = await base44.functions.invoke("createBuddyRecord", {
+    let createRes;
+    try {
+      createRes = await base44.functions.invoke("createBuddyRecord", {
       note: spec.note,
       kind: ["ads", "social"].includes(spec.kind) ? spec.kind : "web",
       run_mode: ["once", "watch", "repeat"].includes(spec.runMode) ? spec.runMode : "once",
@@ -69,7 +73,16 @@ export default function Home() {
       what_line: spec.what,
       how_line: spec.tells,
       schedule_time: scheduleTime,
-    });
+      });
+    } catch (e) {
+      if (e?.response?.data?.upgrade_required) {
+        setPaymentOpen(true);
+        const err = new Error(e?.response?.data?.error || "Your three free handoffs are used. Upgrade to keep handing things off.");
+        err.upgradeRequired = true;
+        throw err;
+      }
+      throw e;
+    }
     const created = createRes.data?.buddy;
     if (!created) throw new Error(createRes.data?.error || "Could not create that thing.");
 
@@ -311,7 +324,9 @@ export default function Home() {
       setParams({ note: saved.id });
       await load();
     } catch (e) {
-      toast({ title: "Something went wrong — try again.", variant: "destructive" });
+      if (!e?.upgradeRequired) {
+        toast({ title: e?.response?.data?.error || e?.message || "Something went wrong — try again.", variant: "destructive" });
+      }
     } finally {
       setSending(false);
     }
@@ -518,6 +533,8 @@ export default function Home() {
           )}
         </main>
       </div>
+
+      <PaymentSheet open={paymentOpen} onClose={() => setPaymentOpen(false)} />
 
       {/* rail — mobile drawer */}
       {railOpen && (
