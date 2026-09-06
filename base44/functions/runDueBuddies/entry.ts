@@ -35,7 +35,7 @@ export default async function(req) {
         } catch (e) {
           owner = null;
         }
-        const lines = await runBuddy({
+        const result = await runBuddy({
           client: base44,
           entityClient: base44.asServiceRole,
           buddy,
@@ -43,7 +43,7 @@ export default async function(req) {
           notifyEmail: !!owner?.notify_email,
           smsPhone: typeof owner?.sms_phone === 'string' ? owner.sms_phone : ''
         });
-        results.push({ id: buddy.id, name: buddy.name, ok: true, count: lines.length });
+        results.push({ id: buddy.id, name: buddy.name, ok: true, count: result.lines.length });
       } catch (e) {
         results.push({ id: buddy.id, name: buddy.name, ok: false, error: String(e.message || e) });
       }
