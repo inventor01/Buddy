@@ -7,6 +7,8 @@ const KINDS = ['web', 'ads', 'social'];
 const CAPABILITIES = ['web', 'gmail', 'calendar', 'tasks'];
 const ACTIONS = ['none', 'email_read', 'email_send', 'calendar_read', 'calendar_create', 'task_create'];
 const APPROVALS = ['not_needed', 'pending', 'approved', 'executing', 'rejected', 'executed', 'failed', 'needs_connection'];
+const BUDDY_REQUEST_MAX = 8000;
+const ACTION_QUERY_MAX = 2000;
 
 function text(v: unknown, max: number) {
   return typeof v === 'string' ? v.trim().slice(0, max) : '';
@@ -20,13 +22,13 @@ function cleanPayload(raw: any) {
   return {
     recipient: clean(raw?.recipient, 200),
     subject: clean(raw?.subject, 200),
-    body: clean(raw?.body, 1200),
-    query: clean(raw?.query, 300),
+    body: clean(raw?.body, 6000),
+    query: clean(raw?.query, ACTION_QUERY_MAX),
     title: clean(raw?.title, 200),
     start: clean(raw?.start, 100),
     end: clean(raw?.end, 100),
     due: clean(raw?.due, 100),
-    notes: clean(raw?.notes, 600),
+    notes: clean(raw?.notes, 2000),
   };
 }
 
@@ -63,7 +65,14 @@ export default async function(req: Request) {
     let body: any = {};
     try { body = await req.json(); } catch (_) { body = {}; }
 
-    const note = text(body.note, 300);
+    const rawNote = typeof body.note === 'string' ? body.note.trim() : '';
+    if (rawNote.length > BUDDY_REQUEST_MAX) {
+      return Response.json(
+        { error: `Keep the request under ${BUDDY_REQUEST_MAX.toLocaleString()} characters.` },
+        { status: 413 }
+      );
+    }
+    const note = rawNote;
     const name = text(body.name, 80);
     if (note.length < 3 || !name) {
       return Response.json({ error: 'This handoff is missing its note or name.' }, { status: 400 });
@@ -104,7 +113,7 @@ export default async function(req: Request) {
       record.context = body.context
         .filter((x: unknown) => typeof x === 'string' && x.trim())
         .slice(0, 5)
-        .map((x: string) => x.trim().slice(0, 300));
+        .map((x: string) => x.trim().slice(0, 2000));
     }
 
     const created = await base44.asServiceRole.entities.Buddy.create(record);
