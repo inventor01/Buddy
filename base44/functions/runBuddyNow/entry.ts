@@ -2,6 +2,104 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { runBuddy, FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines, contextLines } from '../../shared/runBuddy.ts';
 import { runAdsBuddy } from '../../shared/ads.ts';
 import { runSocialBuddy } from '../../shared/social.ts';
+import { secrets } from 'base44:runtime';
+
+async function currentUserConnection(base44, capability) {
+  const envName = capability === 'gmail'
+    ? 'GMAIL_APP_USER_CONNECTOR_ID'
+    : capability === 'calendar'
+      ? 'GOOGLE_CALENDAR_APP_USER_CONNECTOR_ID'
+      : '';
+  const connectorId = envName ? secrets.get(envName) : '';
+  if (!connectorId) return null;
+  try {
+    return await base44.asServiceRole.connectors.getCurrentAppUserConnection(connectorId);
+  } catch (_) {
+    return null;
+  }
+}
+
+async function runConnectedRead({ base44, buddy, message = '' }) {
+  const connection = await currentUserConnection(base44, buddy.capability);
+  if (!connection?.accessToken) {
+    return {
+      lines: [`Connect ${buddy.capability === 'gmail' ? 'Email' : 'Calendar'} in Settings before Buddy can check that.`],
+      items: [],
+      needs_connection: true,
+    };
+  }
+
+  if (buddy.action_type === 'email_read') {
+    const q = String(buddy.action_payload?.query || buddy.note || '').slice(0, 300);
+    const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=8&q=${encodeURIComponent(q)}`, {
+      headers: { Authorization: `Bearer ${connection.accessToken}` },
+    });
+    if (!listRes.ok) throw new Error(`Gmail rejected the read (${listRes.status}).`);
+    const listed = await listRes.json();
+    const messages = Array.isArray(listed?.messages) ? listed.messages.slice(0, 8) : [];
+    const rows = [];
+    for (const m of messages) {
+      const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`, {
+        headers: { Authorization: `Bearer ${connection.accessToken}` },
+      });
+      if (!r.ok) continue;
+      const data = await r.json();
+      const headers = Object.fromEntries((data?.payload?.headers || []).map((h) => [String(h.name || '').toLowerCase(), h.value || '']));
+      rows.push({ from: headers.from || '', subject: headers.subject || '', date: headers.date || '', snippet: data?.snippet || '' });
+    }
+    if (!rows.length) return { lines: ['I did not find matching email.'], items: [] };
+    const summary = await base44.asServiceRole.integrations.Core.InvokeLLM({
+      model: 'gemini_3_flash',
+      prompt: [
+        `Original request: ${buddy.note}`,
+        message ? `Follow-up: ${message}` : '',
+        'Summarize only the email data below. Do not invent details. Return up to 5 short findings.',
+        JSON.stringify(rows),
+      ].filter(Boolean).join('\n'),
+      response_json_schema: FINDINGS_SCHEMA,
+    });
+    const items = toFindingItems(summary?.findings).map((x) => ({ ...x, source: x.source || 'Gmail' }));
+    return { lines: toLines(items), items };
+  }
+
+  if (buddy.action_type === 'calendar_read') {
+    const from = new Date();
+    const to = new Date(from.getTime() + 21 * 24 * 60 * 60 * 1000);
+    const qs = new URLSearchParams({
+      timeMin: from.toISOString(),
+      timeMax: to.toISOString(),
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      maxResults: '40',
+    });
+    const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${qs}`, {
+      headers: { Authorization: `Bearer ${connection.accessToken}` },
+    });
+    if (!r.ok) throw new Error(`Calendar rejected the read (${r.status}).`);
+    const data = await r.json();
+    const events = (Array.isArray(data?.items) ? data.items : []).map((e) => ({
+      title: e.summary || '(untitled)',
+      start: e.start?.dateTime || e.start?.date || '',
+      end: e.end?.dateTime || e.end?.date || '',
+      location: e.location || '',
+    }));
+    const summary = await base44.asServiceRole.integrations.Core.InvokeLLM({
+      model: 'gemini_3_flash',
+      prompt: [
+        `Original request: ${buddy.note}`,
+        message ? `Follow-up: ${message}` : '',
+        'Use only these calendar events. Answer the requested day/time window exactly and do not invent events.',
+        JSON.stringify(events),
+      ].filter(Boolean).join('\n'),
+      response_json_schema: FINDINGS_SCHEMA,
+    });
+    const items = toFindingItems(summary?.findings).map((x) => ({ ...x, source: x.source || 'Calendar' }));
+    if (!items.length) return { lines: ['Nothing matching that time window is on your calendar.'], items: [] };
+    return { lines: toLines(items), items };
+  }
+
+  return { lines: ['That connected read is not supported yet.'], items: [] };
+}
 
 // "Run now" — two modes:
 //   1. buddyId only → standard daily run (same as the scheduler).
@@ -41,6 +139,60 @@ export default async function (req) {
         await base44.entities.Buddy.update(buddyId, { context, open_question: '' });
         buddy.context = context;
         buddy.open_question = '';
+      }
+
+      // A multi-step handoff waits until the user chooses/decides, then
+      // turns that choice into a concrete action that still requires approval.
+      if (buddy.deferred_action === true && ['email_send', 'calendar_create', 'task_create'].includes(buddy.action_type)) {
+        const recent = (Array.isArray(buddy.messages) ? buddy.messages : []).slice(-8).map((m) => `${m.who}: ${m.text}`).join('\n');
+        const resolved = await base44.asServiceRole.integrations.Core.InvokeLLM({
+          model: 'gemini_3_flash',
+          prompt: [
+            `Original request: ${buddy.note}`,
+            `Waiting action: ${buddy.action_type}`,
+            `User's new choice/instruction: ${userMessage}`,
+            recent ? `Recent conversation:\n${recent}` : '',
+            'Resolve the exact action payload from the user’s choice. Never invent a recipient, selected option, date, time, price, or commitment.',
+            'If a required detail is still missing, ready=false and ask one short question. Otherwise ready=true.',
+          ].filter(Boolean).join('\n'),
+          response_json_schema: {
+            type: 'object',
+            properties: {
+              ready: { type: 'boolean' },
+              question: { type: 'string' },
+              action_payload: {
+                type: 'object',
+                properties: {
+                  recipient: { type: 'string' }, subject: { type: 'string' }, body: { type: 'string' },
+                  title: { type: 'string' }, start: { type: 'string' }, end: { type: 'string' },
+                  due: { type: 'string' }, notes: { type: 'string' }, query: { type: 'string' },
+                },
+              },
+            },
+            required: ['ready'],
+          },
+        });
+        if (resolved?.ready !== true) {
+          const q = String(resolved?.question || 'What should I use for that last step?').slice(0, 200);
+          return Response.json({ lines: [q], items: [] });
+        }
+        const payload = resolved?.action_payload && typeof resolved.action_payload === 'object' ? resolved.action_payload : {};
+        await base44.entities.Buddy.update(buddy.id, {
+          action_payload: payload,
+          deferred_action: false,
+          approval_status: 'pending',
+        });
+        return Response.json({
+          lines: ['I have the next step ready. Review it before I do anything.'],
+          items: [],
+          approval_pending: true,
+          buddy_patch: { action_payload: payload, deferred_action: false, approval_status: 'pending' },
+        });
+      }
+
+      if (buddy.action_type === 'email_read' || buddy.action_type === 'calendar_read') {
+        const read = await runConnectedRead({ base44, buddy, message: userMessage });
+        return Response.json(read);
       }
 
       // Ad notes answer from the person's live ad account, not the web —
@@ -110,7 +262,14 @@ export default async function (req) {
       return Response.json({ lines, items });
     }
 
-    // ── Mode 1: standard scheduled run ───────────────────────────────────
+    // ── Mode 1: standard run ─────────────────────────────────────────────
+    // Deferred writes first perform their research/planning step; they do not
+    // touch the outside service until a later user choice resolves them.
+    if (!buddy.deferred_action && (buddy.action_type === 'email_read' || buddy.action_type === 'calendar_read')) {
+      const read = await runConnectedRead({ base44, buddy });
+      return Response.json(read);
+    }
+
     const result = await runBuddy({
       client: base44,
       entityClient: base44,
