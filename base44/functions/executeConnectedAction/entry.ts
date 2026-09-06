@@ -110,7 +110,7 @@ export default async function(req: Request) {
     if (!buddyId) return Response.json({ error: 'Missing handoff id.' }, { status: 400 });
 
     const buddy = await base44.entities.Buddy.get(buddyId);
-    if (!buddy || buddy.created_by_id !== user.id) {
+    if (!buddy || buddy.owner_id !== user.id) {
       return Response.json({ error: 'That handoff is not yours.' }, { status: 403 });
     }
 
