@@ -8,6 +8,7 @@ import { secrets } from "base44:runtime";
 import { parseDelivery } from "./plan.ts";
 import { runAdsBuddy } from "./ads.ts";
 import { runSocialBuddy } from "./social.ts";
+import { isWholesalePropertyRequest, runWholesaleDealFinder } from "./realEstate.ts";
 
 // The clock where the person actually is. A note set for 9 in the morning
 // should run at their 9, and "already ran today" means their today — so both
@@ -100,6 +101,19 @@ export const FINDINGS_SCHEMA = {
           source_name: { type: "string" },
           url: { type: "string" },
           why_fit: { type: "string" },
+          deal: {
+            type: "object",
+            properties: {
+              address: { type: "string" }, zip_code: { type: "string" }, property_type: { type: "string" },
+              list_price: { type: "number" }, arv: { type: "number" }, arv_low: { type: "number" }, arv_high: { type: "number" },
+              repairs: { type: "number" }, repair_basis: { type: "string" }, flipper_max: { type: "number" }, max_contract: { type: "number" },
+              assignment_fee: { type: "number" }, investor_arv_percent: { type: "number" }, deal_score: { type: "number" },
+              days_on_market: { type: "number" }, price_cuts: { type: "number" }, listing_type: { type: "string" },
+              square_footage: { type: "number" }, bedrooms: { type: "number" }, bathrooms: { type: "number" },
+              listing_url: { type: "string" }, listing_source: { type: "string" }, image_url: { type: "string" }, caveat: { type: "string" },
+              comps: { type: "array", items: { type: "object", properties: { address: { type: "string" }, price: { type: "number" }, distance: { type: "number" }, correlation: { type: "number" } } } }
+            }
+          },
           product: {
             type: "object",
             properties: {
@@ -144,6 +158,21 @@ export function toFindingItems(raw) {
         /* the hostname is a nicety, not a requirement */
       }
     }
+    let deal = null;
+    const d = f && typeof f === "object" ? f.deal : null;
+    if (d && typeof d === "object" && typeof d.address === "string" && Number(d.arv) > 0) {
+      deal = {
+        address: d.address.slice(0, 160), zip_code: String(d.zip_code || '').slice(0, 12), property_type: String(d.property_type || '').slice(0, 60),
+        list_price: Number(d.list_price) || 0, arv: Number(d.arv) || 0, arv_low: Number(d.arv_low) || 0, arv_high: Number(d.arv_high) || 0,
+        repairs: Number(d.repairs) || 0, repair_basis: String(d.repair_basis || '').slice(0, 120), flipper_max: Number(d.flipper_max) || 0,
+        max_contract: Number(d.max_contract) || 0, assignment_fee: Number(d.assignment_fee) || 0, investor_arv_percent: Number(d.investor_arv_percent) || 0,
+        deal_score: Number(d.deal_score) || 0, days_on_market: Number(d.days_on_market) || 0, price_cuts: Number(d.price_cuts) || 0,
+        listing_type: String(d.listing_type || '').slice(0, 60), square_footage: Number(d.square_footage) || 0, bedrooms: Number(d.bedrooms) || 0,
+        bathrooms: Number(d.bathrooms) || 0, listing_url: /^https?:\/\//i.test(String(d.listing_url || '')) ? String(d.listing_url).slice(0, 500) : '',
+        listing_source: String(d.listing_source || '').slice(0, 60), image_url: /^https?:\/\//i.test(String(d.image_url || '')) ? String(d.image_url).slice(0, 500) : '',
+        caveat: String(d.caveat || '').slice(0, 400), comps: Array.isArray(d.comps) ? d.comps.slice(0, 5).map((c) => ({ address: String(c?.address || '').slice(0, 140), price: Number(c?.price) || 0, distance: Number(c?.distance) || 0, correlation: Number(c?.correlation) || 0 })).filter((c) => c.address && c.price) : []
+      };
+    }
     // A product finding carries its own card data: name, image, price, stock.
     // Only a real purchasable thing becomes a card — it needs an actual
     // price or product photo. Anything else stays a plain finding.
@@ -178,7 +207,7 @@ export function toFindingItems(raw) {
         };
       }
     }
-    items.push({ text, url, source, why_fit, product });
+    items.push({ text, url, source, why_fit, deal, product });
     if (items.length >= 5) break;
   }
   return items;
@@ -220,7 +249,9 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
       ? buddy.image_url.trim()
       : "";
   let findings;
-  if (buddy.kind === "ads") {
+  if (buddy.kind === "web" && isWholesalePropertyRequest(`${buddy.note || ''} ${buddy.what_line || ''}`)) {
+    findings = await runWholesaleDealFinder({ base44: client, buddy });
+  } else if (buddy.kind === "ads") {
     // Ad notes read the person's own ad account, not the web — the
     // token they pasted in Settings decides what they can touch.
     findings = await runAdsBuddy({
