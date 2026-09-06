@@ -107,9 +107,10 @@ export default function Home() {
 
       if (pending.phone) {
         try {
-          await base44.auth.updateMe({ sms_phone: pending.phone });
+          const phone = await base44.functions.invoke("phoneVerification", { action: "start", phone: pending.phone });
+          toast({ title: `We sent a confirmation code to ${phone.data?.phone_masked || "your phone"}. Confirm it in Settings before Buddy texts you.` });
         } catch (_) {
-          /* they can set the number again in settings */
+          toast({ title: "Your request is saved. Confirm your phone in Settings if you want text updates." });
         }
       }
       setSending(true);
