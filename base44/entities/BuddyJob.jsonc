@@ -81,6 +81,15 @@
           "confidence": {
             "type": "number"
           },
+          "latency_ms": {
+            "type": "number"
+          },
+          "attempted_providers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "error": {
             "type": "string"
           }
