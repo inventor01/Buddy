@@ -23,6 +23,7 @@ export default function Home() {
   const [profile, setProfile] = useState(null);
   const [receipts, setReceipts] = useState([]);
   const [escalations, setEscalations] = useState([]);
+  const [jobs, setJobs] = useState([]);
   const [view, setView] = useState("notes");
   const [railOpen, setRailOpen] = useState(false);
   const [bigText, setBigText] = useState(readBigText());
@@ -174,6 +175,12 @@ export default function Home() {
         setEscalations(Array.isArray(rows) ? rows : []);
       } catch (_) {
         setEscalations([]);
+      }
+      try {
+        const rows = await base44.entities.BuddyJob.filter({ owner_id: user.id }, "-started_at", 50);
+        setJobs(Array.isArray(rows) ? rows : []);
+      } catch (_) {
+        setJobs([]);
       }
       await claimPendingNote(user, list);
     } catch (e) {
@@ -431,6 +438,7 @@ export default function Home() {
               buddy={selected}
               profile={profile}
               receipt={receipts.find((r) => r.buddy_id === selected.id) || null}
+              job={jobs.find((j) => j.buddy_id === selected.id) || null}
               onPause={togglePause}
               onTakeDown={takeDown}
               onEditNote={editNote}
