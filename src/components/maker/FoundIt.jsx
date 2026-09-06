@@ -22,7 +22,7 @@ const rise = {
   show: { opacity: 1, y: 0, transition: { duration: 0.28, ease: "easeOut" } },
 };
 
-function cleanItems(result) {
+function cleanItems(result, state) {
   if (Array.isArray(result?.items) && result.items.length) {
     return result.items
       .map((it) => ({
@@ -33,6 +33,7 @@ function cleanItems(result) {
       }))
       .filter((it) => it.text);
   }
+  if (state !== "answer") return [];
   return String(result?.text || "")
     .split("\n")
     .map((text) => text.trim())
@@ -72,8 +73,8 @@ function ResultRow({ item, index }) {
 }
 
 export default function FoundIt({ result, runMode = "once", onContinue, onRestart }) {
-  const items = useMemo(() => cleanItems(result), [result]);
   const state = result?.state || "answer";
+  const items = useMemo(() => cleanItems(result, state), [result, state]);
   const isError = state === "error";
   const needsDetail = state === "needs_detail";
   const needsConnection = state === "needs_connection";
