@@ -21,14 +21,20 @@ export async function resolveBuddyMentions(base44: any, userId: string, text: un
   const mentions = parseBuddyMentions(text);
   if (!userId || !mentions.length) return { ids: [], names: [], unresolved: [], buddies: [] };
 
-  const owned = await base44.asServiceRole.entities.Buddy.filter({ owner_id: userId }, '-updated_date', 100);
-  const rows = Array.isArray(owned) ? owned : [];
+  const recent = await base44.asServiceRole.entities.Buddy.filter({ owner_id: userId }, '-updated_date', 100);
+  const recentRows = Array.isArray(recent) ? recent : [];
   const matched: any[] = [];
   const unresolved: string[] = [];
 
   for (const mention of mentions) {
     const key = normalizeName(mention);
-    const exact = rows.find((b) => normalizeName(b?.name) === key);
+    let exact = recentRows.find((b) => normalizeName(b?.name) === key);
+    if (!exact) {
+      try {
+        const rows = await base44.asServiceRole.entities.Buddy.filter({ owner_id: userId, name: mention }, '-updated_date', 2);
+        exact = (Array.isArray(rows) ? rows : []).find((b) => normalizeName(b?.name) === key);
+      } catch (_) {}
+    }
     if (exact) matched.push(exact);
     else unresolved.push(mention);
   }
@@ -45,9 +51,15 @@ export async function resolveBuddyMentions(base44: any, userId: string, text: un
 export async function loadLinkedBuddies(base44: any, userId: string, linkedIds: unknown) {
   const ids = Array.isArray(linkedIds) ? linkedIds.filter((x) => typeof x === 'string' && x).slice(0, MAX_LINKS) : [];
   if (!userId || !ids.length) return [];
-  const owned = await base44.asServiceRole.entities.Buddy.filter({ owner_id: userId }, '-updated_date', 100);
-  const rows = Array.isArray(owned) ? owned : [];
-  return ids.map((id) => rows.find((b) => b?.id === id)).filter(Boolean);
+  const rows = await Promise.all(ids.map(async (id) => {
+    try {
+      const buddy = await base44.asServiceRole.entities.Buddy.get(id);
+      return buddy?.owner_id === userId ? buddy : null;
+    } catch (_) {
+      return null;
+    }
+  }));
+  return rows.filter(Boolean);
 }
 
 function linkedSummary(buddy: any) {
