@@ -211,8 +211,12 @@ async function runBase44Research(base44: any, instruction: string, goal: string,
 async function executeStep({ base44, buddy, step, goal, priorResults = [] }: any) {
   const ready = providerReadiness();
   const capability = providerCapability(step.kind);
-  const priorContext = priorResults.length
-    ? priorResults.map((r: any, index: number) => `Previous step ${index + 1} (${r.provider || 'worker'}):\n${trim(r.output, 4500)}`).join('\n\n')
+  const dependencyIds = new Set(Array.isArray(step.depends_on) ? step.depends_on.filter(Boolean) : []);
+  const dependencyResults = dependencyIds.size
+    ? priorResults.filter((r: any) => dependencyIds.has(r.step_id))
+    : priorResults;
+  const priorContext = dependencyResults.length
+    ? dependencyResults.map((r: any, index: number) => `Dependency output ${index + 1} (${r.provider || 'worker'}):\n${trim(r.output, 4500)}`).join('\n\n')
     : '';
   const instructionWithInputs = priorContext
     ? `${step.instruction}\n\nUse these completed dependency outputs as input. Do not ignore or redo them unless verification requires it:\n${priorContext}`
@@ -353,7 +357,7 @@ export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], 
       await base44.asServiceRole.entities.BuddyJob.update(job.id, { steps });
       try {
         const r = await executeStep({ base44, buddy, step, goal, priorResults: results });
-        results.push(r);
+        results.push({ ...r, step_id: step.id });
         providers.push(r.provider);
         if (r.used_fallback) fallbackCount += 1;
         steps[i] = { ...step, provider: r.provider, status: 'completed', output: trim(r.output, 8000), evidence_urls: (r.urls || []).slice(0, 12), confidence: r.confidence || 0, latency_ms: r.latency_ms || 0, attempted_providers: r.attempted_providers || [r.provider] };
