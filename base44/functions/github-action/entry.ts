@@ -41,6 +41,9 @@ export default async function (req: Request) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    // Legacy maintenance endpoint: it uses one app-wide GitHub credential.
+    // Never expose that credential's repositories/actions to ordinary users.
+    if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     const token = secrets.get('GITHUB_TOKEN');
     if (!token) {
