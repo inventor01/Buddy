@@ -1,0 +1,45 @@
+{
+  "name": "UsageBucket",
+  "type": "object",
+  "properties": {
+    "bucket_key": {
+      "type": "string",
+      "description": "Hashed/derived quota bucket key such as IP+minute or user+day."
+    },
+    "count": {
+      "type": "number",
+      "default": 0
+    },
+    "expires_at": {
+      "type": "string",
+      "description": "ISO timestamp after which this bucket is stale."
+    }
+  },
+  "required": [
+    "bucket_key",
+    "count",
+    "expires_at"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -85,6 +85,7 @@
         "not_needed",
         "pending",
         "approved",
+        "executing",
         "rejected",
         "executed",
         "failed",
