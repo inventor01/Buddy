@@ -6,9 +6,9 @@ import { base44 } from "@/api/base44Client";
 // Payments handles the card on its own secure checkout page, so this
 // sheet sells the plan and starts checkout; it never touches card data.
 const INCLUDED = [
-  "Unlimited notes — as many things as you like",
-  "Everyone you look after, included",
-  "A weekly page of your book",
+  "Unlimited handoffs — as many things as you like",
+  "More room for the things you want handled",
+  "Your history stays organized in one place",
 ];
 
 export default function PaymentSheet({ open, onClose }) {
@@ -56,7 +56,7 @@ export default function PaymentSheet({ open, onClose }) {
             <span className="text-[14px] text-neutral-500">a month</span>
           </p>
           <p className="mt-1 text-center text-[13.5px] text-neutral-500">
-            Three notes are free. Pro is everything, unlimited.
+            Three things are free. Pro gives you unlimited handoffs.
           </p>
 
           <div className="mt-6 space-y-2.5">
@@ -81,7 +81,7 @@ export default function PaymentSheet({ open, onClose }) {
           </button>
           {error && <p className="mt-2 text-center text-[12px] text-red-600">{error}</p>}
           <p className="mt-2 text-center text-[11.5px] text-neutral-400">
-            Cancel in one tap. Notes run to month's end.
+            Cancel anytime.
           </p>
 
           <div className="my-5 border-t border-white/70" />
@@ -94,7 +94,7 @@ export default function PaymentSheet({ open, onClose }) {
             Continue browsing
           </button>
           <p className="mt-1.5 text-center text-[11.5px] text-neutral-400">
-            Your three free notes keep running either way.
+            Your three free things stay available either way.
           </p>
         </div>
       </div>
