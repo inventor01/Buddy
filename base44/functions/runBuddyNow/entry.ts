@@ -126,8 +126,8 @@ export default async function (req) {
     if (!buddyId) return Response.json({ error: 'Which buddy should run? (buddyId is required)' }, { status: 400 });
 
     const buddy = await base44.entities.Buddy.get(buddyId);
-    if (!buddy || buddy.created_by_id !== user.id) {
-      return Response.json({ error: 'That buddy is not yours' }, { status: 403 });
+    if (!buddy || buddy.owner_id !== user.id) {
+      return Response.json({ error: 'That Buddy is not yours.' }, { status: 403 });
     }
 
     // ── Mode 2: user sent a specific message ──────────────────────────────
