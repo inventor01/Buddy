@@ -358,6 +358,27 @@ export default function Home() {
     }
   };
 
+  const continueChain = async (b) => {
+    if (!b?.id || sending) return;
+    setSending(true);
+    try {
+      const res = await base44.functions.invoke("runBuddyNow", { buddyId: b.id });
+      const lines = res.data?.lines || [];
+      const items = res.data?.items || [];
+      const serverPatch = res.data?.buddy_patch && typeof res.data.buddy_patch === "object" ? res.data.buddy_patch : {};
+      const noteMsg = lines.length ? { who: "note", at: new Date().toISOString(), text: lines.join("\n"), items } : null;
+      const messages = noteMsg ? [...(b.messages || []), noteMsg] : (b.messages || []);
+      const patch = { ...serverPatch, ...(noteMsg ? { messages } : {}) };
+      if (noteMsg) await base44.entities.Buddy.update(b.id, { messages });
+      setBuddies((prev) => prev.map((x) => (x.id === b.id ? { ...x, ...patch } : x)));
+      await load();
+    } catch (e) {
+      toast({ title: e?.response?.data?.error || "Buddy couldn't continue that chain — try again.", variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
+
   const sendInThread = async (b, text) => {
     setSending(true);
     try {
@@ -460,6 +481,7 @@ export default function Home() {
               onSend={sendInThread}
               onApprove={(b) => decideAction(b, true)}
               onReject={(b) => decideAction(b, false)}
+              onContinueChain={continueChain}
               busy={sending}
             />
           ) : draft ? (
