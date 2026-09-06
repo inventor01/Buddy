@@ -213,7 +213,7 @@ async function sendSms(to, body) {
   return true;
 }
 
-export async function runBuddy({ client, entityClient, buddy, userEmail, notifyEmail, smsPhone, timeZone, metaToken, metaAccount, metaPage, personalFacts = [] }) {
+export async function runBuddy({ client, entityClient, buddy, userEmail, notifyEmail, smsPhone, timeZone, metaToken, metaAccount, metaPage, personalFacts = [], delegationLines = [] }) {
   // A photo pinned to the note rides along every run — reverse-search style.
   const imageUrl =
     typeof buddy.image_url === "string" && /^https?:\/\//i.test(buddy.image_url.trim())
@@ -257,6 +257,7 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
         ...personalFacts.slice(0, 12).map((f) => "- " + String(f).slice(0, 220)),
         "When a remembered preference affects the recommendation, explain that briefly in the result when useful."
       ] : []),
+      ...(Array.isArray(delegationLines) ? delegationLines : []),
       ...contextLines(buddy),
       ...(imageUrl
         ? [
