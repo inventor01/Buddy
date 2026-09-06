@@ -171,10 +171,17 @@ export default function Home() {
     try {
       const youMsg = { who: "you", at: new Date().toISOString(), text };
       let msgs = [...(b.messages || []), youMsg];
+      // Optimistically show the user's message immediately
       setBuddies((p) => p.map((x) => (x.id === b.id ? { ...x, messages: msgs } : x)));
       await base44.entities.Buddy.update(b.id, { messages: msgs });
+
+      // Pass the user's actual message so the buddy answers what was asked,
+      // not just re-runs its original note.
       try {
-        const res = await base44.functions.invoke("runBuddyNow", { buddyId: b.id });
+        const res = await base44.functions.invoke("runBuddyNow", {
+          buddyId: b.id,
+          message: text,
+        });
         const lines = res.data?.lines || [];
         if (lines.length) {
           const foundItems = res.data?.items || [];
@@ -185,8 +192,10 @@ export default function Home() {
             items: foundItems,
           };
           msgs = [...msgs, noteMsg];
-          setBuddies((p) => p.map((x) => (x.id === b.id ? { ...x, messages: msgs, last_result: lines } : x)));
-          await base44.entities.Buddy.update(b.id, { messages: msgs, last_result: lines });
+          setBuddies((p) => p.map((x) => (x.id === b.id ? { ...x, messages: msgs } : x)));
+          // Only update last_result when this is a fresh scheduled run (no user message);
+          // conversation replies don't overwrite the daily summary.
+          await base44.entities.Buddy.update(b.id, { messages: msgs });
         }
       } catch (e) {
         toast({ title: "That run didn't finish — try again.", variant: "destructive" });
