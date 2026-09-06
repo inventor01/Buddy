@@ -137,6 +137,50 @@ async function runConnectedRead({ base44, buddy, message = '' }) {
   }
 
   if (buddy.action_type === 'email_read') {
+    const threadId = String(buddy.action_payload?.thread_id || buddy.chain_state?.gmail_thread_id || '').trim();
+    if (threadId) {
+      const threadRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${encodeURIComponent(threadId)}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`, {
+        headers: { Authorization: `Bearer ${connection.accessToken}` },
+      });
+      if (!threadRes.ok) throw new Error(`Gmail rejected the thread read (${threadRes.status}).`);
+      const thread = await threadRes.json();
+      const allMessages = Array.isArray(thread?.messages) ? thread.messages : [];
+      const baseline = Math.max(0, Number(buddy.chain_state?.gmail_message_count) || 0);
+      const newMessages = allMessages.slice(Math.min(baseline, allMessages.length));
+      const rows = newMessages.map((data) => {
+        const headers = Object.fromEntries((data?.payload?.headers || []).map((h) => [String(h.name || '').toLowerCase(), h.value || '']));
+        return { id: data.id || '', from: headers.from || '', to: headers.to || '', subject: headers.subject || '', date: headers.date || '', snippet: data?.snippet || '' };
+      }).filter((row) => row.from || row.snippet);
+      if (!rows.length) {
+        return {
+          lines: ['No new reply yet.'],
+          items: [],
+          no_new_reply: true,
+          raw_rows: [],
+          thread_id: threadId,
+          thread_message_count: allMessages.length,
+        };
+      }
+      const summary = await base44.asServiceRole.integrations.Core.InvokeLLM({
+        model: 'gemini_3_flash',
+        prompt: [
+          `Original request: ${buddy.note}`,
+          message ? `Follow-up: ${message}` : '',
+          'Summarize only the new email replies below. Do not invent details. Return up to 5 short findings.',
+          JSON.stringify(rows),
+        ].filter(Boolean).join('\n'),
+        response_json_schema: FINDINGS_SCHEMA,
+      });
+      const items = toFindingItems(summary?.findings).map((x) => ({ ...x, source: x.source || 'Gmail' }));
+      return {
+        lines: items.length ? toLines(items) : ['A new reply came in.'],
+        items,
+        raw_rows: rows,
+        thread_id: threadId,
+        thread_message_count: allMessages.length,
+      };
+    }
+
     const q = String(buddy.action_payload?.query || buddy.note || '').slice(0, ACTION_QUERY_MAX);
     const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=8&q=${encodeURIComponent(q)}`, {
       headers: { Authorization: `Bearer ${connection.accessToken}` },
@@ -206,6 +250,44 @@ async function runConnectedRead({ base44, buddy, message = '' }) {
   }
 
   return { lines: ['That connected read is not supported yet.'], items: [] };
+}
+
+async function prepareReplyFromThread(base44: any, buddy: any, rows: any[], threadId: string) {
+  const latest = Array.isArray(rows) && rows.length ? rows[rows.length - 1] : null;
+  if (!latest) return null;
+  const emailMatch = String(latest.from || '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  const recipient = emailMatch?.[0] || '';
+  if (!recipient) return null;
+  const drafted = await base44.asServiceRole.integrations.Core.InvokeLLM({
+    model: 'gemini_3_flash',
+    prompt: [
+      `Original goal: ${buddy.note}`,
+      ...taskStepPromptLines(buddy.task_steps),
+      'New reply data:',
+      JSON.stringify(rows).slice(0, 12000),
+      'Decide whether a response is useful for the original goal. If yes, draft a concise plain-text reply using only supported facts. Never invent an agreement, price, deadline, promise, or commitment.',
+      'Do not send anything. The draft will be shown for approval first.',
+    ].join('\n'),
+    response_json_schema: {
+      type: 'object',
+      properties: {
+        should_reply: { type: 'boolean' },
+        body: { type: 'string' },
+        reason: { type: 'string' },
+      },
+      required: ['should_reply', 'body'],
+    },
+  });
+  if (drafted?.should_reply !== true || !String(drafted?.body || '').trim()) return null;
+  const rawSubject = String(latest.subject || buddy.action_payload?.subject || '').trim();
+  const subject = /^re:/i.test(rawSubject) ? rawSubject : rawSubject ? `Re: ${rawSubject}` : 'Re: Your message';
+  return {
+    recipient,
+    subject: subject.slice(0, 200),
+    body: String(drafted.body).trim().slice(0, 6000),
+    query: String(buddy.action_payload?.query || '').slice(0, 2000),
+    thread_id: threadId,
+  };
 }
 
 // "Run now" — two modes:
