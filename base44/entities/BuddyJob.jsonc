@@ -1,0 +1,124 @@
+{
+  "name": "BuddyJob",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string"
+    },
+    "buddy_id": {
+      "type": "string"
+    },
+    "goal": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "running",
+        "needs_user",
+        "needs_approval",
+        "completed",
+        "failed"
+      ],
+      "default": "planned"
+    },
+    "complexity": {
+      "type": "number"
+    },
+    "started_at": {
+      "type": "string"
+    },
+    "completed_at": {
+      "type": "string"
+    },
+    "attempt_count": {
+      "type": "number",
+      "default": 0
+    },
+    "fallback_count": {
+      "type": "number",
+      "default": 0
+    },
+    "providers_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "target_url": {
+            "type": "string"
+          },
+          "output": {
+            "type": "string"
+          },
+          "evidence_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "verification_summary": {
+      "type": "string"
+    },
+    "final_summary": {
+      "type": "string"
+    },
+    "final_items_json": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_id",
+    "buddy_id",
+    "goal",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "data.owner_id": "{{user.id}}"
+    }
+  }
+}

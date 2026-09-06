@@ -1,0 +1,58 @@
+{
+  "name": "PhoneIdentity",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string"
+    },
+    "phone_e164": {
+      "type": "string"
+    },
+    "verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "verified_at": {
+      "type": "string"
+    },
+    "code_hash": {
+      "type": "string"
+    },
+    "code_expires_at": {
+      "type": "string"
+    },
+    "attempts": {
+      "type": "number",
+      "default": 0
+    },
+    "resend_after": {
+      "type": "string"
+    },
+    "last_sent_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_id",
+    "phone_e164",
+    "verified"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "data.owner_id": "{{user.id}}"
+    }
+  }
+}
