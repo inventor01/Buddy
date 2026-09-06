@@ -36,12 +36,17 @@ export default async function(req) {
         'Pick the best creature:',
         'sam = shopping, errands, deals. sid = stores, products, prices. bells = dates, birthdays, greetings, reminders. med = medications, health check-ins.',
         'Give the thing a short, friendly two-word title a normal person would understand (like "Miami Flights" or "Renewal Watch").',
-        'when_line = when it happens. For once, use something like "Right now". For watch/repeat, use the clearest timing from the request.'
-        'when_line = when it happens (e.g. "Every morning at 9").',
+        'Choose run_mode from these meanings:',
+        'once = handle this now and finish. Use this for one-time research, comparisons, summaries, planning, or finding something now.',
+        'watch = keep checking until something meaningful changes or a condition is met. Use this for price drops, openings, availability, deadlines, and "tell me when" requests.',
+        'repeat = do the same useful thing on an ongoing schedule. Use this for daily, weekly, monthly, or recurring briefs and reminders.',
+        'If the user does not ask for ongoing checking or repetition, prefer once.',
+        'Write three plain lines a grandparent could understand:',
+        'when_line = when it happens. For once, use "Right now". For watch/repeat, use the clearest timing from the request.',
         'what_line = what it does, in one sentence.',
-        'how_line = how it tells you (e.g. "Pins the answer back and emails you").',
-        'schedule_time = the time it runs, like "9:00 AM".',
-        'If a detail the daily job truly needs is missing (which account, whose birthday, which store, a number to watch), question = ONE short friendly question asking the user for exactly that, in plain words. If the note is specific enough already, question = "".'
+        'how_line = how it gets the result back to the person (for example "Shows the answer here and texts you when it matters").',
+        'schedule_time = the time it should check. For once with no time, use the current/default time "9:00 AM" because it will run immediately anyway.',
+        'If a detail the job truly needs is missing (which account, whose birthday, which store, a date, or a number to watch), question = ONE short friendly question asking for exactly that, in plain words. If it is specific enough already, question = "".'
       ].join('\n'),
       response_json_schema: {
         type: 'object',
