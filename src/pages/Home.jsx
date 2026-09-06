@@ -214,17 +214,6 @@ export default function Home() {
     if (!d || sending) return;
     setSending(true);
     try {
-      let scheduleTime = d.plan.scheduleTime || "9:00 AM";
-      try {
-        const rec = await base44.functions.invoke("recompilePlan", {
-          when_line: d.lines.when,
-          what_line: d.lines.what,
-          how_line: d.lines.tells,
-        });
-        if (rec.data?.schedule_time) scheduleTime = rec.data.schedule_time;
-      } catch (_) {
-        /* the first reading of the schedule still stands */
-      }
       const saved = await createNoteAndRun({
         note: d.note,
         image: d.image,
@@ -233,7 +222,7 @@ export default function Home() {
         when: d.lines.when,
         what: d.lines.what,
         tells: d.lines.tells,
-        scheduleTime,
+        scheduleTime: d.plan.scheduleTime,
       });
 
       setBuddies((prev) => [saved, ...(prev ?? [])]);
