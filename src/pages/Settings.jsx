@@ -24,6 +24,8 @@ export default function Settings() {
   const [verifyingPhone, setVerifyingPhone] = useState(false);
   const [abilities, setAbilities] = useState([]);
   const [propertyDataReady, setPropertyDataReady] = useState(false);
+  const [phoneVerificationReady, setPhoneVerificationReady] = useState(null);
+  const [specialists, setSpecialists] = useState({});
   const [connecting, setConnecting] = useState("");
   const [profile, setProfile] = useState(null);
   const [profileDraft, setProfileDraft] = useState({ display_name: "", home_city: "", home_airport: "", travel_preferences: "", shopping_preferences: "", general_preferences: "" });
@@ -100,6 +102,8 @@ export default function Settings() {
           const res = await base44.functions.invoke("connectionSetup", {});
           setAbilities(res.data?.abilities || []);
           setPropertyDataReady(!!res.data?.property_data_ready);
+          setPhoneVerificationReady(!!res.data?.phone_verification_ready);
+          setSpecialists(res.data?.specialists || {});
         } catch (_) {
           setAbilities([]);
         }
@@ -460,7 +464,7 @@ export default function Settings() {
                       <button
                         type="button"
                         onClick={sendPhoneCode}
-                        disabled={savingPhone || !smsPhone.trim()}
+                        disabled={savingPhone || !smsPhone.trim() || phoneVerificationReady === false}
                         className="flex items-center gap-1.5 rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-sm text-neutral-800 transition-colors hover:bg-white disabled:opacity-50"
                       >
                         {savingPhone && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -490,6 +494,7 @@ export default function Settings() {
                   </>
                 )}
 
+                {phoneVerificationReady === false && <p className="mt-2 text-xs text-amber-700">Text confirmation is not configured on this Buddy environment yet.</p>}
                 {phoneError && <p className="mt-2 text-xs text-red-600">{phoneError}</p>}
                 <p className="mt-2 text-xs text-neutral-400">Only confirmed numbers receive Buddy texts. Codes expire after 10 minutes.</p>
               </div>
