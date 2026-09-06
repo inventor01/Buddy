@@ -43,9 +43,10 @@ export default async function(req: Request) {
 
     const quota = await checkUsageLimit({ base44, req, scope: 'create-thing', minuteLimit: 10, dayLimit: 60 });
     if (!quota.ok) {
+      const retryAfter = Number(quota.retryAfter || 60);
       return Response.json(
-        { error: 'Too many new things right now. Try again shortly.' },
-        { status: 429, headers: { 'Retry-After': String(quota.retryAfter || 60) } }
+        { error: 'Buddy is creating too many new handoffs right now. Try again shortly.', code: 'RATE_LIMITED', retry_after: retryAfter },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
       );
     }
 
