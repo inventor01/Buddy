@@ -1,26 +1,35 @@
 {
+  "name": "User",
   "properties": {
-    "role": {
-      "type": "string",
-      "description": "The role of the user in the app",
-      "enum": [
-        "admin",
-        "user"
-      ]
+    "notify_email": {
+      "default": false,
+      "description": "Email me the answers \u2014 when a note finds something, send the findings to the account email.",
+      "type": "boolean"
     },
     "plan": {
-      "type": "string",
+      "default": "free",
       "description": "Whether the user has Pro: 'pro' or 'free'. Set by the payments webhook when a subscription is approved, and revoked when it ends.",
       "enum": [
         "free",
         "pro"
       ],
-      "default": "free"
+      "type": "string"
+    },
+    "role": {
+      "description": "The role of the user in the app",
+      "enum": [
+        "admin",
+        "user"
+      ],
+      "type": "string"
+    },
+    "sms_phone": {
+      "description": "Phone number in E.164 form (like +15551234567) that notes text their findings to. Empty means texts are off.",
+      "type": "string"
     }
   },
   "required": [
     "role"
   ],
-  "name": "User",
   "type": "object"
 }
