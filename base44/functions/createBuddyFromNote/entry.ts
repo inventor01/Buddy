@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { checkUsageLimit } from '../../shared/rateLimit.ts';
-import { loadProfile, profilePromptLines, relevantProfileFacts } from '../../shared/personalization.ts';
+import { loadProfile, loadHousehold, householdFacts, profilePromptLines, relevantProfileFacts } from '../../shared/personalization.ts';
+import { requestCategory, loadDelegationPolicy, delegationPromptLines } from '../../shared/delegation.ts';
 
 // Turns one plain sentence into a plain-language plan. The consumer never
 // needs to know about agents, workflows, or automation — they only see what
@@ -38,7 +39,10 @@ export default async function(req) {
     let signedInUser = null;
     try { signedInUser = await base44.auth.me(); } catch (_) {}
     const profile = signedInUser?.id ? await loadProfile(base44, signedInUser.id) : null;
-    const personalFacts = relevantProfileFacts(profile, note);
+    const household = signedInUser?.id ? await loadHousehold(base44, signedInUser.id) : null;
+    const personalFacts = [...relevantProfileFacts(profile, note), ...householdFacts(household, note)].slice(0, 14);
+    const category = requestCategory(note);
+    const delegation = signedInUser?.id ? await loadDelegationPolicy(base44, signedInUser.id, category) : null;
 
     const plan = await base44.asServiceRole.integrations.Core.InvokeLLM({
       ...(imageUrl ? { file_urls: [imageUrl] } : {}),
@@ -47,6 +51,11 @@ export default async function(req) {
         `The actual current UTC date is ${new Date().toISOString().slice(0, 10)}. Treat this as authoritative for relative dates like today, next month, and next week.`,
         'Note: "' + note + '"',
         ...profilePromptLines(profile, note),
+        ...(householdFacts(household, note).length ? [
+          'Relevant household details this person chose to save. Use only when they help this request:',
+          ...householdFacts(household, note).map((f) => `- ${f}`)
+        ] : []),
+        ...delegationPromptLines(delegation),
         'CRITICAL: preserve every explicit constraint exactly as written — prices, dates, times, locations, names, quantities, thresholds, recipients, and frequency. Never loosen, round, substitute, or invent a constraint.',
         'Do not ask a question for information already present in the note. Only ask when a genuinely required detail is missing.',
         ...(imageUrl
@@ -207,7 +216,7 @@ export default async function(req) {
       question
     };
 
-    return Response.json({ plan: safePlan, personal_context: personalFacts });
+    return Response.json({ plan: safePlan, personal_context: personalFacts, delegation: delegation ? { category, level: delegation.level } : null });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
