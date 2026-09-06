@@ -49,6 +49,10 @@ export default function Home() {
       note: spec.note,
       kind: ["ads", "social"].includes(spec.kind) ? spec.kind : "web",
       run_mode: ["once", "watch", "repeat"].includes(spec.runMode) ? spec.runMode : "once",
+      capability: ["gmail", "calendar", "tasks"].includes(spec.capability) ? spec.capability : "web",
+      action_type: spec.actionType || "none",
+      action_payload: spec.actionPayload || {},
+      approval_status: spec.approvalRequired ? "pending" : "not_needed",
       image_url: spec.image,
       ...(spec.context && spec.context.length ? { context: spec.context } : {}),
       name: spec.name || "Your thing",
@@ -59,6 +63,13 @@ export default function Home() {
       schedule_time: scheduleTime,
       status: "active",
     });
+
+    if (spec.approvalRequired) {
+      const text = "Ready for your approval. Review the details before Buddy sends or changes anything.";
+      const msgs = [{ who: "note", at: new Date().toISOString(), text }];
+      const saved = await base44.entities.Buddy.update(created.id, { messages: msgs });
+      return { ...saved, messages: msgs };
+    }
 
     let text = "It couldn't reach the page just now. It'll try again in the morning.";
     let items = [];
@@ -100,6 +111,10 @@ export default function Home() {
           note: pending.note,
           kind: ["ads", "social"].includes(l.kind) ? l.kind : "web",
           runMode: ["once", "watch", "repeat"].includes(l.runMode) ? l.runMode : "once",
+          capability: ["gmail", "calendar", "tasks"].includes(l.capability) ? l.capability : "web",
+          actionType: l.actionType || "none",
+          actionPayload: l.actionPayload || {},
+          approvalRequired: l.approvalRequired === true,
           image: pending.image,
           name: l.name,
           creature: l.creature,
@@ -200,6 +215,10 @@ export default function Home() {
           question: plan.question || "",
           kind: ["ads", "social"].includes(plan.kind) ? plan.kind : "web",
           runMode: ["once", "watch", "repeat"].includes(plan.run_mode) ? plan.run_mode : "once",
+          capability: ["gmail", "calendar", "tasks"].includes(plan.capability) ? plan.capability : "web",
+          actionType: plan.action_type || "none",
+          actionPayload: plan.action_payload || {},
+          approvalRequired: plan.approval_required === true,
         },
         lines: { when: plan.when_line, what: plan.what_line, tells: plan.how_line },
       });
@@ -222,6 +241,10 @@ export default function Home() {
         note: d.note,
         kind: ["ads", "social"].includes(d.plan.kind) ? d.plan.kind : "web",
         runMode: ["once", "watch", "repeat"].includes(d.plan.runMode) ? d.plan.runMode : "once",
+        capability: ["gmail", "calendar", "tasks"].includes(d.plan.capability) ? d.plan.capability : "web",
+        actionType: d.plan.actionType || "none",
+        actionPayload: d.plan.actionPayload || {},
+        approvalRequired: d.plan.approvalRequired === true,
         image: d.image,
         name: d.plan.name,
         creature: d.plan.creature,
