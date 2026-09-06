@@ -382,8 +382,10 @@ export default async function (req) {
             `Original request: ${buddy.note}`,
             `Waiting action: ${buddy.action_type}`,
             `User's new choice/instruction: ${userMessage}`,
+            ...linkedLines,
+            ...taskStepPromptLines(buddy.task_steps),
             recent ? `Recent conversation:\n${recent}` : '',
-            'Resolve the exact action payload from the user’s choice. Never invent a recipient, selected option, date, time, price, or commitment.',
+            'Resolve the exact action payload from the user’s choice and any @-linked context the user explicitly brought in. Never invent a recipient, selected option, date, time, price, or commitment.',
             'If a required detail is still missing, ready=false and ask one short question. Otherwise ready=true.',
           ].filter(Boolean).join('\n'),
           response_json_schema: {
