@@ -15,7 +15,7 @@ export default async function(req: Request) {
     const action = String(body?.action || 'status');
 
     if (action === 'status') {
-      const rows = await base44.entities.PhoneIdentity.filter({ owner_id: user.id }, '-updated_date', 1);
+      const rows = await base44.asServiceRole.entities.PhoneIdentity.filter({ owner_id: user.id }, '-updated_date', 1);
       const current = Array.isArray(rows) ? rows[0] || null : null;
       const pending = !!current && current.verified !== true && !!current.code_hash && !!current.code_expires_at && new Date(current.code_expires_at).getTime() > Date.now();
       return Response.json({
