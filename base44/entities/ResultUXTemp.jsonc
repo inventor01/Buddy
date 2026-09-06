@@ -1,0 +1,10 @@
+{
+  "name": "ResultUXTemp",
+  "type": "object",
+  "properties": {
+    "placeholder": {
+      "type": "string"
+    }
+  },
+  "required": []
+}
