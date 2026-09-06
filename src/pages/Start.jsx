@@ -91,6 +91,7 @@ export default function Start() {
         actionType: plan.action_type || "none",
         actionPayload: plan.action_payload || {},
         approvalRequired: plan.approval_required === true,
+        deferredAction: plan.deferred_action === true,
         scheduleTime: plan.schedule_time,
         question: typeof plan.question === "string" ? plan.question : "",
       });
@@ -174,6 +175,7 @@ export default function Start() {
         action_type: lines.actionType || "none",
         action_payload: lines.actionPayload || {},
         approval_status: lines.approvalRequired ? "pending" : "not_needed",
+        deferred_action: lines.deferredAction === true,
         ...(answer.trim() ? { context: [answer.trim()] } : {}),
         name: lines.name || "Your helper",
         creature: lines.creature || "sam",
