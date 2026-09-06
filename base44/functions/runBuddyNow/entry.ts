@@ -82,7 +82,7 @@ async function runConnectedRead({ base44, buddy, message = '' }) {
   }
 
   if (buddy.action_type === 'email_read') {
-    const q = String(buddy.action_payload?.query || buddy.note || '').slice(0, 300);
+    const q = String(buddy.action_payload?.query || buddy.note || '').slice(0, ACTION_QUERY_MAX);
     const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=8&q=${encodeURIComponent(q)}`, {
       headers: { Authorization: `Bearer ${connection.accessToken}` },
     });
