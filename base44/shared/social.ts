@@ -4,7 +4,7 @@
 // thread), makes an image when one helps, and pins the post's link back.
 // Graph API v25.0, same call helpers as the ads engine.
 
-import { graphGet, graphPost } from "./ads.ts";
+import { graphGet } from "./ads.ts";
 
 export async function listPages(token) {
   const res = await graphGet(token, "me/accounts", { fields: "id,name", limit: "25" });
