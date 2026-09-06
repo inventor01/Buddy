@@ -241,6 +241,7 @@ export default function Start() {
 
       let found = null;
       let foundItems = null;
+      let runError = "";
       try {
         const res = await base44.functions.invoke("runBuddyNow", { buddyId: created.id });
         if (res.data?.needs_connection) {
@@ -261,13 +262,17 @@ export default function Start() {
           found = ls;
           foundItems = res.data?.items || null;
         }
-      } catch (_) {
-        /* the fallback below covers it */
+      } catch (e) {
+        runError = e?.response?.data?.error || e?.message || "";
       }
       setResult(
         found
           ? { state: "answer", text: found.join("\n"), source: "Sources checked just now", items: foundItems }
-          : { state: "error", message: "Buddy couldn't finish that request right now. Nothing was changed.", text: "Try again or make the request a little more specific." }
+          : {
+              state: "error",
+              message: "Buddy couldn't finish that request right now. Nothing was changed.",
+              text: runError || "Try again or make the request a little more specific."
+            }
       );
       setStep("ran");
     } catch (e) {
