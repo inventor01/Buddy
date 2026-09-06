@@ -17,10 +17,12 @@ export default async function(req: Request) {
     if (action === 'status') {
       const rows = await base44.entities.PhoneIdentity.filter({ owner_id: user.id }, '-updated_date', 1);
       const current = Array.isArray(rows) ? rows[0] || null : null;
+      const pending = !!current && current.verified !== true && !!current.code_hash && !!current.code_expires_at && new Date(current.code_expires_at).getTime() > Date.now();
       return Response.json({
         verified: current?.verified === true,
+        pending,
         phone_masked: current ? maskPhone(current.phone_e164) : '',
-        phone_e164: current?.verified === true ? current.phone_e164 : '',
+        phone_e164: current?.phone_e164 || '',
       });
     }
 
