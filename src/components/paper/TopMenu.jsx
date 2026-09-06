@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Settings } from "lucide-react";
 
 // The shared top menu — a strip of liquid glass floating over the wash.
-export default function TopMenu({ onTryPro, onBook, authed = true, onSignIn }) {
+export default function TopMenu({ onTryPro, onBook, authed = true, onSignIn = null }) {
   return (
     <header
       className="sticky top-0 z-30 border-b border-white/60"
