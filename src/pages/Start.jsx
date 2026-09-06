@@ -30,6 +30,11 @@ const EXAMPLES = [
 
 const CATS = ["when", "what", "tells"];
 
+function isSimplePlanningRequest(text) {
+  const lower = String(text || "").toLowerCase();
+  return /\b(plan|checklist|outline|ideas?)\b/.test(lower) && !/\b(email|gmail|calendar|tasks?|to-?do)\b/.test(lower);
+}
+
 function deterministicMissingDetail(text) {
   const value = String(text || "").trim();
   const lower = value.toLowerCase();
@@ -99,7 +104,10 @@ export default function Start() {
         const serverErr = res.data?.error;
         throw new Error(serverErr || "It couldn't read that — try again.");
       }
-      const requiredDetail = deterministicMissingDetail(note) || (typeof plan.question === "string" ? plan.question : "");
+      const modelQuestion = typeof plan.question === "string" ? plan.question : "";
+      const requiredDetail = isSimplePlanningRequest(note) && /\b(date|when|whose|who'?s)\b/i.test(modelQuestion)
+        ? ""
+        : deterministicMissingDetail(note) || modelQuestion;
       setLines({
         when: plan.when_line,
         what: plan.what_line,
