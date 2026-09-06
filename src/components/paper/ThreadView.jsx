@@ -12,7 +12,7 @@ import { relevantProfileFacts } from "@/lib/personalization";
 // or ask it something.
 const fmtAt = (at) => moment(at).format("MMM D, h:mm A");
 
-export default function ThreadView({ buddy, profile, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, busy }) {
+export default function ThreadView({ buddy, profile, receipt, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, busy }) {
   const done = buddy.status === "done";
   const active = buddy.status === "active";
   const [draft, setDraft] = useState("");
@@ -80,6 +80,36 @@ export default function ThreadView({ buddy, profile, onPause, onTakeDown, onEdit
             ))}
           </div>
           <a href="/settings" className="mt-2 inline-block text-[11px] font-medium text-emerald-700 hover:text-emerald-900">Change what Buddy knows</a>
+        </div>
+      )}
+
+      {receipt && (
+        <div className="glass mt-6 rounded-2xl p-5">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Buddy Receipt</p>
+          <h3 className="mt-2 font-heading text-[19px] font-semibold text-neutral-900">Handled</h3>
+          {receipt.summary && <p className="mt-2 whitespace-pre-line text-[13.5px] leading-relaxed text-neutral-600">{receipt.summary}</p>}
+          {Array.isArray(receipt.why_chosen) && receipt.why_chosen.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[11px] font-semibold text-neutral-700">Why Buddy chose this</p>
+              <ul className="mt-1.5 space-y-1 text-[12.5px] text-neutral-600">{receipt.why_chosen.map((x) => <li key={x}>✓ {x}</li>)}</ul>
+            </div>
+          )}
+          {Array.isArray(receipt.used_context) && receipt.used_context.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[11px] font-semibold text-neutral-700">What Buddy used</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">{receipt.used_context.map((x) => <span key={x} className="rounded-full bg-white/70 px-2.5 py-1 text-[11px] text-neutral-500">{x}</span>)}</div>
+            </div>
+          )}
+          {Array.isArray(receipt.changes_made) && receipt.changes_made.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[11px] font-semibold text-neutral-700">What changed</p>
+              <ul className="mt-1.5 space-y-1 text-[12.5px] text-neutral-600">{receipt.changes_made.map((x) => <li key={x}>✓ {x}</li>)}</ul>
+            </div>
+          )}
+          <div className="mt-4 flex flex-wrap gap-3 text-[11px] text-neutral-400">
+            {receipt.completed_at && <span>{fmtAt(receipt.completed_at)}</span>}
+            {Number(receipt.estimated_time_saved_minutes) > 0 && <span>~{receipt.estimated_time_saved_minutes} min back</span>}
+          </div>
         </div>
       )}
 
