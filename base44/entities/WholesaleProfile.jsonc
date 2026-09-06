@@ -1,0 +1,63 @@
+{
+  "name": "WholesaleProfile",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string"
+    },
+    "default_zip": {
+      "type": "string"
+    },
+    "investor_arv_percent": {
+      "type": "number",
+      "default": 0.7
+    },
+    "assignment_fee": {
+      "type": "number",
+      "default": 10000
+    },
+    "repair_per_sqft": {
+      "type": "number",
+      "default": 25
+    },
+    "comp_radius_miles": {
+      "type": "number",
+      "default": 1
+    },
+    "comp_days_old": {
+      "type": "number",
+      "default": 180
+    },
+    "min_discount_percent": {
+      "type": "number",
+      "default": 15
+    },
+    "max_candidates_to_underwrite": {
+      "type": "number",
+      "default": 10
+    },
+    "property_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "owner_id"
+  ],
+  "rls": {
+    "create": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "read": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "update": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "delete": {
+      "data.owner_id": "{{user.id}}"
+    }
+  }
+}
