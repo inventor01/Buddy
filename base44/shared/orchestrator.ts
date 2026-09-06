@@ -1,5 +1,6 @@
 import { secrets } from 'base44:runtime';
 import { isWholesalePropertyRequest, runWholesaleDealFinder } from './realEstate.ts';
+import { markProviderVerified, providerCapability, rankProviders, recordProviderAttempt } from './providerPerformance.ts';
 
 const PLAN_SCHEMA = {
   type: 'object',
@@ -199,25 +200,70 @@ async function runBase44Research(base44: any, instruction: string, goal: string,
 
 async function executeStep({ base44, buddy, step, goal, priorResults = [] }: any) {
   const ready = providerReadiness();
-  if (step.kind === 'domain_property') {
-    const raw = await runWholesaleDealFinder({ base44, buddy });
-    return { output: JSON.stringify(raw).slice(0, 16000), urls: uniq(collectUrls(raw)).slice(0, 20), confidence: 0.92, provider: 'rentcast', raw };
+  const capability = providerCapability(step.kind);
+  let targetUrl = step.target_url;
+  if (step.kind === 'browser_fetch' && (targetUrl === '$top_listing' || !/^https?:\/\//i.test(String(targetUrl || '')))) {
+    const domain = priorResults.find((r: any) => r?.raw?.findings);
+    const top = domain?.raw?.findings?.[0];
+    targetUrl = top?.deal?.listing_url || top?.url || '';
   }
-  if (step.kind === 'browser_fetch') {
-    let targetUrl = step.target_url;
-    if (targetUrl === '$top_listing' || !/^https?:\/\//i.test(String(targetUrl || ''))) {
-      const domain = priorResults.find((r: any) => r?.raw?.findings);
-      const top = domain?.raw?.findings?.[0];
-      targetUrl = top?.deal?.listing_url || top?.url || '';
+
+  let candidates: string[] = [];
+  if (step.kind === 'domain_property') candidates = ready.rentcast ? ['rentcast'] : [];
+  else if (step.kind === 'browser_fetch') {
+    if (targetUrl && ready.browserbase) candidates.push('browserbase');
+    if (ready.openai) candidates.push('openai');
+    candidates.push('buddy-web');
+  } else if (step.kind === 'web_research') {
+    if (ready.openai) candidates.push('openai');
+    candidates.push('buddy-web');
+  } else if (step.kind === 'reasoning') {
+    if (ready.openai) candidates.push('openai');
+    candidates.push('buddy-reasoner');
+  } else if (step.kind === 'calculation' || step.kind === 'verify') candidates = ['buddy-reasoner'];
+  else if (step.kind === 'connected_action') candidates = ['buddy-safety'];
+  else candidates = ['buddy-reasoner'];
+
+  if (!candidates.length) throw new Error(`No configured specialist can handle ${capability}.`);
+  const ranked = await rankProviders(base44, capability, uniq(candidates));
+  let lastError: any = null;
+
+  for (let index = 0; index < ranked.length; index++) {
+    const provider = ranked[index];
+    const started = Date.now();
+    try {
+      let result: any;
+      if (provider === 'rentcast') {
+        const raw = await runWholesaleDealFinder({ base44, buddy });
+        result = { output: JSON.stringify(raw).slice(0, 16000), urls: uniq(collectUrls(raw)).slice(0, 20), confidence: 0.92, provider, raw };
+      } else if (provider === 'browserbase') {
+        if (!targetUrl) throw new Error('No concrete page URL was available for the browser check.');
+        result = await runBrowserbase(targetUrl, `${step.instruction}\nTarget: ${targetUrl}`);
+      } else if (provider === 'openai') {
+        const instruction = step.kind === 'browser_fetch' && targetUrl
+          ? `${step.instruction}\nCheck this exact page and corroborate it with current web evidence: ${targetUrl}`
+          : step.instruction;
+        result = await runOpenAI(instruction, goal);
+      } else if (provider === 'buddy-web') {
+        result = await runBase44Research(base44, targetUrl ? `${step.instruction}\nTarget page: ${targetUrl}` : step.instruction, goal, true);
+      } else if (provider === 'buddy-reasoner') {
+        result = await runBase44Research(base44, step.instruction, goal, false);
+      } else if (provider === 'buddy-safety') {
+        result = { output: 'This step requires Buddy’s existing connection and approval flow. It was prepared but not executed automatically.', urls: [], confidence: 1, provider };
+      } else {
+        throw new Error(`Unsupported specialist: ${provider}`);
+      }
+
+      const latencyMs = Date.now() - started;
+      await recordProviderAttempt({ base44, provider, capability, success: true, fallback: index > 0, latencyMs });
+      return { ...result, provider, capability, latency_ms: latencyMs, used_fallback: index > 0, attempted_providers: ranked.slice(0, index + 1) };
+    } catch (error: any) {
+      lastError = error;
+      await recordProviderAttempt({ base44, provider, capability, success: false, fallback: index > 0, latencyMs: Date.now() - started, error: error?.message || String(error) });
     }
-    if (targetUrl && ready.browserbase) return runBrowserbase(targetUrl, `${step.instruction}\nTarget: ${targetUrl}`);
-    if (targetUrl && ready.openai) return runOpenAI(`${step.instruction}\nCheck this exact page and corroborate it with current web evidence: ${targetUrl}`, goal);
   }
-  if (['web_research','browser_fetch','reasoning'].includes(step.kind) && ready.openai) return runOpenAI(step.instruction, goal);
-  if (step.kind === 'connected_action') {
-    return { output: 'This step requires Buddy’s existing connection and approval flow. It was prepared but not executed automatically.', urls: [], confidence: 1, provider: 'buddy-safety' };
-  }
-  return runBase44Research(base44, step.instruction, goal, step.kind !== 'calculation' && step.kind !== 'verify');
+
+  throw lastError || new Error('No specialist could complete this step.');
 }
 
 function verifyWholesaleRaw(raw: any) {
@@ -292,22 +338,21 @@ export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], 
         const r = await executeStep({ base44, buddy, step, goal, priorResults: results });
         results.push(r);
         providers.push(r.provider);
+        if (r.used_fallback) fallbackCount += 1;
         steps[i] = { ...step, provider: r.provider, status: 'completed', output: trim(r.output, 8000), evidence_urls: (r.urls || []).slice(0, 12), confidence: r.confidence || 0 };
-      } catch (primaryError: any) {
-        fallbackCount += 1;
-        try {
-          const r = await runBase44Research(base44, step.instruction, goal, step.kind !== 'calculation');
-          results.push(r); providers.push(r.provider);
-          steps[i] = { ...step, provider: r.provider, status: 'completed', output: trim(r.output, 8000), evidence_urls: r.urls.slice(0, 12), confidence: r.confidence, error: `Primary specialist failed: ${trim(primaryError?.message, 240)}` };
-        } catch (fallbackError: any) {
-          steps[i] = { ...step, status: 'failed', error: trim(fallbackError?.message || primaryError?.message, 300) };
-        }
+      } catch (stepError: any) {
+        steps[i] = { ...step, status: 'failed', error: trim(stepError?.message, 300) };
       }
       await base44.asServiceRole.entities.BuddyJob.update(job.id, { steps, providers_used: uniq(providers), fallback_count: fallbackCount });
     }
 
     if (!results.length) throw new Error('No specialist could complete the request.');
     const final = await synthesize(base44, goal, results);
+    const verifiedPairs = uniq(results.map((r: any) => `${r.provider}|||${r.capability || 'general'}`));
+    for (const pair of verifiedPairs) {
+      const [provider, capability] = String(pair).split('|||');
+      await markProviderVerified(base44, provider, capability);
+    }
     const verifyIndex = steps.findIndex((s) => s.kind === 'verify');
     if (verifyIndex >= 0) steps[verifyIndex] = { ...steps[verifyIndex], provider: 'buddy-verifier', status: 'completed', output: trim(final?.verification_summary || 'Verified specialist outputs.', 1000), evidence_urls: uniq(results.flatMap((r) => r.urls || [])).slice(0, 12), confidence: 0.9, error: '' };
     await base44.asServiceRole.entities.BuddyJob.update(job.id, {
