@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines, contextLines } from '../../shared/runBuddy.ts';
 import { checkUsageLimit } from '../../shared/rateLimit.ts';
 import { isWholesalePropertyRequest, runWholesaleDealFinder } from '../../shared/realEstate.ts';
+import { normalizeTaskSteps, taskStepPromptLines } from '../../shared/taskChain.ts';
 
 // Runs a visitor's typed note once, with no account and nothing saved —
 // the "watch it run" step for people who haven't signed in. Anonymous by
@@ -44,6 +45,7 @@ export default async function(req) {
     const context = Array.isArray(body.context)
       ? body.context.filter((c) => typeof c === 'string' && c.trim()).slice(0, 5)
       : [];
+    const taskSteps = body.execution_mode === 'chain' ? normalizeTaskSteps(body.task_steps) : [];
 
     const lowerNote = note.toLowerCase();
     const looksLikeFlight = /\b(flight|flights|airfare|plane ticket|airline)\b/.test(lowerNote);
@@ -86,6 +88,7 @@ export default async function(req) {
         'Their exact words: "' + note + '"',
         what ? "Your daily job: " + what : "",
         ...contextLines({ context }),
+        ...taskStepPromptLines(taskSteps),
         ...(imageUrl
           ? [
               "A photo of the exact thing to find is attached. Treat it like a reverse image search:",
