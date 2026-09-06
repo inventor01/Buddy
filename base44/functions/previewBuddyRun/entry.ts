@@ -35,6 +35,16 @@ export default async function(req) {
       ? body.context.filter((c) => typeof c === 'string' && c.trim()).slice(0, 5)
       : [];
 
+    const lowerNote = note.toLowerCase();
+    const looksLikeFlight = /\b(flight|flights|airfare|plane ticket|airline)\b/.test(lowerNote);
+    const hasDestination = /\b(to|into)\s+[a-z]/i.test(note);
+    const hasOriginInNote = /\b(from|leaving|depart(?:ing)?(?: from)?)\s+[a-z]/i.test(note);
+    const hasOriginInContext = context.some((c) => /[a-z]{2,}/i.test(c));
+    if (looksLikeFlight && hasDestination && !hasOriginInNote && !hasOriginInContext) {
+      const message = 'What city or airport are you flying from?';
+      return Response.json({ state: 'needs_detail', message, lines: [message], items: [] });
+    }
+
     const findings = await base44.asServiceRole.integrations.Core.InvokeLLM({
       model: "gemini_3_flash",
       add_context_from_internet: true,
