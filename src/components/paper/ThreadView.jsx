@@ -23,13 +23,22 @@ const STEP_LABELS = {
   verify: "Verified the result",
 };
 
-export default function ThreadView({ buddy, profile, receipt, job, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, busy }) {
+export default function ThreadView({ buddy, buddies = [], profile, receipt, job, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, busy }) {
   const done = buddy.status === "done";
   const active = buddy.status === "active";
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState(false);
   const [edited, setEdited] = useState(buddy.note);
   const personalFacts = relevantProfileFacts(profile, `${buddy.note || ""} ${buddy.what_line || ""}`);
+  const linkedBuddies = (Array.isArray(buddy.linked_buddy_ids) ? buddy.linked_buddy_ids : [])
+    .map((id) => buddies.find((b) => b.id === id))
+    .filter(Boolean);
+  const mentionMatch = draft.match(/(?:^|\s)@([^\s\[]*)$/);
+  const mentionQuery = mentionMatch ? String(mentionMatch[1] || "").toLowerCase() : null;
+  const mentionChoices = mentionQuery === null
+    ? []
+    : buddies.filter((b) => b.id !== buddy.id && b?.name && String(b.name).toLowerCase().includes(mentionQuery)).slice(0, 6);
+  const insertMention = (name) => setDraft((current) => current.replace(/(^|\s)@[^\s\[]*$/, (_, lead) => `${lead}@[${name}] `));
 
   const messages =
     Array.isArray(buddy.messages) && buddy.messages.length
@@ -94,6 +103,17 @@ export default function ThreadView({ buddy, profile, receipt, job, onPause, onTa
         </div>
       )}
 
+      {linkedBuddies.length > 0 && (
+        <div className="mt-5 rounded-2xl border border-sky-100 bg-sky-50/50 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-700">Connected chats</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {linkedBuddies.map((linked) => (
+              <button key={linked.id} type="button" onClick={() => window.location.assign(`/notes?note=${linked.id}`)} className="rounded-full border border-sky-100 bg-white/80 px-2.5 py-1 text-[11.5px] font-medium text-sky-800 hover:bg-white">@{linked.name}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {job && Array.isArray(job.steps) && job.steps.length > 1 && (
         <div className="glass mt-6 rounded-2xl p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -114,7 +134,7 @@ export default function ThreadView({ buddy, profile, receipt, job, onPause, onTa
                   {step.status === "completed" ? "✓" : step.status === "failed" ? "!" : index + 1}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[12.5px] font-medium text-neutral-800">{STEP_LABELS[step.kind] || "Handled a specialist step"}</p>
+                  <p className="text-[12.5px] font-medium text-neutral-800">{step.label || STEP_LABELS[step.kind] || "Handled a step"}</p>
                   {step.status === "failed" && step.error && <p className="mt-0.5 line-clamp-2 text-[11px] text-rose-600">{step.error}</p>}
                 </div>
               </div>
@@ -306,6 +326,16 @@ export default function ThreadView({ buddy, profile, receipt, job, onPause, onTa
           placeholder="Change the request or ask a follow-up…"
           className="w-full resize-y bg-transparent px-2 py-1.5 text-[14px] leading-relaxed text-neutral-900 outline-none placeholder:text-neutral-400"
         />
+        {mentionChoices.length > 0 && (
+          <div className="mb-2 rounded-xl border border-white/80 bg-white/90 p-1.5 shadow-sm">
+            {mentionChoices.map((linked) => (
+              <button key={linked.id} type="button" onClick={() => insertMention(linked.name)} className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[12.5px] text-neutral-700 hover:bg-neutral-50">
+                <span className="truncate font-medium">@{linked.name}</span>
+                <span className="ml-3 shrink-0 text-[10.5px] text-neutral-400">connect this chat</span>
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex items-center justify-between gap-3 px-1">
           <span className="text-[10px] tabular-nums text-neutral-400">
             {draft.length.toLocaleString()}/{BUDDY_REQUEST_MAX.toLocaleString()}
@@ -321,7 +351,7 @@ export default function ThreadView({ buddy, profile, receipt, job, onPause, onTa
         </div>
       </div>
       <p className="mt-2 text-[11.5px] text-neutral-400">
-        When Buddy uses the web, it shows where the answer came from. If nothing meaningful changed, it stays quiet.
+        Type @ to bring another Buddy chat into this one. When Buddy uses the web, it shows where the answer came from.
       </p>
     </div>
   );
