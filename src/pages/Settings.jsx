@@ -534,6 +534,28 @@ export default function Settings() {
             </div>
           </div>
 
+          <div className="glass rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="mt-0.5 h-5 w-5 text-neutral-400" />
+              <div className="flex-1">
+                <h3 className="font-medium text-neutral-900">Harder requests</h3>
+                <p className="mt-0.5 text-sm leading-relaxed text-neutral-500">Buddy can split complicated work into specialist checks, combine the evidence, and verify the result before showing it to you.</p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  {[
+                    ["openai", "Deep research", specialists.openai],
+                    ["browserbase", "Live page checking", specialists.browserbase],
+                    ["rentcast", "Property underwriting", specialists.rentcast],
+                  ].map(([key, label, ready]) => (
+                    <div key={key} className="rounded-xl border border-white/70 bg-white/55 p-3">
+                      <p className="text-[12.5px] font-medium text-neutral-800">{label}</p>
+                      <p className={`mt-1 text-[10.5px] font-semibold ${ready ? "text-emerald-700" : "text-neutral-400"}`}>{ready ? "Enhanced specialist ready" : "Buddy fallback available"}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* ad accounts — each person pastes their own token */}
           <AdsCard />
 
