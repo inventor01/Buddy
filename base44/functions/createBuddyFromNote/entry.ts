@@ -153,7 +153,7 @@ export default async function(req) {
     };
     const safeQuery = explicitMoney.length ? note.slice(0, 300) : cleanField(rawPayload.query, 300);
     const simplePlanningRequest = /\b(plan|checklist|outline|ideas?)\b/.test(lowerNote) && guardedCapability === 'web' && guardedRunMode === 'once';
-    if (simplePlanningRequest && /\b(whose|who'?s|what date|date of|when is|when should)\b/i.test(question)) {
+    if (simplePlanningRequest && /\b(whose|who'?s|date|when)\b/i.test(question)) {
       question = '';
     }
 
