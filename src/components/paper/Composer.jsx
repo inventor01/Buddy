@@ -96,7 +96,7 @@ export default function Composer({ onPin, busy }) {
         )}
         <div className="mt-2 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="font-mono text-[9.5px] tracking-[0.14em] text-neutral-400">
+            <span className="hidden font-mono text-[9.5px] tracking-[0.14em] text-neutral-400 sm:inline">
               YOU’LL SEE HOW IT PLANS TO HANDLE IT FIRST
             </span>
             <span className="shrink-0 text-[10px] tabular-nums text-neutral-400" aria-label={`${note.length} of ${BUDDY_REQUEST_MAX} characters used`}>
