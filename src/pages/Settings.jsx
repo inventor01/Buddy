@@ -18,6 +18,8 @@ export default function Settings() {
   const [phoneSaved, setPhoneSaved] = useState(false);
   const [savingPhone, setSavingPhone] = useState(false);
   const [phoneError, setPhoneError] = useState("");
+  const [abilities, setAbilities] = useState([]);
+  const [connecting, setConnecting] = useState("");
 
   useEffect(() => {
     base44
@@ -28,9 +30,26 @@ export default function Settings() {
         setSmsPhone(u?.sms_phone || "");
         // Keep the zone current — it's the clock every note runs on.
         setMe(await ensureTimezone(base44, u));
+        try {
+          const res = await base44.functions.invoke("connectionSetup", {});
+          setAbilities(res.data?.abilities || []);
+        } catch (_) {
+          setAbilities([]);
+        }
       })
       .catch(() => {});
   }, []);
+
+  const connectAbility = async (ability) => {
+    if (!ability?.connectorId || connecting) return;
+    setConnecting(ability.key);
+    try {
+      const url = await base44.connectors.connectAppUser(ability.connectorId);
+      if (url) window.location.href = url;
+    } catch (_) {
+      setConnecting("");
+    }
+  };
 
   const saveEmailPref = async (value) => {
     setNotifyEmail(value);
@@ -149,6 +168,39 @@ export default function Settings() {
                   Include the country code (like +1 for the US). Leave empty to turn texts off.
                 </p>
               </div>
+            </div>
+          </div>
+
+          <div className="glass rounded-2xl p-5">
+            <div>
+              <h3 className="font-medium text-neutral-900">Things Buddy can reach for you</h3>
+              <p className="mt-0.5 text-sm text-neutral-500">
+                Connect only what you want Buddy to use. Sending or changing anything still asks for your approval first.
+              </p>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              {[
+                ["gmail", "Email", "Read or send email when you ask"],
+                ["calendar", "Calendar", "Check or add plans when you ask"],
+                ["tasks", "Tasks", "Add things you want remembered"],
+              ].map(([key, label, desc]) => {
+                const ability = abilities.find((a) => a.key === key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    disabled={!ability?.ready || connecting === key}
+                    onClick={() => connectAbility(ability)}
+                    className="rounded-xl border border-white/70 bg-white/60 p-3 text-left transition-colors hover:bg-white disabled:cursor-default disabled:opacity-60"
+                  >
+                    <p className="text-sm font-medium text-neutral-900">{label}</p>
+                    <p className="mt-1 text-xs leading-snug text-neutral-500">{desc}</p>
+                    <p className="mt-2 text-[11px] font-medium text-neutral-500">
+                      {connecting === key ? "Opening…" : ability?.ready ? "Connect" : "Almost ready"}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
