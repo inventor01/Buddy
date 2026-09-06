@@ -282,7 +282,18 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
       ? buddy.image_url.trim()
       : "";
   let findings;
-  if (buddy.kind === "web" && isWholesalePropertyRequest(`${buddy.note || ''} ${buddy.what_line || ''}`)) {
+  const requestTextForRouting = `${buddy.note || ''} ${buddy.what_line || ''}`;
+  if (buddy.kind === "web" && shouldOrchestrateRequest(requestTextForRouting)) {
+    try {
+      findings = await runOrchestratedBuddy({ base44: client, buddy, personalFacts, delegationLines });
+    } catch (_) {
+      // Complex work should degrade gracefully. The specialist layer is an
+      // upgrade, never a single point of failure.
+      findings = isWholesalePropertyRequest(requestTextForRouting)
+        ? await runWholesaleDealFinder({ base44: client, buddy })
+        : await runGenericWebFindings({ client, buddy, imageUrl, timeZone, personalFacts, delegationLines });
+    }
+  } else if (buddy.kind === "web" && isWholesalePropertyRequest(requestTextForRouting)) {
     findings = await runWholesaleDealFinder({ base44: client, buddy });
   } else if (buddy.kind === "ads") {
     // Ad notes read the person's own ad account, not the web — the
@@ -306,35 +317,7 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
       timeZone
     });
   } else {
-  findings = await client.asServiceRole.integrations.Core.InvokeLLM({
-    model: "gemini_3_flash",
-    add_context_from_internet: true,
-    ...(imageUrl ? { file_urls: [imageUrl] } : {}),
-    prompt: [
-      "You are handling one thing for one person.",
-      'Their exact words: "' + buddy.note + '"',
-      "How this should behave: " + (buddy.run_mode || "watch") + ".",
-      "What to handle: " + (buddy.what_line || buddy.note),
-      "Today's local date: " + nowInZone(timeZone).date + ".",
-      ...(Array.isArray(personalFacts) && personalFacts.length ? [
-        "Relevant things this person previously asked Buddy to remember. Use them only when helpful and never override the current request:",
-        ...personalFacts.slice(0, 12).map((f) => "- " + String(f).slice(0, 220)),
-        "When a remembered preference affects the recommendation, explain that briefly in the result when useful."
-      ] : []),
-      ...(Array.isArray(delegationLines) ? delegationLines : []),
-      ...contextLines(buddy),
-      ...(imageUrl
-        ? [
-            "A photo of the exact thing to track is attached. Treat it like a reverse image search:",
-            "identify the product in the photo and report today's best prices and where to buy it."
-          ]
-        : []),
-      "Handle the request for today. Use current web information when the request needs it; do not force a web search for a personal reminder or simple planning task.",
-      "Return up to 5 useful, concrete findings. Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
-      ...FINDINGS_RULES
-    ].join("\n"),
-    response_json_schema: FINDINGS_SCHEMA
-  });
+    findings = await runGenericWebFindings({ client, buddy, imageUrl, timeZone, personalFacts, delegationLines });
   }
 
   // The one case where guessing is wrong: a detail the user could hand over
