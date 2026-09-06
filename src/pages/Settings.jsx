@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Mail, Type, Loader2, MessageCircle, Check, Clock, UserRound, MapPin, Plane, ShoppingBag, ShieldCheck, UsersRound } from "lucide-react";
+import { ArrowLeft, Mail, Type, Loader2, MessageCircle, Check, Clock, UserRound, MapPin, Plane, ShoppingBag, ShieldCheck, UsersRound, House } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Switch } from "@/components/ui/switch";
 import { readBigText, applyBigText } from "@/lib/bigText";
@@ -29,6 +29,9 @@ export default function Settings() {
   const [household, setHousehold] = useState(null);
   const [householdDraft, setHouseholdDraft] = useState({ household_name: "", members: "", shared_preferences: "" });
   const [savingHousehold, setSavingHousehold] = useState(false);
+  const [wholesale, setWholesale] = useState(null);
+  const [wholesaleDraft, setWholesaleDraft] = useState({ default_zip: "48224", investor_arv_percent: "70", assignment_fee: "10000", repair_per_sqft: "25", comp_radius_miles: "1", comp_days_old: "180", min_discount_percent: "15" });
+  const [savingWholesale, setSavingWholesale] = useState(false);
 
   useEffect(() => {
     base44
@@ -61,6 +64,20 @@ export default function Settings() {
             household_name: h?.household_name || "",
             members: Array.isArray(h?.members) ? h.members.map((m) => [m.name, m.relation, m.notes].filter(Boolean).join(" | ")).join("\n") : "",
             shared_preferences: Array.isArray(h?.shared_preferences) ? h.shared_preferences.join(", ") : "",
+          });
+        } catch (_) {}
+        try {
+          const rows = await base44.entities.WholesaleProfile.filter({ owner_id: u.id }, "-updated_date", 1);
+          const w = Array.isArray(rows) ? rows[0] || null : null;
+          setWholesale(w);
+          if (w) setWholesaleDraft({
+            default_zip: w.default_zip || "48224",
+            investor_arv_percent: String(Math.round((Number(w.investor_arv_percent) || 0.7) * 100)),
+            assignment_fee: String(Number(w.assignment_fee) || 10000),
+            repair_per_sqft: String(Number(w.repair_per_sqft) || 25),
+            comp_radius_miles: String(Number(w.comp_radius_miles) || 1),
+            comp_days_old: String(Number(w.comp_days_old) || 180),
+            min_discount_percent: String(Number(w.min_discount_percent) || 15),
           });
         } catch (_) {}
         setNotifyEmail(!!u?.notify_email);
@@ -184,6 +201,28 @@ export default function Settings() {
     } finally { setSavingHousehold(false); }
   };
 
+  const saveWholesale = async () => {
+    if (!me?.id || savingWholesale) return;
+    setSavingWholesale(true);
+    const n = (v, fallback) => Number.isFinite(Number(v)) ? Number(v) : fallback;
+    const data = {
+      owner_id: me.id,
+      default_zip: wholesaleDraft.default_zip.replace(/\D/g, "").slice(0, 5),
+      investor_arv_percent: Math.min(.9, Math.max(.4, n(wholesaleDraft.investor_arv_percent, 70) / 100)),
+      assignment_fee: Math.max(0, n(wholesaleDraft.assignment_fee, 10000)),
+      repair_per_sqft: Math.max(0, n(wholesaleDraft.repair_per_sqft, 25)),
+      comp_radius_miles: Math.min(5, Math.max(.1, n(wholesaleDraft.comp_radius_miles, 1))),
+      comp_days_old: Math.min(730, Math.max(30, n(wholesaleDraft.comp_days_old, 180))),
+      min_discount_percent: Math.min(60, Math.max(0, n(wholesaleDraft.min_discount_percent, 15))),
+      max_candidates_to_underwrite: 10,
+      property_types: ["Single Family", "Multi-Family"],
+    };
+    try {
+      const saved = wholesale?.id ? await base44.entities.WholesaleProfile.update(wholesale.id, data) : await base44.entities.WholesaleProfile.create(data);
+      setWholesale(saved);
+    } finally { setSavingWholesale(false); }
+  };
+
   const toggleBig = () => {
     const next = !bigText;
     setBigText(next);
@@ -290,6 +329,34 @@ export default function Settings() {
                 <textarea value={householdDraft.members} onChange={(e) => setHouseholdDraft((h) => ({...h, members:e.target.value}))} rows={3} placeholder={"Mom | mom | likes gardening and mystery books\nMia | daughter | dentist after 3:30 PM"} className="mt-2 w-full resize-none rounded-xl border border-white/70 bg-white/70 px-3 py-2.5 text-sm outline-none" />
                 <input value={householdDraft.shared_preferences} onChange={(e) => setHouseholdDraft((h) => ({...h, shared_preferences:e.target.value}))} placeholder="weeknight appointments after 4 PM, groceries under $150" className="mt-2 w-full rounded-xl border border-white/70 bg-white/70 px-3 py-2.5 text-sm outline-none" />
                 <button type="button" onClick={saveHousehold} disabled={savingHousehold} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-2 text-[13px] font-medium text-white disabled:opacity-50">{savingHousehold && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Save household</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <House className="mt-0.5 h-5 w-5 text-neutral-400" />
+              <div className="flex-1">
+                <h3 className="font-medium text-neutral-900">Wholesale deal rules</h3>
+                <p className="mt-0.5 text-sm leading-relaxed text-neutral-500">When you ask Buddy to find distressed properties, these are the screening assumptions it uses. ARV comes from live comps; repairs stay a clearly labeled screening allowance until you verify the property.</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {[
+                    ["default_zip", "Default ZIP", "48224"],
+                    ["investor_arv_percent", "Flipper buy % of ARV", "70"],
+                    ["assignment_fee", "Assignment target ($)", "10000"],
+                    ["repair_per_sqft", "Repair allowance ($/sq ft)", "25"],
+                    ["comp_radius_miles", "Comp radius (miles)", "1"],
+                    ["comp_days_old", "Comp lookback (days)", "180"],
+                    ["min_discount_percent", "Minimum discount vs ARV (%)", "15"],
+                  ].map(([key, label, placeholder]) => (
+                    <label key={key} className="block">
+                      <span className="text-[11px] font-medium text-neutral-500">{label}</span>
+                      <input value={wholesaleDraft[key]} onChange={(e) => setWholesaleDraft((w) => ({ ...w, [key]: e.target.value }))} placeholder={placeholder} inputMode="decimal" className="mt-1.5 w-full rounded-xl border border-white/70 bg-white/70 px-3 py-2.5 text-sm outline-none focus:border-neutral-400" />
+                    </label>
+                  ))}
+                </div>
+                <button type="button" onClick={saveWholesale} disabled={savingWholesale} className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-2 text-[13px] font-medium text-white disabled:opacity-50">{savingWholesale && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Save wholesale rules</button>
+                <p className="mt-2 text-[10.5px] leading-relaxed text-neutral-400">Screening only—not an appraisal, repair estimate, title review, legal review, or offer recommendation. Verify the property and local wholesaling requirements before committing money.</p>
               </div>
             </div>
           </div>
