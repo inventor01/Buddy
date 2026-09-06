@@ -121,8 +121,21 @@ export default async function(req: Request) {
     }
 
     if (!approve) {
-      await base44.entities.Buddy.update(buddy.id, { approval_status: 'rejected', status: 'done' });
-      return Response.json({ ok: true, rejected: true });
+      const keepWatchingReplies = buddy.execution_mode === 'chain' && buddy.action_type === 'email_send' && buddy.chain_state?.gmail_thread_id && Array.isArray(buddy.task_steps) && buddy.task_steps.some((step: any) => step?.type === 'handle_responses');
+      const patch: any = keepWatchingReplies
+        ? {
+            approval_status: 'not_needed',
+            action_type: 'email_read',
+            action_payload: {
+              query: String(buddy.action_payload?.subject || buddy.action_payload?.recipient || '').slice(0, 2000),
+              thread_id: String(buddy.chain_state.gmail_thread_id).slice(0, 300),
+            },
+            status: 'active',
+            chain_state: { ...buddy.chain_state, phase: 'waiting_response' },
+          }
+        : { approval_status: 'rejected', status: 'done' };
+      await base44.entities.Buddy.update(buddy.id, patch);
+      return Response.json({ ok: true, rejected: true, buddy_patch: patch });
     }
 
     if (buddy.approval_status !== 'pending' && buddy.approval_status !== 'needs_connection') {
