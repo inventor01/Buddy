@@ -19,6 +19,7 @@ export default function Settings() {
   const [savingPhone, setSavingPhone] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [abilities, setAbilities] = useState([]);
+  const [propertyDataReady, setPropertyDataReady] = useState(false);
   const [connecting, setConnecting] = useState("");
   const [profile, setProfile] = useState(null);
   const [profileDraft, setProfileDraft] = useState({ display_name: "", home_city: "", home_airport: "", travel_preferences: "", shopping_preferences: "", general_preferences: "" });
@@ -87,6 +88,7 @@ export default function Settings() {
         try {
           const res = await base44.functions.invoke("connectionSetup", {});
           setAbilities(res.data?.abilities || []);
+          setPropertyDataReady(!!res.data?.property_data_ready);
         } catch (_) {
           setAbilities([]);
         }
@@ -337,7 +339,10 @@ export default function Settings() {
             <div className="flex items-start gap-3">
               <House className="mt-0.5 h-5 w-5 text-neutral-400" />
               <div className="flex-1">
-                <h3 className="font-medium text-neutral-900">Wholesale deal rules</h3>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-medium text-neutral-900">Wholesale deal rules</h3>
+                  <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${propertyDataReady ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{propertyDataReady ? "Live property data ready" : "Property data key needed"}</span>
+                </div>
                 <p className="mt-0.5 text-sm leading-relaxed text-neutral-500">When you ask Buddy to find distressed properties, these are the screening assumptions it uses. ARV comes from live comps; repairs stay a clearly labeled screening allowance until you verify the property.</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {[
