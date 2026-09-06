@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { secrets } from 'base44:runtime';
+import { orchestrationReadiness } from '../../shared/orchestrator.ts';
 
 export default async function(req: Request) {
   try {
@@ -15,6 +16,8 @@ export default async function(req: Request) {
 
     return Response.json({
       property_data_ready: !!secrets.get('RENTCAST_API_KEY'),
+      phone_verification_ready: !!secrets.get('TWILIO_ACCOUNT_SID') && !!secrets.get('TWILIO_AUTH_TOKEN') && !!secrets.get('TWILIO_FROM_NUMBER'),
+      specialists: orchestrationReadiness(),
       abilities: Object.entries(values).map(([key, connectorId]) => ({
         key,
         ready: !!connectorId,
