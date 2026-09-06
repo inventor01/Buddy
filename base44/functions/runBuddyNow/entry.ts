@@ -497,6 +497,43 @@ export default async function (req) {
     // touch the outside service until a later user choice resolves them.
     if (!buddy.deferred_action && (buddy.action_type === 'email_read' || buddy.action_type === 'calendar_read')) {
       const read = await runConnectedRead({ base44, buddy });
+      const handlesResponses = buddy.action_type === 'email_read' && buddy.execution_mode === 'chain' && Array.isArray(buddy.task_steps) && buddy.task_steps.some((step) => step?.type === 'handle_responses');
+      if (handlesResponses && read?.thread_id) {
+        const baseChainState = {
+          ...(buddy.chain_state && typeof buddy.chain_state === 'object' ? buddy.chain_state : {}),
+          gmail_thread_id: read.thread_id,
+          gmail_message_count: Number(read.thread_message_count) || Number(buddy.chain_state?.gmail_message_count) || 0,
+          last_checked_at: new Date().toISOString(),
+        };
+        if (read.no_new_reply) {
+          const patch = { chain_state: { ...baseChainState, phase: 'waiting_response' }, status: 'active' };
+          await base44.entities.Buddy.update(buddy.id, patch);
+          return Response.json({ ...read, state: 'answer', buddy_patch: patch });
+        }
+        const reply = await prepareReplyFromThread(base44, buddy, read.raw_rows || [], read.thread_id);
+        if (reply) {
+          const patch = {
+            action_type: 'email_send',
+            action_payload: reply,
+            approval_status: 'pending',
+            deferred_action: false,
+            status: 'active',
+            chain_state: { ...baseChainState, phase: 'response_ready' },
+          };
+          await base44.entities.Buddy.update(buddy.id, patch);
+          return Response.json({
+            state: 'approval',
+            message: 'A reply came in. Buddy reviewed it and drafted the next response for your approval.',
+            lines: [...(read.lines || []), 'A response draft is ready for review.'],
+            items: read.items || [],
+            approval_pending: true,
+            buddy_patch: patch,
+          });
+        }
+        const patch = { chain_state: { ...baseChainState, phase: 'waiting_response' }, status: 'active' };
+        await base44.entities.Buddy.update(buddy.id, patch);
+        return Response.json({ ...read, state: 'answer', buddy_patch: patch });
+      }
       return Response.json(read);
     }
 
