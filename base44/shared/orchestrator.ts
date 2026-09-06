@@ -73,7 +73,7 @@ export function orchestrationReadiness() {
   return providerReadiness();
 }
 
-async function planSteps(base44: any, buddy: any, personalFacts: string[], delegationLines: string[]) {
+export async function planOrchestration(base44: any, buddy: any, personalFacts: string[] = [], delegationLines: string[] = []) {
   const request = `${buddy.note || ''} ${buddy.what_line || ''}`.trim();
   if (isWholesalePropertyRequest(request)) {
     return {
@@ -308,7 +308,7 @@ async function synthesize(base44: any, goal: string, results: any[]) {
 
 export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], delegationLines = [] }: any) {
   const goal = `${buddy.note || ''} ${buddy.what_line || ''}`.trim();
-  const plan = await planSteps(base44, buddy, personalFacts, delegationLines);
+  const plan = await planOrchestration(base44, buddy, personalFacts, delegationLines);
   if (!plan.should_orchestrate || !plan.steps.length) throw new Error('This request does not need orchestration.');
 
   const job = await base44.asServiceRole.entities.BuddyJob.create({
@@ -339,7 +339,7 @@ export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], 
         results.push(r);
         providers.push(r.provider);
         if (r.used_fallback) fallbackCount += 1;
-        steps[i] = { ...step, provider: r.provider, status: 'completed', output: trim(r.output, 8000), evidence_urls: (r.urls || []).slice(0, 12), confidence: r.confidence || 0 };
+        steps[i] = { ...step, provider: r.provider, status: 'completed', output: trim(r.output, 8000), evidence_urls: (r.urls || []).slice(0, 12), confidence: r.confidence || 0, latency_ms: r.latency_ms || 0, attempted_providers: r.attempted_providers || [r.provider] };
       } catch (stepError: any) {
         steps[i] = { ...step, status: 'failed', error: trim(stepError?.message, 300) };
       }
