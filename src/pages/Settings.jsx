@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Mail, Type, Loader2, MessageCircle, Check } from "lucide-react";
+import { ArrowLeft, Mail, Type, Loader2, MessageCircle, Check, Clock } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Switch } from "@/components/ui/switch";
 import { readBigText, applyBigText } from "@/lib/bigText";
+import { browserTimezone, ensureTimezone } from "@/lib/timezone";
 
 // Settings — notification and reading preferences, on the same light
 // glass surfaces as everything else.
@@ -20,10 +21,12 @@ export default function Settings() {
   useEffect(() => {
     base44
       .auth.me()
-      .then((u) => {
+      .then(async (u) => {
         setMe(u);
         setNotifyEmail(!!u?.notify_email);
         setSmsPhone(u?.sms_phone || "");
+        // Keep the zone current — it's the clock every note runs on.
+        setMe(await ensureTimezone(base44, u));
       })
       .catch(() => {});
   }, []);
@@ -146,6 +149,22 @@ export default function Settings() {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* the clock notes run on */}
+          <div className="glass flex items-center justify-between gap-4 rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <Clock className="mt-0.5 h-5 w-5 text-neutral-400" />
+              <div>
+                <h3 className="font-medium text-neutral-900">Your clock</h3>
+                <p className="mt-0.5 text-sm text-neutral-500">
+                  A note set for the morning runs on your time, not ours.
+                </p>
+              </div>
+            </div>
+            <span className="shrink-0 font-mono text-[11px] text-neutral-500">
+              {me?.timezone || browserTimezone() || "UTC"}
+            </span>
           </div>
 
           {/* bigger text */}
