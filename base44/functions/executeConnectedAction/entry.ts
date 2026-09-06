@@ -9,7 +9,10 @@ function base64Url(input: string) {
 }
 
 function cleanPayload(raw: any) {
-  const s = (v: any, n: number) => typeof v === 'string' ? v.trim().slice(0, n) : '';
+  const s = (v: any, n: number) => {
+    const text = typeof v === 'string' ? v.trim().slice(0, n) : '';
+    return /^(n\/?a|none|null|not applicable|unknown)$/i.test(text) ? '' : text;
+  };
   return {
     recipient: s(raw?.recipient, 200),
     subject: s(raw?.subject, 200),
@@ -21,6 +24,55 @@ function cleanPayload(raw: any) {
     due: s(raw?.due, 100),
     notes: s(raw?.notes, 600),
   };
+}
+
+async function normalizeCalendarRange(base44: any, payload: any, timeZone: string) {
+  const resolved = await base44.asServiceRole.integrations.Core.InvokeLLM({
+    model: 'gemini_3_flash',
+    prompt: [
+      `Current UTC time: ${new Date().toISOString()}`,
+      `User timezone: ${timeZone || 'UTC'}`,
+      `Start as written: ${payload.start}`,
+      `End as written: ${payload.end || '(not provided)'}`,
+      'Convert the event range to exact ISO/RFC3339 values without changing the user’s intended day or start time.',
+      'If no end/duration was provided, use exactly one hour after the start.',
+      'For an all-day date, return YYYY-MM-DD start and the next YYYY-MM-DD as end.',
+      'Do not invent a different date or time.'
+    ].join('\n'),
+    response_json_schema: {
+      type: 'object',
+      properties: {
+        start: { type: 'string' },
+        end: { type: 'string' },
+        all_day: { type: 'boolean' }
+      },
+      required: ['start', 'end', 'all_day']
+    }
+  });
+  return {
+    start: String(resolved?.start || '').trim(),
+    end: String(resolved?.end || '').trim(),
+    allDay: resolved?.all_day === true,
+  };
+}
+
+async function normalizeTaskDue(base44: any, due: string, timeZone: string) {
+  if (!due) return '';
+  const resolved = await base44.asServiceRole.integrations.Core.InvokeLLM({
+    model: 'gemini_3_flash',
+    prompt: [
+      `Current UTC time: ${new Date().toISOString()}`,
+      `User timezone: ${timeZone || 'UTC'}`,
+      `Due date as written: ${due}`,
+      'Convert this to the next intended due date/time in ISO 8601. Preserve the user’s intended day. If only a date is given, use 9:00 AM local time.'
+    ].join('\n'),
+    response_json_schema: {
+      type: 'object',
+      properties: { due: { type: 'string' } },
+      required: ['due']
+    }
+  });
+  return String(resolved?.due || '').trim();
 }
 
 async function userConnection(base44: any, capability: string) {
