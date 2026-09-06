@@ -59,32 +59,32 @@ export default function Rail({
       </div>
 
       <div className="grid content-start gap-[3px]">
-          {(buddies || []).map((b) => {
-            const sel = b.id === selectedId;
-            return (
-              <button
-                key={b.id}
-                type="button"
-                onClick={() => onSelect(b.id)}
-                className={`w-full rounded-xl px-2.5 py-2 text-left transition-colors ${
-                  sel
-                    ? "border border-white/70 shadow-[0_4px_16px_-8px_rgba(24,28,45,.18)]"
-                    : "hover:bg-white/45"
-                }`}
-                style={{ background: sel ? "rgba(255,255,255,.7)" : "transparent" }}
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="truncate text-[13.5px] font-medium leading-tight text-neutral-900">
-                    {b.name}
-                  </span>
-                  <span className="shrink-0 font-mono text-[9.5px] text-neutral-400">
-                    {moment(b.updated_date).fromNow(true)}
-                  </span>
-                </div>
-                <div className="truncate text-[11.5px] leading-tight text-neutral-500">{b.note}</div>
-              </button>
-            );
-          })}
+        {(buddies || []).map((b) => {
+          const sel = b.id === selectedId;
+          return (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => onSelect(b.id)}
+              className={`w-full rounded-xl px-2.5 py-2 text-left transition-colors ${
+                sel
+                  ? "border border-white/70 shadow-[0_4px_16px_-8px_rgba(24,28,45,.18)]"
+                  : "hover:bg-white/45"
+              }`}
+              style={{ background: sel ? "rgba(255,255,255,.7)" : "transparent" }}
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="truncate text-[13.5px] font-medium leading-tight text-neutral-900">
+                  {b.name}
+                </span>
+                <span className="shrink-0 font-mono text-[9.5px] text-neutral-400">
+                  {moment(b.updated_date).fromNow(true)}
+                </span>
+              </div>
+              <div className="truncate text-[11.5px] leading-tight text-neutral-500">{b.note}</div>
+            </button>
+          );
+        })}
         {(!buddies || buddies.length === 0) && (
           <p className="px-2.5 py-2 text-[12px] text-neutral-400">
             Nothing pinned yet. Write your first note.
