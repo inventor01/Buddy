@@ -162,7 +162,8 @@ export default function Start() {
       setEditing(null);
       setStep("plan");
     } catch (e) {
-      toast({ title: e.message || "It couldn't read that — try again.", variant: "destructive" });
+      const message = e?.response?.data?.error || e?.message || "It couldn't read that — try again.";
+      toast({ title: message, variant: "destructive" });
     } finally {
       setBusy(false);
     }
@@ -220,13 +221,21 @@ export default function Start() {
             found = ls;
             foundItems = res.data?.items || null;
           }
-        } catch (_) {
-          /* the fallback below covers it */
+        } catch (e) {
+          const message = e?.response?.data?.error || e?.message || "Buddy couldn't finish that request right now.";
+          const code = e?.response?.data?.code || "";
+          setResult({
+            state: "error",
+            message: code === "RATE_LIMITED" ? "Buddy is temporarily at its try-it-now limit." : "Buddy couldn't finish that request right now. Nothing was changed.",
+            text: message,
+          });
+          setStep("ran");
+          return;
         }
         setResult(
           found
             ? { state: "answer", text: found.join("\n"), source: "Sources checked just now", items: foundItems }
-            : { state: "error", message: "Buddy couldn't finish that request right now. Nothing was changed.", text: "Try again or make the request a little more specific." }
+            : { state: "error", message: "Buddy couldn't verify a useful answer yet.", text: "Try again or make the request a little more specific." }
         );
         setStep("ran");
         return;
