@@ -350,6 +350,11 @@ export default function Start() {
     setEditing(null);
     setResult(null);
     setCreatedId(null);
+    setPhone("");
+    setPhoneCode("");
+    setPhoneCodeSent(false);
+    setPhoneMasked("");
+    setPhoneError("");
     setStep("compose");
   };
 
