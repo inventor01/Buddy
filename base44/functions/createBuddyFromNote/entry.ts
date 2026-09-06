@@ -15,7 +15,10 @@ export default async function(req) {
       ? body.image_url.trim().slice(0, 500)
       : '';
     if (note.length < 3) {
-      return Response.json({ error: 'Write your note first — one plain sentence is enough.' }, { status: 400 });
+      return Response.json(
+        { error: 'Write a little more — one plain sentence is enough to get started.' },
+        { status: 400 }
+      );
     }
 
     const plan = await base44.asServiceRole.integrations.Core.InvokeLLM({
