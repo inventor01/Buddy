@@ -135,10 +135,13 @@ export default async function(req) {
     const guardedRunMode = recurring ? 'repeat' : watching ? 'watch' : 'once';
     const connectedBackgroundUnsupported = guardedCapability !== 'web' && guardedRunMode !== 'once';
     const effectiveRunMode = connectedBackgroundUnsupported ? 'once' : guardedRunMode;
-    const deferredAction = ['email_send', 'calendar_create', 'task_create'].includes(guardedActionType) &&
-      /\b(one i choose|one i pick|the one i choose|the one i pick|after i choose|after i pick|once i choose|once i pick|after you show me|after you find|then (send|add|put|schedule|create))\b/.test(lowerNote);
-
     const rawPayload = plan?.action_payload && typeof plan.action_payload === 'object' ? plan.action_payload : {};
+    const dependencyLanguage = /\b(one i choose|one i pick|the one i choose|the one i pick|after i choose|after i pick|once i choose|once i pick|after you show me|after you find|then (send|add|put|schedule|create))\b/.test(lowerNote);
+    const emailNeedsAddress = guardedActionType === 'email_send' && !/@/.test(String(rawPayload.recipient || ''));
+    const calendarNeedsStart = guardedActionType === 'calendar_create' && !String(rawPayload.start || '').trim();
+    const taskNeedsTitle = guardedActionType === 'task_create' && !String(rawPayload.title || '').trim();
+    const deferredAction = ['email_send', 'calendar_create', 'task_create'].includes(guardedActionType) &&
+      (dependencyLanguage || emailNeedsAddress || calendarNeedsStart || taskNeedsTitle);
     const cleanField = (value, max) => {
       const text = String(value || '').trim().slice(0, max);
       return /^(n\/?a|none|null|not applicable|unknown)$/i.test(text) ? '' : text;
@@ -146,6 +149,12 @@ export default async function(req) {
     const safeQuery = explicitMoney.length ? note.slice(0, 300) : cleanField(rawPayload.query, 300);
     if (connectedBackgroundUnsupported) {
       question = `I can handle this while you're here, but I can't keep checking your ${guardedCapability === 'gmail' ? 'Email' : guardedCapability === 'calendar' ? 'Calendar' : 'Tasks'} in the background yet. Want me to handle it now?`;
+    } else if (emailNeedsAddress) {
+      question = 'What email address should I use?';
+    } else if (calendarNeedsStart) {
+      question = 'What date and time should I put this on your calendar?';
+    } else if (taskNeedsTitle) {
+      question = 'What should I call this task?';
     }
 
     const safePlan = {
