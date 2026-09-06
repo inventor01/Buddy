@@ -9,10 +9,65 @@ import { requestCategory, loadDelegationPolicy, delegationPromptLines } from '..
 import { createReceiptOnce } from '../../shared/receipts.ts';
 import { recordEscalationOnce, resolveEscalation } from '../../shared/escalation.ts';
 import { loadVerifiedPhone } from '../../shared/phone.ts';
+import { resolveBuddyMentions, loadLinkedBuddies, linkedBuddyPromptLines } from '../../shared/linkedBuddies.ts';
+import { taskStepPromptLines } from '../../shared/taskChain.ts';
 
 const BUDDY_FOLLOWUP_MAX = 8000;
 const ACTION_QUERY_MAX = 2000;
 const CONTEXT_ITEM_MAX = 2000;
+
+async function prepareDeferredActionFromResult(base44: any, buddy: any, resultLines: string[]) {
+  const actionType = String(buddy?.action_type || 'none');
+  if (!['email_send', 'calendar_create', 'task_create'].includes(actionType)) return null;
+  const evidence = (Array.isArray(resultLines) ? resultLines : []).slice(0, 8).join('\n');
+  const existing = buddy?.action_payload && typeof buddy.action_payload === 'object' ? buddy.action_payload : {};
+  const prepared = await base44.asServiceRole.integrations.Core.InvokeLLM({
+    model: 'gemini_3_flash',
+    prompt: [
+      `Original request: ${buddy.note}`,
+      `Outside action to prepare: ${actionType}`,
+      `Existing action details: ${JSON.stringify(existing)}`,
+      evidence ? `Completed research/review output:\n${evidence}` : '',
+      ...taskStepPromptLines(buddy.task_steps),
+      'Prepare the next outside action from the completed work. Do not claim it happened.',
+      'Never invent a recipient, selected option, date, time, price, address, or commitment.',
+      'For email_send, the exact recipient email address must appear in the original request, existing action details, or completed output. You may draft the subject/body from the completed review, but do not invent who receives it.',
+      'If a required detail is still missing, ready=false and ask one short question. Otherwise ready=true.',
+    ].filter(Boolean).join('\n'),
+    response_json_schema: {
+      type: 'object',
+      properties: {
+        ready: { type: 'boolean' },
+        question: { type: 'string' },
+        action_payload: {
+          type: 'object',
+          properties: {
+            recipient: { type: 'string' }, subject: { type: 'string' }, body: { type: 'string' }, query: { type: 'string' },
+            title: { type: 'string' }, start: { type: 'string' }, end: { type: 'string' }, due: { type: 'string' }, notes: { type: 'string' },
+          },
+        },
+      },
+      required: ['ready'],
+    },
+  });
+  const clean = (v: any, n: number) => String(v || '').trim().slice(0, n);
+  const payload = prepared?.action_payload && typeof prepared.action_payload === 'object' ? prepared.action_payload : {};
+  return {
+    ready: prepared?.ready === true,
+    question: clean(prepared?.question, 200),
+    action_payload: {
+      recipient: clean(payload.recipient || existing.recipient, 200),
+      subject: clean(payload.subject || existing.subject, 200),
+      body: clean(payload.body || existing.body, 6000),
+      query: clean(payload.query || existing.query, 2000),
+      title: clean(payload.title || existing.title, 200),
+      start: clean(payload.start || existing.start, 100),
+      end: clean(payload.end || existing.end, 100),
+      due: clean(payload.due || existing.due, 100),
+      notes: clean(payload.notes || existing.notes, 2000),
+    },
+  };
+}
 
 async function currentUserConnection(base44, capability) {
   const envName = capability === 'gmail'
@@ -195,6 +250,16 @@ export default async function (req) {
     // ── Mode 2: user sent a specific message ──────────────────────────────
     const userMessage = typeof body?.message === 'string' ? body.message.trim().slice(0, BUDDY_FOLLOWUP_MAX) : ''; 
     if (userMessage) {
+      const mentioned = await resolveBuddyMentions(base44, user.id, userMessage);
+      if (mentioned.ids.length) {
+        const existingLinks = Array.isArray(buddy.linked_buddy_ids) ? buddy.linked_buddy_ids.filter(Boolean) : [];
+        const linked_buddy_ids = [...new Set([...existingLinks, ...mentioned.ids])].slice(0, 8);
+        await base44.entities.Buddy.update(buddy.id, { linked_buddy_ids });
+        buddy.linked_buddy_ids = linked_buddy_ids;
+      }
+      const linkedBuddies = await loadLinkedBuddies(base44, user.id, buddy.linked_buddy_ids);
+      const linkedLines = linkedBuddyPromptLines(linkedBuddies);
+
       const learned = await savePreferenceIfExplicit(base44, user.id, profile, userMessage);
       if (learned) {
         return Response.json({ lines: [learned.text], items: [], profile_updated: true });
@@ -326,6 +391,8 @@ export default async function (req) {
             ...householdFacts(household, `${buddy.note || ''} ${userMessage}`).map((f) => `- ${f}`)
           ] : []),
           ...delegationPromptLines(delegation),
+          ...linkedLines,
+          ...taskStepPromptLines(buddy.task_steps),
           ...contextLines(buddy),
           'The user is now asking you a follow-up question: "' + userMessage + '"',
           'Answer the question concretely and helpfully, using today\'s web data where relevant.',
@@ -374,6 +441,31 @@ export default async function (req) {
         lines: result.lines || [],
         items: [],
       });
+    }
+
+    if (buddy.deferred_action === true && ['email_send', 'calendar_create', 'task_create'].includes(buddy.action_type)) {
+      const prepared = await prepareDeferredActionFromResult(base44, buddy, result?.lines || []);
+      if (prepared?.ready) {
+        const patch = {
+          action_payload: prepared.action_payload,
+          deferred_action: false,
+          approval_status: 'pending',
+          status: 'active',
+        };
+        await base44.entities.Buddy.update(buddy.id, patch);
+        return Response.json({
+          state: 'approval',
+          message: 'The research and review are done. The next outside step is ready for your approval.',
+          lines: [...(result?.lines || []), 'Next step ready: review it before Buddy sends or changes anything.'],
+          items: result?.items || [],
+          approval_pending: true,
+          buddy_patch: patch,
+        });
+      }
+      const question = prepared?.question || 'One detail is still needed before Buddy can prepare the next step.';
+      const patch = { open_question: question, status: 'active' };
+      await base44.entities.Buddy.update(buddy.id, patch);
+      return Response.json({ state: 'needs_detail', message: question, lines: [question], items: [], buddy_patch: patch });
     }
 
     let receipt = null;
