@@ -12,6 +12,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import ProductCard from "./ProductCard";
+import DealCard from "./DealCard";
 
 const buzz = (pattern) => {
   try { navigator.vibrate?.(pattern); } catch (_) {}
@@ -42,6 +43,7 @@ function cleanItems(result, state) {
 }
 
 function ResultRow({ item, index }) {
+  if (item.deal) return <DealCard item={item} />;
   if (item.product) return <ProductCard item={item} />;
   return (
     <div className="rounded-2xl border border-neutral-200/80 bg-white px-4 py-4 sm:px-5">
