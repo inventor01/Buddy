@@ -91,6 +91,7 @@ export default function Settings() {
           const phone = await base44.functions.invoke("phoneVerification", { action: "status" });
           setPhoneVerified(!!phone.data?.verified);
           setPhoneMasked(phone.data?.phone_masked || "");
+          setPhoneCodeSent(!!phone.data?.pending);
           if (phone.data?.phone_e164) setSmsPhone(phone.data.phone_e164);
         } catch (_) {}
         // Keep the zone current — it's the clock every note runs on.
