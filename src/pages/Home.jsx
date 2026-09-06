@@ -58,6 +58,9 @@ export default function Home() {
       action_payload: spec.actionPayload || {},
       approval_status: spec.approvalRequired ? "pending" : "not_needed",
       deferred_action: spec.deferredAction === true,
+      linked_buddy_ids: Array.isArray(spec.linkedBuddyIds) ? spec.linkedBuddyIds : [],
+      execution_mode: spec.executionMode === "chain" ? "chain" : "single",
+      task_steps: Array.isArray(spec.taskSteps) ? spec.taskSteps : [],
       image_url: spec.image,
       ...(spec.context && spec.context.length ? { context: spec.context } : {}),
       name: spec.name || "Your thing",
@@ -254,6 +257,10 @@ export default function Home() {
           actionPayload: plan.action_payload || {},
           approvalRequired: plan.approval_required === true,
           deferredAction: plan.deferred_action === true,
+          linkedBuddyIds: Array.isArray(plan.linked_buddy_ids) ? plan.linked_buddy_ids : [],
+          linkedBuddyNames: Array.isArray(plan.linked_buddy_names) ? plan.linked_buddy_names : [],
+          executionMode: plan.execution_mode === "chain" ? "chain" : "single",
+          taskSteps: Array.isArray(plan.task_steps) ? plan.task_steps : [],
         },
         lines: { when: plan.when_line, what: plan.what_line, tells: plan.how_line },
       });
@@ -281,6 +288,9 @@ export default function Home() {
         actionPayload: d.plan.actionPayload || {},
         approvalRequired: d.plan.approvalRequired === true,
         deferredAction: d.plan.deferredAction === true,
+        linkedBuddyIds: d.plan.linkedBuddyIds,
+        executionMode: d.plan.executionMode,
+        taskSteps: d.plan.taskSteps,
         image: d.image,
         name: d.plan.name,
         creature: d.plan.creature,
@@ -437,6 +447,7 @@ export default function Home() {
           ) : selected ? (
             <ThreadView
               buddy={selected}
+              buddies={buddies || []}
               profile={profile}
               receipt={receipts.find((r) => r.buddy_id === selected.id) || null}
               job={jobs.find((j) => j.buddy_id === selected.id) || null}
@@ -453,6 +464,8 @@ export default function Home() {
               note={draft.note}
               lines={draft.lines}
               question={draft.plan.question}
+              linkedBuddyNames={draft.plan.linkedBuddyNames || []}
+              taskSteps={draft.plan.taskSteps || []}
               answer={draft.answer || ""}
               onAnswer={(v) => setDraft((d) => ({ ...d, answer: v }))}
               onChange={(cat, v) => setDraft((d) => ({ ...d, lines: { ...d.lines, [cat]: v } }))}
