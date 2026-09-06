@@ -12,7 +12,10 @@ export default async function(req) {
     try { body = await req.json(); } catch (e) { body = {}; }
     const note = typeof body.note === 'string' ? body.note.trim().slice(0, 300) : '';
     if (note.length < 3) {
-      return Response.json({ error: 'Write your note first.' }, { status: 400 });
+      return Response.json(
+        { error: 'Write a little more — even one sentence is enough to get started.' },
+        { status: 400 }
+      );
     }
     // The WHAT card, if the visitor reworded it — it's the exact job.
     const what = typeof body.what === 'string' ? body.what.trim().slice(0, 200) : '';
