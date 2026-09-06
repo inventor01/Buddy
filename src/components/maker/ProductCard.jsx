@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ArrowUpRight, ShoppingBag } from "lucide-react";
 import { Image } from "@/components/ui/image";
+import { base44 } from "@/api/base44Client";
 
 // One product finding as a card — preview image, price, stock when the
 // page showed it, and a straight shot to the product's own page. The
@@ -8,11 +9,40 @@ import { Image } from "@/components/ui/image";
 // sites, so we load them without a referrer and fall back to a branded
 // tile whenever one won't load.
 export default function ProductCard({ item }) {
-  const [broken, setBroken] = useState(false);
   const p = item.product || {};
   const url = p.url || item.url || "";
+  const [image, setImage] = useState(p.image_url || "");
+  const [broken, setBroken] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const soldOut = /sold out|out of stock/i.test(p.stock || "");
-  const showImage = p.image_url && !broken;
+  const showImage = image && !broken;
+
+  const resolveImage = async () => {
+    if ((!url && !image) || resolving) return;
+    setResolving(true);
+    try {
+      const res = await base44.functions.invoke("resolvePreviewImage", {
+        page_url: url || undefined,
+        image_url: image || undefined,
+      });
+      const stable = res.data?.image_url;
+      if (stable) {
+        setImage(stable);
+        setBroken(false);
+      } else {
+        setBroken(true);
+      }
+    } catch (_) {
+      setBroken(true);
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!image && url) resolveImage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url]);
 
   return (
     <a
@@ -26,12 +56,12 @@ export default function ProductCard({ item }) {
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-white/80 bg-white/70">
         {showImage ? (
           <Image
-            src={p.image_url}
+            src={image}
             alt={p.name || item.text}
             className="h-full w-full"
             fittingType="fill"
             referrerPolicy="no-referrer"
-            onError={() => setBroken(true)}
+            onError={resolveImage}
           />
         ) : (
           <div className="grid h-full w-full place-items-center">
