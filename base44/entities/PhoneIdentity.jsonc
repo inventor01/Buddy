@@ -16,7 +16,14 @@
       "type": "string"
     },
     "code_hash": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     },
     "code_expires_at": {
       "type": "string"
