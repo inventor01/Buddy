@@ -79,6 +79,31 @@ async function normalizeTaskDue(base44: any, due: string, timeZone: string) {
   return String(resolved?.due || '').trim();
 }
 
+async function advanceLatestJobAfterAction(base44: any, buddy: any, continuationPatch: any = null) {
+  try {
+    const jobs = await base44.asServiceRole.entities.BuddyJob.filter({ owner_id: buddy.owner_id, buddy_id: buddy.id }, '-started_at', 1);
+    const job = Array.isArray(jobs) ? jobs[0] : null;
+    if (!job || !Array.isArray(job.steps)) return;
+    const steps = job.steps.map((step: any) => ({ ...step }));
+    const targetIndex = steps.findIndex((step: any) => step.status === 'waiting_approval' && (step.kind === 'connected_action' || ['send_email', 'action'].includes(String(step.task_type || ''))));
+    if (targetIndex >= 0) {
+      steps[targetIndex] = { ...steps[targetIndex], status: 'completed', error: '' };
+    }
+    const waitingForResponse = continuationPatch?.chain_state?.phase === 'waiting_response';
+    const stillWaitingApproval = steps.some((step: any) => step.status === 'waiting_approval');
+    const hasPending = steps.some((step: any) => step.status === 'pending');
+    const status = waitingForResponse ? 'needs_user' : stillWaitingApproval ? 'needs_approval' : hasPending ? 'running' : 'completed';
+    await base44.asServiceRole.entities.BuddyJob.update(job.id, {
+      steps,
+      status,
+      completed_at: status === 'completed' ? new Date().toISOString() : '',
+    });
+  } catch (_) {
+    // The user-facing action already succeeded; audit-trail maintenance must
+    // never turn that success into a false failure.
+  }
+}
+
 async function userConnection(base44: any, capability: string) {
   const envName = capability === 'gmail'
     ? 'GMAIL_APP_USER_CONNECTOR_ID'
@@ -263,6 +288,7 @@ export default async function(req: Request) {
       messages,
       last_result: [summary],
     });
+    await advanceLatestJobAfterAction(base44, buddy, continuationPatch);
 
     const change = action === 'email_send'
       ? `Email sent to ${payload.recipient}`
