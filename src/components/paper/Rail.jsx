@@ -2,10 +2,11 @@ import React from "react";
 import { Link } from "react-router-dom";
 import moment from "moment";
 import { PencilIcon, BookIcon } from "./Icons";
-import BookPage from "./BookPage";
 
 // The left rail — a conversation list. Every note is its own chat,
-// and each row previews the note it was pinned from.
+// and each row previews the note it was pinned from. The Notes/Book
+// switch decides what fills the main column beside it; the list of
+// notes stays here either way.
 
 function SegmentButton({ selected, onClick, icon, children }) {
   return (
@@ -57,8 +58,7 @@ export default function Rail({
         </SegmentButton>
       </div>
 
-      {view === "notes" ? (
-        <div className="grid content-start gap-[3px]">
+      <div className="grid content-start gap-[3px]">
           {(buddies || []).map((b) => {
             const sel = b.id === selectedId;
             return (
@@ -85,15 +85,12 @@ export default function Rail({
               </button>
             );
           })}
-          {(!buddies || buddies.length === 0) && (
-            <p className="px-2.5 py-2 text-[12px] text-neutral-400">
-              Nothing pinned yet. Write your first note.
-            </p>
-          )}
-        </div>
-      ) : (
-        <BookPage buddies={buddies} />
-      )}
+        {(!buddies || buddies.length === 0) && (
+          <p className="px-2.5 py-2 text-[12px] text-neutral-400">
+            Nothing pinned yet. Write your first note.
+          </p>
+        )}
+      </div>
 
       <div className="mt-auto border-t border-white/60 pt-3">
         <p className="text-[11px] text-neutral-500">Three notes free · $6 a month for unlimited</p>
