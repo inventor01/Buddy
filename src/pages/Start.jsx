@@ -8,6 +8,7 @@ import PaymentSheet from "@/components/paper/PaymentSheet";
 import PlanBoard from "@/components/maker/PlanBoard";
 import FoundIt from "@/components/maker/FoundIt";
 import TypingWord from "@/components/maker/TypingWord";
+import { savePendingNote } from "@/lib/pendingNote";
 
 // One box, like a chat window — but what you type becomes a small set of
 // cards you can drag and reword before it runs. Simple enough for anyone,
@@ -136,6 +137,17 @@ export default function Start() {
         return;
       }
 
+      // Three notes are free — the same limit the home page holds to.
+      const me = await base44.auth.me();
+      if (me?.plan !== "pro") {
+        const mine = await base44.entities.Buddy.filter({ created_by_id: me.id }, "-created_date", 4);
+        if (mine.length >= 3) {
+          setPayOpen(true);
+          toast({ title: "Three notes are free. Pro is $6 a month for unlimited." });
+          return;
+        }
+      }
+
       // Recompute the real settings from the (possibly reworded) cards:
       // WHEN → the daily schedule it runs on, TELLS → the channel.
       let scheduleTime = lines.scheduleTime || "9:00 AM";
@@ -193,12 +205,20 @@ export default function Start() {
     setBusy(true);
     try {
       const raw = phone.trim();
-      if (raw) {
-        // Normalise: if the user typed digits only (no +), prepend +1 (US).
-        // If they already typed a country code starting with +, use as-is.
-        const normalised = raw.startsWith('+') ? raw : '+1' + raw.replace(/\D/g, '');
-        await base44.auth.updateMe({ sms_phone: normalised });
+      // Normalise: if the user typed digits only (no +), prepend +1 (US).
+      // If they already typed a country code starting with +, use as-is.
+      const normalised = raw ? (raw.startsWith('+') ? raw : '+1' + raw.replace(/\D/g, '')) : '';
+
+      if (authed === false) {
+        // Nothing a visitor typed has been saved — there was no account to
+        // save it to. Carry the note and the number across the sign-in and
+        // let the home page start it for real on the way back.
+        savePendingNote({ note: note.trim(), image, lines, phone: normalised });
+        base44.auth.redirectToLogin("/");
+        return;
       }
+
+      if (normalised) await base44.auth.updateMe({ sms_phone: normalised });
       setStep("done");
     } catch (_) {
       setStep("done");
@@ -397,7 +417,9 @@ export default function Start() {
             <p className={kicker}>Last piece</p>
             <h2 className={`mt-3 ${h2}`}>Where should we text you?</h2>
             <p className="mt-2 text-[14px] text-neutral-500">
-              One number — that's the whole setup. Nothing else to connect.
+              {authed === false
+                ? "One number and a quick account — that's what keeps it running every day."
+                : "One number — that's the whole setup. Nothing else to connect."}
             </p>
             <div className="mt-5 flex items-stretch rounded-xl border border-neutral-300 bg-white focus-within:border-neutral-500">
               <span className="grid place-items-center px-4 text-[16px] text-neutral-400">+1</span>
@@ -412,7 +434,7 @@ export default function Start() {
             <div className="mt-5 flex flex-wrap items-center gap-4">
               <button type="button" onClick={pinPhone} disabled={busy} className={primary}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Start it
+                {authed === false ? "Start it — make my account" : "Start it"}
               </button>
               <button type="button" onClick={() => setStep("ran")} className={ghost}>
                 Back
