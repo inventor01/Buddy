@@ -212,6 +212,103 @@
                 "why_fit": {
                   "type": "string"
                 },
+                "deal": {
+                  "type": "object",
+                  "properties": {
+                    "address": {
+                      "type": "string"
+                    },
+                    "zip_code": {
+                      "type": "string"
+                    },
+                    "property_type": {
+                      "type": "string"
+                    },
+                    "list_price": {
+                      "type": "number"
+                    },
+                    "arv": {
+                      "type": "number"
+                    },
+                    "arv_low": {
+                      "type": "number"
+                    },
+                    "arv_high": {
+                      "type": "number"
+                    },
+                    "repairs": {
+                      "type": "number"
+                    },
+                    "repair_basis": {
+                      "type": "string"
+                    },
+                    "flipper_max": {
+                      "type": "number"
+                    },
+                    "max_contract": {
+                      "type": "number"
+                    },
+                    "assignment_fee": {
+                      "type": "number"
+                    },
+                    "investor_arv_percent": {
+                      "type": "number"
+                    },
+                    "deal_score": {
+                      "type": "number"
+                    },
+                    "days_on_market": {
+                      "type": "number"
+                    },
+                    "price_cuts": {
+                      "type": "number"
+                    },
+                    "listing_type": {
+                      "type": "string"
+                    },
+                    "square_footage": {
+                      "type": "number"
+                    },
+                    "bedrooms": {
+                      "type": "number"
+                    },
+                    "bathrooms": {
+                      "type": "number"
+                    },
+                    "listing_url": {
+                      "type": "string"
+                    },
+                    "listing_source": {
+                      "type": "string"
+                    },
+                    "image_url": {
+                      "type": "string"
+                    },
+                    "caveat": {
+                      "type": "string"
+                    },
+                    "comps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "address": {
+                            "type": "string"
+                          },
+                          "price": {
+                            "type": "number"
+                          },
+                          "distance": {
+                            "type": "number"
+                          },
+                          "correlation": {
+                            "type": "number"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
                 "product": {
                   "type": "object",
                   "properties": {
