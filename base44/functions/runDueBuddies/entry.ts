@@ -52,7 +52,7 @@ export default async function(req) {
     const due = [];
     for (const buddy of buddies) {
       if (due.length >= MAX_DUE) break;
-      const owner = await ownerOf(buddy.created_by_id);
+      const owner = await ownerOf(buddy.owner_id);
       const local = nowInZone(owner?.timezone);
       const scheduledHour = parseScheduleHour(buddy.schedule_time);
       const reachedTimeToday = local.hour >= scheduledHour;
