@@ -43,7 +43,15 @@ export default function Settings() {
     setSavingPhone(true);
     setPhoneSaved(false);
     try {
-      await base44.auth.updateMe({ sms_phone: smsPhone.trim() });
+      const raw = smsPhone.trim();
+      // Normalise: digits-only → prepend +1; already has + → use as-is; empty → clear.
+      const normalised = raw
+        ? raw.startsWith('+')
+          ? raw
+          : '+1' + raw.replace(/\D/g, '')
+        : '';
+      setSmsPhone(normalised);
+      await base44.auth.updateMe({ sms_phone: normalised });
       setPhoneSaved(true);
     } finally {
       setSavingPhone(false);
