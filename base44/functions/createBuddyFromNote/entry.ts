@@ -60,7 +60,7 @@ export default async function(req) {
         'what_line = what it does, in one sentence.',
         'how_line = how it gets the result back to the person (for example "Shows the answer here and texts you when it matters").',
         'schedule_time = the time it should check. For once with no time, use the current/default time "9:00 AM" because it will run immediately anyway.',
-        'If a detail the job truly needs is missing (which account, whose birthday, which store, a date, or a number to watch), question = ONE short friendly question asking for exactly that, in plain words. If it is specific enough already, question = "".'
+        'If a detail the job truly needs is missing (which account, whose birthday, which store, a date, or a number to watch), question = ONE short friendly question asking for exactly that, in plain words. For flights, departure city/airport is required; destination alone is not enough. For "near me" local services, ask for city or ZIP unless a location was provided. If it is specific enough already, question = "".'
       ].join('\n'),
       response_json_schema: {
         type: 'object',
