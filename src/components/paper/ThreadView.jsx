@@ -121,11 +121,19 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
             <div>
               <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-sky-700">How Buddy handled this</p>
               <h3 className="mt-1.5 font-heading text-[18px] font-semibold text-neutral-900">
-                {job.status === "completed" ? "Checked, combined, and verified." : job.status === "failed" ? "Buddy saved the work it completed." : "Buddy is working through the checks."}
+                {job.status === "completed"
+                  ? "Checked, combined, and verified."
+                  : job.status === "failed"
+                    ? "Buddy saved the work it completed."
+                    : job.status === "needs_approval"
+                      ? "The research is done. The next step is ready for your review."
+                      : job.status === "needs_user"
+                        ? "Buddy is waiting on the next response or your input."
+                        : "Buddy is working through the checks."}
               </h3>
             </div>
-            <span className={`rounded-full px-2.5 py-1 text-[10.5px] font-semibold ${job.status === "completed" ? "bg-emerald-50 text-emerald-700" : job.status === "failed" ? "bg-rose-50 text-rose-700" : "bg-sky-50 text-sky-700"}`}>
-              {job.status === "completed" ? "Verified" : job.status === "failed" ? "Needs another way" : "In progress"}
+            <span className={`rounded-full px-2.5 py-1 text-[10.5px] font-semibold ${job.status === "completed" ? "bg-emerald-50 text-emerald-700" : job.status === "failed" ? "bg-rose-50 text-rose-700" : job.status === "needs_approval" ? "bg-amber-50 text-amber-700" : "bg-sky-50 text-sky-700"}`}>
+              {job.status === "completed" ? "Verified" : job.status === "failed" ? "Needs another way" : job.status === "needs_approval" ? "Needs approval" : job.status === "needs_user" ? "Waiting" : "In progress"}
             </span>
           </div>
           <div className="mt-4 space-y-2">
