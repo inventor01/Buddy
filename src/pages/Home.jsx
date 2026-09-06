@@ -421,6 +421,7 @@ export default function Home() {
             <ThreadView
               buddy={selected}
               profile={profile}
+              receipt={receipts.find((r) => r.buddy_id === selected.id) || null}
               onPause={togglePause}
               onTakeDown={takeDown}
               onEditNote={editNote}
@@ -446,6 +447,7 @@ export default function Home() {
               me={me}
               profile={profile}
               buddies={buddies || []}
+              receipts={receipts}
               onOpen={selectNote}
               onPin={handlePin}
               busy={pinning}
