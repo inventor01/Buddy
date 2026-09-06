@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-09-06 — Buddy Orchestration Engine + Confirmed Phone Delivery
+
+### Root causes
+- **Complex requests were still treated as one model call.** Even when Buddy had specialized property data, hard requests did not have a general decomposition/router/verifier layer, so research, browser checks, domain data, calculations, and verification could not be assigned independently.
+- **One provider could become a single point of failure.** There was no internal job record or fallback accounting when an outside specialist failed.
+- **Phone numbers could be saved without proof of ownership.** The old Settings/landing flow wrote `sms_phone` directly, so there was no server-enforced confirmation gate before scheduled text delivery.
+
+### Permanent fixes
+- Added private `BuddyJob` records with bounded specialist steps, status, provider routing, evidence URLs, confidence, fallback count, and verification summary.
+- Added a complexity router so simple requests stay on the fast path while multi-step requests enter the orchestration engine automatically.
+- Added provider adapters for OpenAI Responses web research, Browserbase page fetching, RentCast property underwriting, plus Buddy-native research/reasoning fallbacks.
+- Added final verification/synthesis that only uses specialist evidence and keeps consequential actions inside the existing approval path.
+- Wholesale requests now orchestrate live property underwriting, top-listing page verification when a browser specialist is available, and deterministic recomputation of the wholesale formula.
+- Added a consumer-facing “How Buddy handled this” trail without exposing vendor/model jargon.
+- Added private `PhoneIdentity` records and a server-side `phoneVerification` flow: 6-digit OTP, hashed code storage, 10-minute expiry, 60-second resend cooldown, five-attempt cap, and rate limits.
+- Restricted the OTP hash from client reads.
+- Updated run-now and scheduled SMS delivery to resolve only a verified `PhoneIdentity`; raw `User.sms_phone` is no longer trusted for delivery.
+- Updated Settings and landing/sign-in flows to use Send code → Confirm number. Pending numbers remain unusable for texts until confirmed.
+
+### QA
+- `npm run build` passes.
+- `npm run lint` passes.
+- Backend bundles pass for run-now, scheduled runs, phone verification, connection readiness, connected actions, and preview.
+- Regression scan confirms the old direct raw-phone save/delivery paths are removed from active frontend and runner code.
+
 ## 2026-09-06 — Consumer Buddy Rebrand + Flexible Handoffs
 
 ### Product direction
