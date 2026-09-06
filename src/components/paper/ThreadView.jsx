@@ -12,7 +12,8 @@ import FindingRow from "@/components/maker/FindingRow";
 const fmtAt = (at) => moment(at).format("MMM D, h:mm A");
 
 export default function ThreadView({ buddy, onPause, onTakeDown, onEditNote, onSend, busy }) {
-  const active = buddy.status !== "paused";
+  const done = buddy.status === "done";
+  const active = buddy.status === "active";
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState(false);
   const [edited, setEdited] = useState(buddy.note);
@@ -45,13 +46,19 @@ export default function ThreadView({ buddy, onPause, onTakeDown, onEditNote, onS
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => onPause(buddy)}
-            className="rounded-full border border-white/70 bg-white/60 px-3.5 py-1.5 text-[12px] font-medium text-neutral-700 backdrop-blur-xl transition-colors hover:bg-white/85"
-          >
-            {active ? "Pause" : "Resume"}
-          </button>
+          {done ? (
+            <span className="rounded-full border border-emerald-100 bg-emerald-50/80 px-3.5 py-1.5 text-[12px] font-medium text-emerald-700">
+              Done
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onPause(buddy)}
+              className="rounded-full border border-white/70 bg-white/60 px-3.5 py-1.5 text-[12px] font-medium text-neutral-700 backdrop-blur-xl transition-colors hover:bg-white/85"
+            >
+              {active ? "Pause" : "Resume"}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => onTakeDown(buddy)}
