@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { secrets } from 'base44:runtime';
+import { createReceiptOnce } from '../../shared/receipts.ts';
 
 function base64Url(input: string) {
   const bytes = new TextEncoder().encode(input);
@@ -209,7 +210,26 @@ export default async function(req: Request) {
       last_result: [summary],
     });
 
-    return Response.json({ ok: true, summary });
+    const change = action === 'email_send'
+      ? `Email sent to ${payload.recipient}`
+      : action === 'calendar_create'
+        ? `Calendar event added: ${payload.title}`
+        : action === 'task_create'
+          ? `Task added: ${payload.title}`
+          : summary;
+    const receipt = await createReceiptOnce({
+      base44,
+      buddy,
+      summary,
+      items: [],
+      personalFacts: [],
+      changesMade: [change],
+      confirmation: summary,
+      outcome: 'approved and completed',
+      estimatedTimeSavedMinutes: 8,
+    });
+
+    return Response.json({ ok: true, summary, receipt: receipt ? { id: receipt.id, completed_at: receipt.completed_at } : null });
   } catch (error: any) {
     const message = String(error?.message || error || 'That handoff could not finish.');
     if (error?.code === 'NEEDS_CONNECTION') {
