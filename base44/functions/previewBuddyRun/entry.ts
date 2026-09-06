@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines, contextLines } from '../../shared/runBuddy.ts';
 import { checkUsageLimit } from '../../shared/rateLimit.ts';
+import { isWholesalePropertyRequest, runWholesaleDealFinder } from '../../shared/realEstate.ts';
 
 // Runs a visitor's typed note once, with no account and nothing saved —
 // the "watch it run" step for people who haven't signed in. Anonymous by
@@ -46,6 +47,24 @@ export default async function(req) {
     }
 
     const simplePlanningRequest = /\b(plan|checklist|outline|ideas?)\b/i.test(note) && !/\b(email|gmail|calendar|tasks?|to-?do)\b/i.test(note);
+
+    if (isWholesalePropertyRequest(`${note} ${what}`)) {
+      let user = null;
+      try { user = await base44.auth.me(); } catch (_) {}
+      if (!user?.id) {
+        return Response.json({
+          state: 'needs_connection',
+          message: 'Sign in to run live property underwriting. Buddy uses paid property, ARV, and comp data for this request instead of guessing.',
+          lines: ['Sign in to run live property underwriting.'],
+          items: [],
+        });
+      }
+      const wholesale = await runWholesaleDealFinder({ base44, buddy: { id: 'preview', owner_id: user.id, note, what_line: what, run_mode: 'repeat', kind: 'web', context } });
+      const needs = typeof wholesale?.needs_context === 'string' ? wholesale.needs_context.trim() : '';
+      if (needs) return Response.json({ state: 'needs_detail', message: needs, lines: [needs], items: [] });
+      const wholesaleItems = toFindingItems(wholesale?.findings);
+      return Response.json({ state: wholesaleItems.length ? 'answer' : 'empty', lines: toLines(wholesaleItems), items: wholesaleItems, message: wholesaleItems.length ? undefined : 'No deal cleared the wholesale screen today.' });
+    }
 
     const findings = await base44.asServiceRole.integrations.Core.InvokeLLM({
       model: "gemini_3_flash",
