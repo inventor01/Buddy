@@ -24,6 +24,20 @@ const EXAMPLES = [
 
 const CATS = ["when", "what", "tells"];
 
+function deterministicMissingDetail(text) {
+  const value = String(text || "").trim();
+  const lower = value.toLowerCase();
+  const looksLikeFlight = /\b(flight|flights|airfare|plane ticket|airline)\b/.test(lower);
+  const hasDestination = /\b(to|into)\s+[a-z]/i.test(value);
+  const hasOrigin = /\b(from|leaving|depart(?:ing)?(?: from)?)\s+[a-z]/i.test(value);
+  if (looksLikeFlight && hasDestination && !hasOrigin) {
+    return "What city or airport are you flying from?";
+  }
+  const localService = /\b(near me|nearby|close to me)\b/.test(lower) && /\b(plumber|electrician|roofer|mechanic|restaurant|dentist|doctor|contractor|cleaner|salon|barber)\b/.test(lower);
+  if (localService) return "What city or ZIP code should Buddy search around?";
+  return "";
+}
+
 export default function Start() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -79,6 +93,7 @@ export default function Start() {
         const serverErr = res.data?.error;
         throw new Error(serverErr || "It couldn't read that — try again.");
       }
+      const requiredDetail = deterministicMissingDetail(note) || (typeof plan.question === "string" ? plan.question : "");
       setLines({
         when: plan.when_line,
         what: plan.what_line,
@@ -93,7 +108,7 @@ export default function Start() {
         approvalRequired: plan.approval_required === true,
         deferredAction: plan.deferred_action === true,
         scheduleTime: plan.schedule_time,
-        question: typeof plan.question === "string" ? plan.question : "",
+        question: requiredDetail,
       });
       setOrder(CATS);
       setEditing(null);
@@ -117,6 +132,12 @@ export default function Start() {
 
   const runOnce = async () => {
     if (busy) return;
+    const requiredDetail = lines?.question || deterministicMissingDetail(note);
+    if (requiredDetail && !answer.trim()) {
+      setLines((current) => current ? { ...current, question: requiredDetail } : current);
+      toast({ title: requiredDetail });
+      return;
+    }
     setBusy(true);
     try {
       if (authed === false) {
