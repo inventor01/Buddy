@@ -8,7 +8,7 @@ import PlanBoard from "./PlanBoard";
 
 const CATS = ["when", "what", "tells"];
 
-export default function PlanPanel({ note, lines, question, answer, onAnswer, onChange, onRun, onCancel, busy }) {
+export default function PlanPanel({ note, lines, question, linkedBuddyNames = [], taskSteps = [], answer, onAnswer, onChange, onRun, onCancel, busy }) {
   const [order, setOrder] = useState(CATS);
   const [editing, setEditing] = useState(null);
 
@@ -43,6 +43,36 @@ export default function PlanPanel({ note, lines, question, answer, onAnswer, onC
             onCommit={() => setEditing(null)}
           />
         </div>
+
+        {linkedBuddyNames.length > 0 && (
+          <div className="mt-6 rounded-2xl border border-sky-100 bg-sky-50/55 p-4">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-sky-700">Connected context</p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-neutral-600">Buddy will use the latest useful context from these chats.</p>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {linkedBuddyNames.map((name) => (
+                <span key={name} className="rounded-full border border-sky-100 bg-white/80 px-3 py-1.5 text-[11.5px] font-medium text-sky-800">@{name}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {taskSteps.length > 1 && (
+          <div className="mt-6 rounded-2xl border border-violet-100 bg-violet-50/45 p-4">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-violet-700">One handoff · {taskSteps.length} connected steps</p>
+            <div className="mt-3 space-y-2">
+              {taskSteps.map((step, index) => (
+                <div key={step.id || index} className="flex items-start gap-3 rounded-xl border border-white/80 bg-white/70 px-3 py-2.5">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-violet-100 text-[11px] font-semibold text-violet-700">{index + 1}</span>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-neutral-850">{step.label || step.instruction}</p>
+                    {step.instruction && step.instruction !== step.label && <p className="mt-0.5 text-[11.5px] leading-relaxed text-neutral-500">{step.instruction}</p>}
+                    {step.approval_required && <span className="mt-1.5 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">asks before sending/changing</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {question && (
           <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/80 p-4">
