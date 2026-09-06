@@ -4,7 +4,9 @@ import { runAdsBuddy } from '../../shared/ads.ts';
 import { runSocialBuddy } from '../../shared/social.ts';
 import { secrets } from 'base44:runtime';
 import { checkUsageLimit } from '../../shared/rateLimit.ts';
-import { loadProfile, profilePromptLines, relevantProfileFacts } from '../../shared/personalization.ts';
+import { loadProfile, loadHousehold, householdFacts, profilePromptLines, relevantProfileFacts } from '../../shared/personalization.ts';
+import { requestCategory, loadDelegationPolicy, delegationPromptLines } from '../../shared/delegation.ts';
+import { createReceiptOnce } from '../../shared/receipts.ts';
 
 async function currentUserConnection(base44, capability) {
   const envName = capability === 'gmail'
@@ -174,7 +176,11 @@ export default async function (req) {
     }
 
     const profile = await loadProfile(base44, user.id);
-    const personalFacts = relevantProfileFacts(profile, `${buddy.note || ''} ${buddy.what_line || ''}`);
+    const household = await loadHousehold(base44, user.id);
+    const requestText = `${buddy.note || ''} ${buddy.what_line || ''}`;
+    const personalFacts = [...relevantProfileFacts(profile, requestText), ...householdFacts(household, requestText)].slice(0, 14);
+    const category = requestCategory(requestText, buddy.capability || 'web');
+    const delegation = await loadDelegationPolicy(base44, user.id, category);
 
     // ── Mode 2: user sent a specific message ──────────────────────────────
     const userMessage = typeof body?.message === 'string' ? body.message.trim().slice(0, 500) : ''; 
@@ -305,6 +311,11 @@ export default async function (req) {
           'Their original request: "' + buddy.note + '"',
           'Your daily job: ' + (buddy.what_line || buddy.note),
           ...profilePromptLines(profile, `${buddy.note || ''} ${userMessage}`),
+          ...(householdFacts(household, `${buddy.note || ''} ${userMessage}`).length ? [
+            'Relevant household details this person chose to save:',
+            ...householdFacts(household, `${buddy.note || ''} ${userMessage}`).map((f) => `- ${f}`)
+          ] : []),
+          ...delegationPromptLines(delegation),
           ...contextLines(buddy),
           'The user is now asking you a follow-up question: "' + userMessage + '"',
           'Answer the question concretely and helpfully, using today\'s web data where relevant.',
@@ -353,7 +364,21 @@ export default async function (req) {
       });
     }
 
-    return Response.json({ state: 'answer', lines: result.lines, items: result.items });
+    let receipt = null;
+    if (buddy.run_mode === 'once' && Array.isArray(result?.lines) && result.lines.length) {
+      receipt = await createReceiptOnce({
+        base44,
+        buddy,
+        summary: result.lines.join('\n'),
+        items: result.items || [],
+        personalFacts,
+        changesMade: [],
+        outcome: 'answered and handled',
+        estimatedTimeSavedMinutes: 10,
+      });
+    }
+
+    return Response.json({ state: 'answer', lines: result.lines, items: result.items, receipt: receipt ? { id: receipt.id, completed_at: receipt.completed_at } : null, delegation: delegation ? { category, level: delegation.level } : null });
   } catch (error) {
     return Response.json({ error: (error as Error).message }, { status: 500 });
   }
