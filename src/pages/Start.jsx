@@ -189,7 +189,13 @@ export default function Start() {
     if (busy) return;
     setBusy(true);
     try {
-      if (phone.trim()) await base44.auth.updateMe({ sms_phone: phone.trim() });
+      const raw = phone.trim();
+      if (raw) {
+        // Normalise: if the user typed digits only (no +), prepend +1 (US).
+        // If they already typed a country code starting with +, use as-is.
+        const normalised = raw.startsWith('+') ? raw : '+1' + raw.replace(/\D/g, '');
+        await base44.auth.updateMe({ sms_phone: normalised });
+      }
       setStep("done");
     } catch (_) {
       setStep("done");
@@ -391,7 +397,7 @@ export default function Start() {
               One number — that's the whole setup. Nothing else to connect.
             </p>
             <div className="mt-5 flex items-stretch rounded-xl border border-neutral-300 bg-white focus-within:border-neutral-500">
-              <span className="grid place-items-center px-4 text-[16px] text-neutral-900">+1</span>
+              <span className="grid place-items-center px-4 text-[16px] text-neutral-400">+1</span>
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
