@@ -15,9 +15,13 @@ export default function Settings() {
   const [bigText, setBigText] = useState(readBigText());
   const [saving, setSaving] = useState(false);
   const [smsPhone, setSmsPhone] = useState("");
-  const [phoneSaved, setPhoneSaved] = useState(false);
   const [savingPhone, setSavingPhone] = useState(false);
   const [phoneError, setPhoneError] = useState("");
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [phoneMasked, setPhoneMasked] = useState("");
+  const [phoneCodeSent, setPhoneCodeSent] = useState(false);
+  const [phoneCode, setPhoneCode] = useState("");
+  const [verifyingPhone, setVerifyingPhone] = useState(false);
   const [abilities, setAbilities] = useState([]);
   const [propertyDataReady, setPropertyDataReady] = useState(false);
   const [connecting, setConnecting] = useState("");
@@ -83,6 +87,12 @@ export default function Settings() {
         } catch (_) {}
         setNotifyEmail(!!u?.notify_email);
         setSmsPhone(u?.sms_phone || "");
+        try {
+          const phone = await base44.functions.invoke("phoneVerification", { action: "status" });
+          setPhoneVerified(!!phone.data?.verified);
+          setPhoneMasked(phone.data?.phone_masked || "");
+          if (phone.data?.phone_e164) setSmsPhone(phone.data.phone_e164);
+        } catch (_) {}
         // Keep the zone current — it's the clock every note runs on.
         setMe(await ensureTimezone(base44, u));
         try {
@@ -119,23 +129,53 @@ export default function Settings() {
     }
   };
 
-  const savePhone = async () => {
+  const sendPhoneCode = async () => {
+    if (!smsPhone.trim() || savingPhone) return;
     setSavingPhone(true);
-    setPhoneSaved(false);
     setPhoneError("");
     try {
-      const raw = smsPhone.trim();
-      // Normalise: digits-only → prepend +1; already has + → use as-is; empty → clear.
-      const normalised = raw
-        ? raw.startsWith('+')
-          ? raw
-          : '+1' + raw.replace(/\D/g, '')
-        : '';
-      setSmsPhone(normalised);
-      await base44.auth.updateMe({ sms_phone: normalised });
-      setPhoneSaved(true);
+      const res = await base44.functions.invoke("phoneVerification", { action: "start", phone: smsPhone });
+      setPhoneMasked(res.data?.phone_masked || "");
+      setPhoneVerified(false);
+      setPhoneCodeSent(true);
+      setPhoneCode("");
     } catch (e) {
-      setPhoneError("That number didn't save — try again.");
+      setPhoneError(e?.response?.data?.error || e?.message || "That confirmation text couldn't be sent.");
+    } finally {
+      setSavingPhone(false);
+    }
+  };
+
+  const confirmPhoneCode = async () => {
+    if (phoneCode.replace(/\D/g, "").length !== 6 || verifyingPhone) return;
+    setVerifyingPhone(true);
+    setPhoneError("");
+    try {
+      const res = await base44.functions.invoke("phoneVerification", { action: "verify", code: phoneCode });
+      setPhoneVerified(!!res.data?.verified);
+      setPhoneMasked(res.data?.phone_masked || phoneMasked);
+      if (res.data?.phone_e164) setSmsPhone(res.data.phone_e164);
+      setPhoneCodeSent(false);
+      setPhoneCode("");
+    } catch (e) {
+      setPhoneError(e?.response?.data?.error || e?.message || "That code couldn't be confirmed.");
+    } finally {
+      setVerifyingPhone(false);
+    }
+  };
+
+  const removePhone = async () => {
+    setSavingPhone(true);
+    setPhoneError("");
+    try {
+      await base44.functions.invoke("phoneVerification", { action: "remove" });
+      setSmsPhone("");
+      setPhoneVerified(false);
+      setPhoneMasked("");
+      setPhoneCodeSent(false);
+      setPhoneCode("");
+    } catch (e) {
+      setPhoneError(e?.response?.data?.error || "That number couldn't be removed.");
     } finally {
       setSavingPhone(false);
     }
