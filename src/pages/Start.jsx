@@ -130,7 +130,18 @@ export default function Start() {
             image_url: image || undefined,
             ...(answer.trim() ? { context: [answer.trim()] } : {}),
           });
+          const state = res.data?.state || "answer";
           const ls = res.data?.lines || [];
+          if (state === "needs_detail") {
+            setResult({ state: "needs_detail", text: res.data?.message || ls[0] || "One more detail is needed.", items: [] });
+            setStep("ran");
+            return;
+          }
+          if (state === "empty") {
+            setResult({ state: "empty", text: res.data?.message || "Buddy couldn't verify a useful answer yet.", items: [] });
+            setStep("ran");
+            return;
+          }
           if (ls.length) {
             found = ls;
             foundItems = res.data?.items || null;
@@ -140,8 +151,8 @@ export default function Start() {
         }
         setResult(
           found
-            ? { text: found.join("\n"), source: "What it read from the web just now", items: foundItems }
-            : { text: "It couldn't reach the page just now. It'll try again in the morning.", source: null }
+            ? { state: "answer", text: found.join("\n"), source: "Sources checked just now", items: foundItems }
+            : { state: "error", message: "Buddy couldn't finish that request right now. Nothing was changed.", text: "Try again or make the request a little more specific." }
         );
         setStep("ran");
         return;
@@ -189,7 +200,11 @@ export default function Start() {
       setCreatedId(created.id);
 
       if (lines.approvalRequired) {
-        setResult({ text: "Buddy has this ready for your approval. Open it after sign-in to review exactly what will happen before anything is sent or changed.", source: null });
+        setResult({
+          state: "approval",
+          text: "Buddy has the next step ready. Review exactly what will happen before anything is sent or changed.",
+          source: null,
+        });
         setStep("ran");
         return;
       }
@@ -198,6 +213,11 @@ export default function Start() {
       let foundItems = null;
       try {
         const res = await base44.functions.invoke("runBuddyNow", { buddyId: created.id });
+        if (res.data?.needs_connection) {
+          setResult({ state: "needs_connection", text: res.data?.lines?.[0] || "Connect the account this request needs before Buddy can continue." });
+          setStep("ran");
+          return;
+        }
         const ls = res.data?.lines || [];
         if (ls.length) {
           found = ls;
@@ -208,8 +228,8 @@ export default function Start() {
       }
       setResult(
         found
-          ? { text: found.join("\n"), source: "What it read from the web just now", items: foundItems }
-          : { text: "It couldn't reach the page just now. It'll try again in the morning.", source: null }
+          ? { state: "answer", text: found.join("\n"), source: "Sources checked just now", items: foundItems }
+          : { state: "error", message: "Buddy couldn't finish that request right now. Nothing was changed.", text: "Try again or make the request a little more specific." }
       );
       setStep("ran");
     } catch (e) {
@@ -451,7 +471,30 @@ export default function Start() {
         )}
 
         {step === "ran" && result && (
-          <FoundIt result={result} onContinue={() => setStep("phone")} onRestart={restart} />
+          <FoundIt
+            result={result}
+            runMode={lines?.runMode || "once"}
+            onContinue={() => {
+              if (result.state === "needs_detail") {
+                setStep("plan");
+                return;
+              }
+              if (result.state === "needs_connection" && authed !== false) {
+                navigate("/settings");
+                return;
+              }
+              if (result.state === "approval" && authed !== false && createdId) {
+                navigate(`/notes?note=${createdId}`);
+                return;
+              }
+              if (result.state === "error") {
+                runOnce();
+                return;
+              }
+              setStep("phone");
+            }}
+            onRestart={restart}
+          />
         )}
 
         {step === "phone" && (
