@@ -157,11 +157,13 @@ export default function Home() {
         });
         setBuddies((prev) => [b, ...(prev ?? [])]);
         setParams({ note: b.id });
-      } catch (_) {
-        toast({
-          title: "That note didn't come across — write it again here.",
-          variant: "destructive",
-        });
+      } catch (e) {
+        if (!e?.upgradeRequired) {
+          toast({
+            title: e?.response?.data?.error || e?.message || "That note didn't come across — write it again here.",
+            variant: "destructive",
+          });
+        }
       } finally {
         setSending(false);
       }
