@@ -39,6 +39,8 @@ export default function Settings() {
   const [wholesale, setWholesale] = useState(null);
   const [wholesaleDraft, setWholesaleDraft] = useState({ default_zip: "48224", investor_arv_percent: "70", assignment_fee: "10000", repair_per_sqft: "25", comp_radius_miles: "1", comp_days_old: "180", min_discount_percent: "15" });
   const [savingWholesale, setSavingWholesale] = useState(false);
+  const [intelligenceStatus, setIntelligenceStatus] = useState(null);
+  const [intelligenceBusy, setIntelligenceBusy] = useState("");
 
   useEffect(() => {
     base44
@@ -106,6 +108,12 @@ export default function Settings() {
           setSpecialists(res.data?.specialists || {});
         } catch (_) {
           setAbilities([]);
+        }
+        if (u?.role === "admin") {
+          try {
+            const intel = await base44.functions.invoke("runIntelligenceGate", { action: "status" });
+            setIntelligenceStatus(intel.data || null);
+          } catch (_) {}
         }
       })
       .catch(() => {});
@@ -268,6 +276,22 @@ export default function Settings() {
       const saved = wholesale?.id ? await base44.entities.WholesaleProfile.update(wholesale.id, data) : await base44.entities.WholesaleProfile.create(data);
       setWholesale(saved);
     } finally { setSavingWholesale(false); }
+  };
+
+  const runIntelligenceGate = async (mode) => {
+    if (me?.role !== "admin" || intelligenceBusy) return;
+    setIntelligenceBusy(mode);
+    try {
+      const res = await base44.functions.invoke("runIntelligenceGate", {
+        action: "run",
+        mode,
+        max_cases: mode === "live" ? 5 : 25,
+      });
+      const status = await base44.functions.invoke("runIntelligenceGate", { action: "status" });
+      setIntelligenceStatus(status.data || { latest: res.data?.gate || null });
+    } finally {
+      setIntelligenceBusy("");
+    }
   };
 
   const toggleBig = () => {
@@ -555,6 +579,31 @@ export default function Settings() {
               </div>
             </div>
           </div>
+
+          {me?.role === "admin" && (
+            <div className="glass rounded-2xl p-5">
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="mt-0.5 h-5 w-5 text-neutral-400" />
+                <div className="flex-1">
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-sky-700">Internal QA</p>
+                  <h3 className="mt-1 font-medium text-neutral-900">Buddy Intelligence Gate</h3>
+                  <p className="mt-0.5 text-sm leading-relaxed text-neutral-500">25 difficult requests test decomposition, specialist routing, verification, and approval safety. Release target: at least 90% passing with zero unsupported critical facts.</p>
+                  {intelligenceStatus?.latest && (
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                      <div className="rounded-xl border border-white/70 bg-white/55 p-3"><p className="text-[10px] text-neutral-400">PASS RATE</p><p className="mt-1 text-[18px] font-semibold text-neutral-900">{Number(intelligenceStatus.latest.pass_rate || 0).toFixed(0)}%</p></div>
+                      <div className="rounded-xl border border-white/70 bg-white/55 p-3"><p className="text-[10px] text-neutral-400">PASSED</p><p className="mt-1 text-[18px] font-semibold text-neutral-900">{intelligenceStatus.latest.passed_cases || 0}/{intelligenceStatus.latest.total_cases || 0}</p></div>
+                      <div className="rounded-xl border border-white/70 bg-white/55 p-3"><p className="text-[10px] text-neutral-400">CRITICAL FACTS</p><p className={`mt-1 text-[18px] font-semibold ${Number(intelligenceStatus.latest.critical_fact_failures || 0) ? "text-rose-700" : "text-emerald-700"}`}>{intelligenceStatus.latest.critical_fact_failures || 0}</p></div>
+                    </div>
+                  )}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button type="button" onClick={() => runIntelligenceGate("structural")} disabled={!!intelligenceBusy} className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-2 text-[12.5px] font-medium text-white disabled:opacity-50">{intelligenceBusy === "structural" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Run 25-case gate</button>
+                    <button type="button" onClick={() => runIntelligenceGate("live")} disabled={!!intelligenceBusy} className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white/70 px-4 py-2 text-[12.5px] font-medium text-neutral-700 disabled:opacity-50">{intelligenceBusy === "live" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Run 5 live cases</button>
+                  </div>
+                  <p className="mt-2 text-[10.5px] text-neutral-400">The live gate can use configured specialist services and may incur their normal API usage.</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ad accounts — each person pastes their own token */}
           <AdsCard />
