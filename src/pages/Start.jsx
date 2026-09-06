@@ -13,8 +13,14 @@ import { ensureTimezone } from "@/lib/timezone";
 // cards you can drag and reword before it runs. Simple enough for anyone,
 // quiet enough for a big company. No jargon on the screen, ever.
 
+function flightDate(daysFromNow) {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
 const EXAMPLES = [
-  { label: "Find it", text: "Find me the best nonstop roundtrip flight from Detroit to Miami next month under $300" },
+  { label: "Find it", text: `Find me the best nonstop roundtrip flight from Detroit to Miami departing ${flightDate(28)} and returning ${flightDate(31)} under $300` },
   { label: "Keep watch", text: "Tell me when a PS6 preorder opens at a major retailer" },
   { label: "Compare it", text: "Find three well-rated plumbers near me and compare their prices and availability" },
   { label: "Remember it", text: "A week before my mom's birthday, remind me and suggest three gifts under $75" },
