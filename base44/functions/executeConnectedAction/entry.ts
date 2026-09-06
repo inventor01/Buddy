@@ -159,18 +159,20 @@ export default async function(req: Request) {
       if (!payload.title || !payload.start) {
         return Response.json({ error: 'The calendar item is missing a title or start time.' }, { status: 400 });
       }
-      const end = payload.end || payload.start;
+      const normalized = await normalizeCalendarRange(base44, payload, typeof user.timezone === 'string' ? user.timezone : 'UTC');
+      if (!normalized.start || !normalized.end) {
+        return Response.json({ error: 'I could not safely understand that calendar time.' }, { status: 400 });
+      }
       const event: any = {
         summary: payload.title,
         description: payload.notes || undefined,
       };
-      const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(payload.start);
-      if (dateOnly) {
-        event.start = { date: payload.start };
-        event.end = { date: end };
+      if (normalized.allDay) {
+        event.start = { date: normalized.start };
+        event.end = { date: normalized.end };
       } else {
-        event.start = { dateTime: payload.start };
-        event.end = { dateTime: end };
+        event.start = { dateTime: normalized.start, timeZone: typeof user.timezone === 'string' ? user.timezone : undefined };
+        event.end = { dateTime: normalized.end, timeZone: typeof user.timezone === 'string' ? user.timezone : undefined };
       }
       const r = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
         method: 'POST',
@@ -183,8 +185,9 @@ export default async function(req: Request) {
       if (!payload.title) return Response.json({ error: 'The task needs a title.' }, { status: 400 });
       const task: any = { title: payload.title, notes: payload.notes || undefined };
       if (payload.due) {
-        const d = new Date(payload.due);
-        if (!Number.isNaN(d.getTime())) task.due = d.toISOString();
+        const due = await normalizeTaskDue(base44, payload.due, typeof user.timezone === 'string' ? user.timezone : 'UTC');
+        const d = new Date(due);
+        if (due && !Number.isNaN(d.getTime())) task.due = d.toISOString();
       }
       const r = await fetch('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks', {
         method: 'POST',
