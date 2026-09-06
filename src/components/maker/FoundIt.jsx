@@ -51,6 +51,9 @@ function ResultRow({ item, index }) {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[15px] leading-relaxed text-neutral-900">{item.text}</p>
+          {item.why_fit && (
+            <p className="mt-1.5 text-[12px] font-medium text-emerald-700">Why this fits you: {item.why_fit}</p>
+          )}
           {(item.source || item.url) && (
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {item.source && <span className="text-[11.5px] font-medium text-neutral-400">{item.source}</span>}
