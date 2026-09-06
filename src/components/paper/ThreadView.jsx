@@ -5,18 +5,20 @@ import StickyNote from "./StickyNote";
 import LinkedText from "@/components/maker/LinkedText";
 import ProductCard from "@/components/maker/ProductCard";
 import FindingRow from "@/components/maker/FindingRow";
+import { relevantProfileFacts } from "@/lib/personalization";
 
 // The note's thread — what you wrote, pinned at the top, then everything
 // it did and said, oldest to newest. You can pause it, rewrite the note,
 // or ask it something.
 const fmtAt = (at) => moment(at).format("MMM D, h:mm A");
 
-export default function ThreadView({ buddy, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, busy }) {
+export default function ThreadView({ buddy, profile, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, busy }) {
   const done = buddy.status === "done";
   const active = buddy.status === "active";
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState(false);
   const [edited, setEdited] = useState(buddy.note);
+  const personalFacts = relevantProfileFacts(profile, `${buddy.note || ""} ${buddy.what_line || ""}`);
 
   const messages =
     Array.isArray(buddy.messages) && buddy.messages.length
@@ -68,6 +70,18 @@ export default function ThreadView({ buddy, onPause, onTakeDown, onEditNote, onS
           </button>
         </div>
       </div>
+
+      {personalFacts.length > 0 && (
+        <div className="mt-5 rounded-2xl border border-emerald-100/80 bg-emerald-50/55 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Using what you told Buddy</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {personalFacts.map((fact) => (
+              <span key={fact} className="rounded-full border border-emerald-100 bg-white/70 px-2.5 py-1 text-[11.5px] text-neutral-600">{fact}</span>
+            ))}
+          </div>
+          <a href="/settings" className="mt-2 inline-block text-[11px] font-medium text-emerald-700 hover:text-emerald-900">Change what Buddy knows</a>
+        </div>
+      )}
 
       {(buddy.approval_status === "pending" || buddy.approval_status === "needs_connection") && (
         <div className="glass mt-6 rounded-2xl p-5">
