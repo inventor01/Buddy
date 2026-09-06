@@ -16,8 +16,8 @@ export function looksLikeComplexChain(value: unknown) {
 }
 
 export function normalizeTaskSteps(raw: unknown) {
-  const list = Array.isArray(raw) ? raw : [];
-  const steps = list.slice(0, 5).map((step: any, index) => {
+  const list = Array.isArray(raw) ? raw.slice(0, 5) : [];
+  const drafted = list.map((step: any, index) => {
     const type = TASK_STEP_TYPES.includes(step?.type) ? step.type : 'review';
     const id = String(step?.id || `step-${index + 1}`).trim().replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 40) || `step-${index + 1}`;
     return {
@@ -25,11 +25,23 @@ export function normalizeTaskSteps(raw: unknown) {
       label: String(step?.label || step?.instruction || `Step ${index + 1}`).trim().slice(0, 100),
       type,
       instruction: String(step?.instruction || '').trim().slice(0, 1200),
-      depends_on: index === 0 ? [] : [String(step?.depends_on?.[0] || list[index - 1]?.id || `step-${index}`).slice(0, 40)],
+      raw_dependencies: Array.isArray(step?.depends_on) ? step.depends_on : [],
       approval_required: step?.approval_required === true || type === 'send_email',
       status: 'pending',
     };
   }).filter((step) => step.instruction);
+
+  const steps = drafted.map((step, index) => {
+    if (index === 0) return { ...step, depends_on: [], raw_dependencies: undefined };
+    const priorIds = new Set(drafted.slice(0, index).map((x) => x.id));
+    const explicit = step.raw_dependencies
+      .map((dep: any) => String(dep || '').trim().replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 40))
+      .filter((dep: string, i: number, all: string[]) => dep && priorIds.has(dep) && all.indexOf(dep) === i)
+      .slice(0, 4);
+    const depends_on = explicit.length ? explicit : [drafted[index - 1].id];
+    const { raw_dependencies, ...clean } = step;
+    return { ...clean, depends_on };
+  });
   return steps.length > 1 ? steps : [];
 }
 
