@@ -221,7 +221,7 @@ export default async function(req) {
 
     if (connectedBackgroundUnsupported) {
       question = `I can handle this while you're here, but I can't keep checking your ${guardedCapability === 'gmail' ? 'Email' : guardedCapability === 'calendar' ? 'Calendar' : 'Tasks'} in the background yet. Want me to handle it now?`;
-    } else if (emailNeedsAddress) {
+    } else if (emailNeedsAddress && !chainHasDeferredSend) {
       question = 'What email address should I use?';
     } else if (calendarNeedsStart) {
       question = 'What date and time should I put this on your calendar?';
