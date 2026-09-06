@@ -5,6 +5,8 @@ import { Mic, Sparkles, Pin } from "lucide-react";
 // The glowing paper lantern where you leave your note. One plain sentence
 // is all it takes — the lantern glows brighter as you write, and the pin
 // button hatches your buddy (the note is kept if hatching fails).
+const BUDDY_REQUEST_MAX = 8000;
+
 export default function NoteComposer({ onPin }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -46,11 +48,15 @@ export default function NoteComposer({ onPin }) {
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={2}
-          maxLength={300}
+          maxLength={BUDDY_REQUEST_MAX}
           placeholder="Send me Kroger's best coupons every morning at 9"
           className="w-full resize-none bg-transparent outline-none text-xl sm:text-2xl leading-snug text-stone-800 placeholder:text-stone-400/70"
           style={{ fontFamily: "'Caveat', cursive" }}
         />
+
+        <div className="mt-2 text-right text-[10px] tabular-nums text-stone-400">
+          {note.length.toLocaleString()}/{BUDDY_REQUEST_MAX.toLocaleString()}
+        </div>
 
         <div className="mt-4 flex items-center justify-between gap-3">
           <button
