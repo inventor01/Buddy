@@ -33,6 +33,15 @@ export default async function(req) {
         'If the note is about running ad campaigns — Facebook, Instagram, TikTok or Google ads, ad spend, budgets, ROAS, CPC, pausing or creating ads — kind = "ads".',
         'If the note is about posting on or running a Facebook Page — scheduled posts, daily tips, promoting the page — kind = "social".',
         'Any other note kind = "web".',
+        'Also decide whether this request needs an outside ability:',
+        'capability = "gmail" for reading/searching Gmail or drafting/sending email.',
+        'capability = "calendar" for reading a calendar or adding an event.',
+        'capability = "tasks" for creating a to-do/task.',
+        'Otherwise capability = "web".',
+        'Choose action_type:',
+        'email_read = search/read email only. email_send = send an email. calendar_read = inspect calendar only. calendar_create = add an event. task_create = add a task. none = no outside action.',
+        'For any write action (email_send, calendar_create, task_create), approval_required MUST be true. Never silently send, schedule, post, buy, book, delete, pay, or change anything.',
+        'Fill action_payload only with details explicitly supported by the request. Never invent recipients, dates, addresses, money amounts, or commitments.',
         'Pick the best creature:',
         'sam = shopping, errands, deals. sid = stores, products, prices. bells = dates, birthdays, greetings, reminders. med = medications, health check-ins.',
         'Give the thing a short, friendly two-word title a normal person would understand (like "Miami Flights" or "Renewal Watch").',
@@ -55,13 +64,30 @@ export default async function(req) {
           creature: { type: 'string', enum: CREATURES },
           kind: { type: 'string', enum: ['web', 'ads', 'social'] },
           run_mode: { type: 'string', enum: ['once', 'watch', 'repeat'] },
+          capability: { type: 'string', enum: ['web', 'gmail', 'calendar', 'tasks'] },
+          action_type: { type: 'string', enum: ['none', 'email_read', 'email_send', 'calendar_read', 'calendar_create', 'task_create'] },
+          approval_required: { type: 'boolean' },
+          action_payload: {
+            type: 'object',
+            properties: {
+              recipient: { type: 'string' },
+              subject: { type: 'string' },
+              body: { type: 'string' },
+              query: { type: 'string' },
+              title: { type: 'string' },
+              start: { type: 'string' },
+              end: { type: 'string' },
+              due: { type: 'string' },
+              notes: { type: 'string' }
+            }
+          },
           when_line: { type: 'string' },
           what_line: { type: 'string' },
           how_line: { type: 'string' },
           schedule_time: { type: 'string' },
           question: { type: 'string' }
         },
-        required: ['buddy_name', 'creature', 'run_mode', 'when_line', 'what_line', 'how_line', 'schedule_time']
+        required: ['buddy_name', 'creature', 'run_mode', 'capability', 'action_type', 'approval_required', 'when_line', 'what_line', 'how_line', 'schedule_time']
       }
     });
 
@@ -72,7 +98,21 @@ export default async function(req) {
       creature: CREATURES.includes(plan?.creature) ? plan.creature : 'sam',
       kind: ['ads', 'social'].includes(plan?.kind) ? plan.kind : 'web',
       run_mode: ['once', 'watch', 'repeat'].includes(plan?.run_mode) ? plan.run_mode : 'once',
-      when_line: String(plan?.when_line || 'Every morning').slice(0, 120),
+      capability: ['gmail', 'calendar', 'tasks'].includes(plan?.capability) ? plan.capability : 'web',
+      action_type: ['email_read', 'email_send', 'calendar_read', 'calendar_create', 'task_create'].includes(plan?.action_type) ? plan.action_type : 'none',
+      approval_required: plan?.approval_required === true,
+      action_payload: plan?.action_payload && typeof plan.action_payload === 'object' ? {
+        recipient: String(plan.action_payload.recipient || '').slice(0, 200),
+        subject: String(plan.action_payload.subject || '').slice(0, 200),
+        body: String(plan.action_payload.body || '').slice(0, 1200),
+        query: String(plan.action_payload.query || '').slice(0, 300),
+        title: String(plan.action_payload.title || '').slice(0, 200),
+        start: String(plan.action_payload.start || '').slice(0, 100),
+        end: String(plan.action_payload.end || '').slice(0, 100),
+        due: String(plan.action_payload.due || '').slice(0, 100),
+        notes: String(plan.action_payload.notes || '').slice(0, 600)
+      } : {},
+      when_line: String(plan?.when_line || 'Right now').slice(0, 120),
       what_line: String(plan?.what_line || 'Runs your note for you').slice(0, 200),
       how_line: String(plan?.how_line || 'Pins the answer back to your garden').slice(0, 200),
       schedule_time: String(plan?.schedule_time || '9:00 AM').slice(0, 40),
