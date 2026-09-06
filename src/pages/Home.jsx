@@ -77,7 +77,10 @@ export default function Home() {
         image_url: imageUrl || undefined,
       });
       const plan = res.data?.plan;
-      if (!plan) throw new Error("That note didn't read back right — try again.");
+      if (!plan) {
+        const serverErr = res.data?.error;
+        throw new Error(serverErr || "That note didn't read back right — try again.");
+      }
       // Don't hatch it yet — show the drag-and-reword plan first, like the
       // landing page does, and only create it when they press run.
       setDraft({
