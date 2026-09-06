@@ -57,7 +57,8 @@ export default async function(req) {
           smsPhone: typeof owner?.sms_phone === 'string' ? owner.sms_phone : '',
           timeZone: typeof owner?.timezone === 'string' ? owner.timezone : '',
           metaToken: typeof owner?.meta_token === 'string' ? owner.meta_token : '',
-          metaAccount: typeof owner?.meta_ad_account === 'string' ? owner.meta_ad_account : ''
+          metaAccount: typeof owner?.meta_ad_account === 'string' ? owner.meta_ad_account : '',
+          metaPage: typeof owner?.meta_page_id === 'string' ? owner.meta_page_id : ''
         });
         results.push({ id: buddy.id, name: buddy.name, ok: true, count: result.lines.length });
       } catch (e) {

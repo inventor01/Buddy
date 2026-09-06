@@ -32,11 +32,15 @@
       "type": "string"
     },
     "meta_token": {
-      "description": "Meta (Facebook) access token the person pasted in Settings, with ads_read / ads_management permission. Empty means no ad account is connected.",
+      "description": "Meta (Facebook) access token the person pasted in Settings, with ads_read / ads_management / pages_manage_posts permission. Empty means no Meta connection.",
       "type": "string"
     },
     "meta_ad_account": {
       "description": "The Meta ad account to act on, like act_1234567890. Picked automatically on connect unless the person chooses one.",
+      "type": "string"
+    },
+    "meta_page_id": {
+      "description": "The Facebook Page social notes post to. Picked automatically on connect unless the person chooses one.",
       "type": "string"
     }
   },

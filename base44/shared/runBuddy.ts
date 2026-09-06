@@ -7,6 +7,7 @@
 import { secrets } from "base44:runtime";
 import { parseDelivery } from "./plan.ts";
 import { runAdsBuddy } from "./ads.ts";
+import { runSocialBuddy } from "./social.ts";
 
 // The clock where the person actually is. A note set for 9 in the morning
 // should run at their 9, and "already ran today" means their today — so both
@@ -192,7 +193,7 @@ async function sendSms(to, body) {
   return true;
 }
 
-export async function runBuddy({ client, entityClient, buddy, userEmail, notifyEmail, smsPhone, timeZone, metaToken, metaAccount }) {
+export async function runBuddy({ client, entityClient, buddy, userEmail, notifyEmail, smsPhone, timeZone, metaToken, metaAccount, metaPage }) {
   // A photo pinned to the note rides along every run — reverse-search style.
   const imageUrl =
     typeof buddy.image_url === "string" && /^https?:\/\//i.test(buddy.image_url.trim())
@@ -208,6 +209,16 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
       facts: contextLines(buddy),
       token: metaToken,
       account: metaAccount
+    });
+  } else if (buddy.kind === "social") {
+    // Page notes write the person's Facebook Page — the token they pasted
+    // in Settings decides which Page they can reach.
+    findings = await runSocialBuddy({
+      client,
+      buddy,
+      facts: contextLines(buddy),
+      token: metaToken,
+      pageId: metaPage
     });
   } else {
   findings = await client.asServiceRole.integrations.Core.InvokeLLM({

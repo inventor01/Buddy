@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { runBuddy, FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines, contextLines } from '../../shared/runBuddy.ts';
 import { runAdsBuddy } from '../../shared/ads.ts';
+import { runSocialBuddy } from '../../shared/social.ts';
 
 // "Run now" — two modes:
 //   1. buddyId only → standard daily run (same as the scheduler).
@@ -60,6 +61,24 @@ export default async function (req) {
         return Response.json({ lines: toLines(items), items });
       }
 
+      // Page notes answer and post from the person's Facebook Page, not
+      // the web — the same token from Settings, same thread shape back.
+      if (buddy.kind === 'social') {
+        const social = await runSocialBuddy({
+          client: base44,
+          buddy,
+          facts: contextLines(buddy),
+          token: typeof user.meta_token === 'string' ? user.meta_token : '',
+          pageId: typeof user.meta_page_id === 'string' ? user.meta_page_id : '',
+          message: userMessage
+        });
+        const socialItems = toFindingItems(social?.findings);
+        if (socialItems.length === 0) {
+          socialItems.push({ text: "I couldn't reach your Facebook Page just now — try again.", url: '', source: '' });
+        }
+        return Response.json({ lines: toLines(socialItems), items: socialItems });
+      }
+
       const imageUrl =
         typeof buddy.image_url === 'string' && /^https?:\/\//i.test(buddy.image_url.trim())
           ? buddy.image_url.trim()
@@ -101,6 +120,7 @@ export default async function (req) {
       timeZone: typeof user.timezone === 'string' ? user.timezone : '',
       metaToken: typeof user.meta_token === 'string' ? user.meta_token : '',
       metaAccount: typeof user.meta_ad_account === 'string' ? user.meta_ad_account : '',
+      metaPage: typeof user.meta_page_id === 'string' ? user.meta_page_id : '',
     });
 
     return Response.json({ lines: result.lines, items: result.items });

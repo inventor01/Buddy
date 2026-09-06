@@ -6,10 +6,11 @@
       "type": "string",
       "enum": [
         "web",
-        "ads"
+        "ads",
+        "social"
       ],
       "default": "web",
-      "description": "What kind of job this note does: web = search the web every day, ads = watch and manage the person's Facebook & Instagram ad account"
+      "description": "What kind of job this note does: web = search the web every day, ads = watch and manage the person's Facebook & Instagram ad account, social = post on and run the person's Facebook Page"
     },
     "note": {
       "type": "string",

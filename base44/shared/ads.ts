@@ -9,7 +9,7 @@ const GRAPH = "https://graph.facebook.com/v25.0";
 // Raw Graph calls — Meta's own error messages say exactly what to fix
 // (expired token, missing permission, invalid budget), so they surface
 // to the user instead of a generic "something went wrong".
-async function graphGet(token, path, params = {}) {
+export async function graphGet(token, path, params = {}) {
   const qs = new URLSearchParams({ access_token: token, ...params });
   const res = await fetch(`${GRAPH}/${path}?${qs}`);
   const data = await res.json().catch(() => null);
@@ -19,7 +19,7 @@ async function graphGet(token, path, params = {}) {
   return data;
 }
 
-async function graphPost(token, path, body = {}) {
+export async function graphPost(token, path, body = {}) {
   const res = await fetch(`${GRAPH}/${path}?access_token=${encodeURIComponent(token)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

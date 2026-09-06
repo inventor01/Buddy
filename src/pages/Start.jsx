@@ -84,7 +84,7 @@ export default function Start() {
         tells: plan.how_line,
         name: plan.name,
         creature: plan.creature,
-        kind: plan.kind === "ads" ? "ads" : "web",
+        kind: ["ads", "social"].includes(plan.kind) ? plan.kind : "web",
         scheduleTime: plan.schedule_time,
         question: typeof plan.question === "string" ? plan.question : "",
       });
@@ -162,7 +162,7 @@ export default function Start() {
       const created = await base44.entities.Buddy.create({
         note: note.trim(),
         image_url: image,
-        kind: lines.kind === "ads" ? "ads" : "web",
+        kind: ["ads", "social"].includes(lines.kind) ? lines.kind : "web",
         ...(answer.trim() ? { context: [answer.trim()] } : {}),
         name: lines.name || "Your helper",
         creature: lines.creature || "sam",

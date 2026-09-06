@@ -47,7 +47,7 @@ export default function Home() {
     }
     const created = await base44.entities.Buddy.create({
       note: spec.note,
-      kind: spec.kind === "ads" ? "ads" : "web",
+      kind: ["ads", "social"].includes(spec.kind) ? spec.kind : "web",
       image_url: spec.image,
       ...(spec.context && spec.context.length ? { context: spec.context } : {}),
       name: spec.name || "Your helper",
@@ -97,7 +97,7 @@ export default function Home() {
         const l = pending.lines || {};
         const b = await createNoteAndRun({
           note: pending.note,
-          kind: l.kind === "ads" ? "ads" : "web",
+          kind: ["ads", "social"].includes(l.kind) ? l.kind : "web",
           image: pending.image,
           name: l.name,
           creature: l.creature,
@@ -196,7 +196,7 @@ export default function Home() {
           creature: plan.creature,
           scheduleTime: plan.schedule_time,
           question: plan.question || "",
-          kind: plan.kind === "ads" ? "ads" : "web",
+          kind: ["ads", "social"].includes(plan.kind) ? plan.kind : "web",
         },
         lines: { when: plan.when_line, what: plan.what_line, tells: plan.how_line },
       });
@@ -217,7 +217,7 @@ export default function Home() {
     try {
       const saved = await createNoteAndRun({
         note: d.note,
-        kind: d.plan.kind === "ads" ? "ads" : "web",
+        kind: ["ads", "social"].includes(d.plan.kind) ? d.plan.kind : "web",
         image: d.image,
         name: d.plan.name,
         creature: d.plan.creature,

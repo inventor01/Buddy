@@ -10,6 +10,7 @@ export default function AdsCard() {
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [accounts, setAccounts] = useState(null);
+  const [pages, setPages] = useState(null);
   const [error, setError] = useState("");
 
   const verify = async () => {
@@ -19,12 +20,15 @@ export default function AdsCard() {
       const res = await base44.functions.invoke("adsVerify", {});
       if (res.data?.connected) {
         setAccounts(res.data.accounts || []);
+        setPages(res.data.pages || []);
       } else {
         setAccounts(null);
+        setPages(null);
         if (res.data?.error) setError(res.data.error);
       }
     } catch (_) {
       setAccounts(null);
+      setPages(null);
     } finally {
       setChecking(false);
     }
@@ -39,7 +43,7 @@ export default function AdsCard() {
     setSaving(true);
     setError("");
     try {
-      await base44.auth.updateMe({ meta_token: token.trim(), meta_ad_account: "" });
+      await base44.auth.updateMe({ meta_token: token.trim(), meta_ad_account: "", meta_page_id: "" });
       setToken("");
       await verify();
     } catch (_) {
@@ -52,7 +56,7 @@ export default function AdsCard() {
   const remove = async () => {
     setSaving(true);
     try {
-      await base44.auth.updateMe({ meta_token: "", meta_ad_account: "" });
+      await base44.auth.updateMe({ meta_token: "", meta_ad_account: "", meta_page_id: "" });
       setAccounts(null);
       setError("");
     } catch (_) {
@@ -69,15 +73,15 @@ export default function AdsCard() {
         <div className="flex-1">
           <h3 className="font-medium text-neutral-900">Ad accounts</h3>
           <p className="mt-0.5 text-sm text-neutral-500">
-            Connect your Facebook & Instagram ads — notes can watch spend, follow your rules,
-            and make new ads.
+            Connect your Facebook & Instagram ads and Pages — notes can watch spend, follow your
+            rules, make new ads, and post to your Page for you.
           </p>
 
           {accounts ? (
             <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-white/70 bg-white/70 px-3 py-2.5">
               <span className="flex items-center gap-2 text-sm text-neutral-800">
                 <Check className="h-4 w-4 shrink-0 text-emerald-600" />
-                {(accounts.map((a) => a.name).join(", ") || "Ad account") + " connected"}
+                {[...accounts.map((a) => a.name), ...pages.map((p) => p.name)].join(", ") || "Meta"}
               </span>
               <button
                 type="button"
@@ -112,7 +116,7 @@ export default function AdsCard() {
               <p className="mt-2 text-xs text-neutral-400">
                 In Meta Business Suite → Users → System users, add a system user to your ad
                 account and generate a token with ads_read, ads_management, pages_manage_ads,
-                pages_show_list.
+                pages_manage_posts, pages_show_list.
               </p>
             </div>
           )}
