@@ -22,6 +22,77 @@
       "default": "watch",
       "description": "How this thing behaves: once = handle it now and finish, watch = keep checking until something matters, repeat = do it on a recurring schedule"
     },
+    "capability": {
+      "type": "string",
+      "enum": [
+        "web",
+        "gmail",
+        "calendar",
+        "tasks"
+      ],
+      "default": "web",
+      "description": "Which outside ability this thing needs. Consumer UI should describe the outcome, not this technical value."
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "email_read",
+        "email_send",
+        "calendar_read",
+        "calendar_create",
+        "task_create"
+      ],
+      "default": "none",
+      "description": "Structured outside action, if any. Write actions are always approval-gated."
+    },
+    "action_payload": {
+      "type": "object",
+      "properties": {
+        "recipient": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "start": {
+          "type": "string"
+        },
+        "end": {
+          "type": "string"
+        },
+        "due": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "description": "Bounded structured details used to preview and, after approval, carry out a connected action."
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": [
+        "not_needed",
+        "pending",
+        "approved",
+        "rejected",
+        "executed",
+        "failed",
+        "needs_connection"
+      ],
+      "default": "not_needed",
+      "description": "Safety gate for actions that change something outside Buddy."
+    },
     "note": {
       "type": "string",
       "description": "The original one-sentence note the user pinned"
