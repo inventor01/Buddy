@@ -23,9 +23,10 @@ const STEP_LABELS = {
   verify: "Verified the result",
 };
 
-export default function ThreadView({ buddy, buddies = [], profile, receipt, job, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, busy }) {
+export default function ThreadView({ buddy, buddies = [], profile, receipt, job, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, onContinueChain, busy }) {
   const done = buddy.status === "done";
   const active = buddy.status === "active";
+  const waitingForResponse = buddy.chain_state?.phase === "waiting_response" && buddy.action_type === "email_read";
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState(false);
   const [edited, setEdited] = useState(buddy.note);
@@ -257,6 +258,18 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
           >
             Edit the note
           </button>
+        </div>
+      )}
+
+      {waitingForResponse && (
+        <div className="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50/55 p-4">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-indigo-700">Waiting on the email thread</p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-neutral-600">Buddy can check for new replies, review what came back, and prepare the next response for your approval.</p>
+          <button type="button" onClick={() => onContinueChain?.(buddy)} disabled={busy} className="mt-3 inline-flex items-center gap-2 rounded-full bg-neutral-900 px-4 py-2 text-[12.5px] font-medium text-white disabled:opacity-40">
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+            Check responses
+          </button>
+          <p className="mt-2 text-[10.5px] text-neutral-400">Email reply checking currently runs when you ask Buddy to check; outgoing replies still require approval.</p>
         </div>
       )}
 
