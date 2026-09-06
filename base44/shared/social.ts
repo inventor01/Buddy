@@ -106,33 +106,13 @@ export async function runSocialBuddy({ client, buddy, facts = [], token = "", pa
     const findings = (Array.isArray(decision?.findings) ? decision.findings : []).slice(0, 3);
     const post = decision?.post;
     if (post && typeof post.text === "string" && post.text.trim()) {
-      try {
-        const text = post.text.trim().slice(0, 1200);
-        let result;
-        if (typeof post.image_prompt === "string" && post.image_prompt.trim()) {
-          const img = await client.asServiceRole.integrations.Core.GenerateImage({
-            prompt:
-              post.image_prompt.trim().slice(0, 300) +
-              " — social media post image, clean and on-brand, uncluttered"
-          });
-          result = await graphPost(token, `${page.id}/photos`, { caption: text, url: img.url });
-        } else {
-          const link =
-            typeof post.link === "string" && /^https?:\/\//.test(post.link.trim()) ? post.link.trim() : "";
-          result = await graphPost(token, `${page.id}/feed`, { message: text, ...(link ? { link } : {}) });
-        }
-        const postId = result?.post_id || result?.id || "";
-        findings.push({
-          text: `Posted on ${page.name}: "${text.slice(0, 80)}${text.length > 80 ? "…" : ""}"`,
-          source_name: "Facebook",
-          ...(postId ? { url: `https://facebook.com/${postId}` } : {})
-        });
-      } catch (e) {
-        findings.push({
-          text: `The post didn't go through: ${String(e.message).slice(0, 140)}`,
-          source_name: "Facebook"
-        });
-      }
+      // Production safety gate: draft only. Publishing must go through the
+      // same explicit approval flow as every other outside write.
+      const text = post.text.trim().slice(0, 1200);
+      findings.push({
+        text: `Post draft ready for review on ${page.name}: "${text.slice(0, 80)}${text.length > 80 ? "…" : ""}" Nothing was published.`,
+        source_name: "Facebook"
+      });
     } else if (!findings.length) {
       findings.push({ text: "Nothing to post today — I'll write when there's something.", source_name: "Facebook" });
     }
