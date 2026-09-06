@@ -10,6 +10,10 @@ import { createReceiptOnce } from '../../shared/receipts.ts';
 import { recordEscalationOnce, resolveEscalation } from '../../shared/escalation.ts';
 import { loadVerifiedPhone } from '../../shared/phone.ts';
 
+const BUDDY_FOLLOWUP_MAX = 8000;
+const ACTION_QUERY_MAX = 2000;
+const CONTEXT_ITEM_MAX = 2000;
+
 async function currentUserConnection(base44, capability) {
   const envName = capability === 'gmail'
     ? 'GMAIL_APP_USER_CONNECTOR_ID'
