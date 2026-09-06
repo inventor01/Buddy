@@ -24,7 +24,7 @@
       "type": "string"
     },
     "sms_phone": {
-      "description": "Phone number in E.164 form (like +15551234567) that notes text their findings to. Empty means texts are off.",
+      "description": "Mirror of the user's confirmed E.164 phone number. Delivery code must verify ownership through PhoneIdentity before using this value.",
       "type": "string"
     },
     "timezone": {
