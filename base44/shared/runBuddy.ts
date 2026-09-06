@@ -63,7 +63,8 @@ export function contextLines(buddy) {
 
 // The rules every findings call shares — sources are proof of work.
 export const FINDINGS_RULES = [
-  "For every finding include source_name (the site or store it came from) and the exact URL it was read from.",
+  "Set should_notify=true only when the person should be interrupted now. For watch/repeat/reminder requests, use false when the condition has not happened or nothing meaningful changed. For a one-time request, use true when you have a useful answer.",
+  "For every web-based finding include source_name (the site or store it came from) and the exact URL it was read from.",
   "Only give a URL you actually read — never invent one. If a finding has no source URL, leave url empty.",
   "When the finding is a specific product, listing, or deal, also include a product object: name, price as a short string (like \"price under $1.50\" → \"$1.29/lb\"), stock only when the page shows it, image_url — the exact product image URL shown on the page — and url, the direct link to that product's own page (never a search results or homepage). For product findings, make a real effort to read the listing page and copy its main product image URL; never invent one, and omit image_url only when the page truly shows no image.",
   "Only include a product object when the finding is a genuinely purchasable product with a real price or product photo — never for news, reminders, permit openings, birthdays, or general updates; those are plain findings with no product object.",
@@ -96,9 +97,10 @@ export const FINDINGS_SCHEMA = {
         required: ["text"]
       }
     },
-    needs_context: { type: "string" }
+    needs_context: { type: "string" },
+    should_notify: { type: "boolean" }
   },
-  required: ["findings"]
+  required: ["findings", "should_notify"]
 };
 
 // Turns whatever the model returned into bounded finding objects:
@@ -227,9 +229,11 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
     add_context_from_internet: true,
     ...(imageUrl ? { file_urls: [imageUrl] } : {}),
     prompt: [
-      "You are " + buddy.name + ", a helper for one person.",
+      "You are handling one thing for one person.",
       'Their exact words: "' + buddy.note + '"',
-      "Your daily job: " + (buddy.what_line || buddy.note),
+      "How this should behave: " + (buddy.run_mode || "watch") + ".",
+      "What to handle: " + (buddy.what_line || buddy.note),
+      "Today's local date: " + nowInZone(timeZone).date + ".",
       ...contextLines(buddy),
       ...(imageUrl
         ? [
@@ -237,8 +241,8 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
             "identify the product in the photo and report today's best prices and where to buy it."
           ]
         : []),
-      "Search the web for today and report back the 5 most useful, concrete findings for this job.",
-      "Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
+      "Handle the request for today. Use current web information when the request needs it; do not force a web search for a personal reminder or simple planning task.",
+      "Return up to 5 useful, concrete findings. Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
       ...FINDINGS_RULES
     ].join("\n"),
     response_json_schema: FINDINGS_SCHEMA
@@ -283,21 +287,31 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
     return { items: [], lines: [question], question: true, deliveredBySms: questionSmsSent };
   }
 
+  const shouldNotify = findings?.should_notify !== false;
   const items = toFindingItems(findings?.findings);
   if (items.length === 0) {
-    items.push({ text: "Nothing new today — I will look again next time.", url: "", source: "" });
+    items.push({
+      text: shouldNotify ? "Nothing useful turned up this time." : "Nothing changed — still keeping an eye on it.",
+      url: "",
+      source: ""
+    });
   }
   const lines = toLines(items);
 
   const today = nowInZone(timeZone).date;
-  await entityClient.entities.Buddy.update(buddy.id, { last_result: lines, last_run_date: today });
+  const finishing = buddy.run_mode === "once";
+  await entityClient.entities.Buddy.update(buddy.id, {
+    last_result: lines,
+    last_run_date: today,
+    ...(finishing ? { status: "done" } : {})
+  });
 
   // The TELLS line decides the channel: "text me" → SMS only,
   // "email me" → email only, anything else → both.
   const delivery = parseDelivery(buddy.how_line || "");
 
   let smsSent = false;
-  if (delivery.sms && typeof smsPhone === "string" && smsPhone.trim().startsWith("+")) {
+  if (shouldNotify && delivery.sms && typeof smsPhone === "string" && smsPhone.trim().startsWith("+")) {
     try {
       smsSent = await sendSms(
         smsPhone.trim(),
@@ -313,8 +327,8 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
   // asked to be texted but no text could leave (no number saved, or texting
   // isn't configured for this app) — findings should never vanish quietly.
   const canEmail = typeof userEmail === "string" && userEmail.includes("@");
-  const rescueEmail = delivery.sms && !smsSent;
-  if (canEmail && ((delivery.email && notifyEmail) || rescueEmail)) {
+  const rescueEmail = shouldNotify && delivery.sms && !smsSent;
+  if (shouldNotify && canEmail && ((delivery.email && notifyEmail) || rescueEmail)) {
     try {
       await client.asServiceRole.integrations.Core.SendEmail({
         to: userEmail,
@@ -326,5 +340,5 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
     }
   }
 
-  return { items, lines, deliveredBySms: smsSent };
+  return { items, lines, deliveredBySms: smsSent, notified: shouldNotify };
 }
