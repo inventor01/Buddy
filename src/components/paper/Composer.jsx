@@ -15,13 +15,24 @@ const SUGGESTIONS = [
   "Plan a birthday dinner for 8 people under $250",
 ];
 
-export default function Composer({ onPin, busy }) {
+export default function Composer({ onPin, busy, buddies = [] }) {
   const [note, setNote] = useState("");
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
   const canListen =
     typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const mentionMatch = note.match(/(?:^|\s)@([^\s\[]*)$/);
+  const mentionQuery = mentionMatch ? String(mentionMatch[1] || "").toLowerCase() : null;
+  const mentionChoices = mentionQuery === null
+    ? []
+    : buddies
+        .filter((b) => b?.name && String(b.name).toLowerCase().includes(mentionQuery))
+        .slice(0, 6);
+
+  const insertMention = (buddyName) => {
+    setNote((current) => current.replace(/(^|\s)@[^\s\[]*$/, (_, lead) => `${lead}@[${buddyName}] `));
+  };
 
   const listen = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -76,6 +87,22 @@ export default function Composer({ onPin, busy }) {
           placeholder="Tell Buddy what you want handled…"
           className="w-full resize-none bg-transparent px-1 text-[16px] leading-snug text-neutral-900 outline-none placeholder:text-neutral-400"
         />
+        {mentionChoices.length > 0 && (
+          <div className="mb-2 rounded-2xl border border-white/80 bg-white/90 p-1.5 shadow-sm backdrop-blur-xl">
+            <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Connect another thing</p>
+            {mentionChoices.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => insertMention(b.name)}
+                className="flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-[13px] text-neutral-700 hover:bg-neutral-50"
+              >
+                <span className="truncate font-medium">@{b.name}</span>
+                <span className="ml-3 shrink-0 text-[10.5px] text-neutral-400">use this chat</span>
+              </button>
+            ))}
+          </div>
+        )}
         {image && (
           <div className="mb-2 flex items-center gap-2.5 rounded-xl border border-white/70 bg-white/60 p-2">
             <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-white/70">
@@ -157,7 +184,7 @@ export default function Composer({ onPin, busy }) {
       </div>
 
       <p className="mt-6 text-[13px] text-neutral-500">
-        Write it like you’d text a friend. Buddy can handle it once, keep watch, or keep doing it on a schedule.
+        Write it like you’d text a friend. Type <span className="font-medium text-neutral-700">@</span> to connect another Buddy chat, or describe several steps and Buddy will carry the result from one step into the next.
       </p>
     </div>
   );
