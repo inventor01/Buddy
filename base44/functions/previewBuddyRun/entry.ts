@@ -12,11 +12,18 @@ const BUDDY_REQUEST_MAX = 8000;
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const quota = await checkUsageLimit({ base44, req, scope: 'preview', minuteLimit: 6, dayLimit: 30 });
+    const quota = await checkUsageLimit({ base44, req, scope: 'preview', minuteLimit: 12, dayLimit: 100 });
     if (!quota.ok) {
+      const retryAfter = Number(quota.retryAfter || 60);
       return Response.json(
-        { error: 'Too many previews right now. Try again shortly.' },
-        { status: 429, headers: { 'Retry-After': String(quota.retryAfter || 60) } }
+        {
+          error: retryAfter >= 3600
+            ? 'You’ve used today’s try-it-now allowance. Sign in to keep using Buddy or try again tomorrow.'
+            : 'Buddy is getting a lot of try-it-now requests. Try again shortly.',
+          code: 'RATE_LIMITED',
+          retry_after: retryAfter,
+        },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
       );
     }
 
@@ -127,6 +134,7 @@ export default async function(req) {
 
     return Response.json({ state: 'answer', lines, items });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    const message = String(error?.message || error || 'Buddy could not finish this preview.');
+    return Response.json({ error: message, code: 'PREVIEW_FAILED' }, { status: 500 });
   }
 }
