@@ -353,6 +353,22 @@ export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], 
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
       if (step.kind === 'verify') continue;
+
+      const dependencyIds = Array.isArray(step.depends_on) ? step.depends_on.filter(Boolean) : [];
+      if (dependencyIds.length) {
+        const dependencySteps = dependencyIds.map((id) => steps.find((candidate) => candidate.id === id)).filter(Boolean);
+        const blockedByFailure = dependencySteps.some((dep) => dep.status === 'failed');
+        const waitingOnApproval = dependencySteps.some((dep) => dep.status === 'waiting_approval');
+        const allCompleted = dependencySteps.length === dependencyIds.length && dependencySteps.every((dep) => dep.status === 'completed');
+        if (!allCompleted) {
+          steps[i] = blockedByFailure
+            ? { ...step, status: 'failed', error: 'A required earlier step did not complete.' }
+            : { ...step, status: 'pending', error: waitingOnApproval ? 'Waiting for approval on an earlier step.' : 'Waiting for an earlier step.' };
+          await base44.asServiceRole.entities.BuddyJob.update(job.id, { steps, providers_used: uniq(providers), fallback_count: fallbackCount });
+          continue;
+        }
+      }
+
       steps[i] = { ...step, status: 'running' };
       await base44.asServiceRole.entities.BuddyJob.update(job.id, { steps });
       try {
@@ -360,7 +376,8 @@ export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], 
         results.push({ ...r, step_id: step.id });
         providers.push(r.provider);
         if (r.used_fallback) fallbackCount += 1;
-        steps[i] = { ...step, provider: r.provider, status: 'completed', output: trim(r.output, 8000), evidence_urls: (r.urls || []).slice(0, 12), confidence: r.confidence || 0, latency_ms: r.latency_ms || 0, attempted_providers: r.attempted_providers || [r.provider] };
+        const waitingApproval = step.approval_required === true && step.kind === 'connected_action';
+        steps[i] = { ...step, provider: r.provider, status: waitingApproval ? 'waiting_approval' : 'completed', output: trim(r.output, 8000), evidence_urls: (r.urls || []).slice(0, 12), confidence: r.confidence || 0, latency_ms: r.latency_ms || 0, attempted_providers: r.attempted_providers || [r.provider] };
       } catch (stepError: any) {
         steps[i] = { ...step, status: 'failed', error: trim(stepError?.message, 300) };
       }
@@ -368,6 +385,9 @@ export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], 
     }
 
     if (!results.length) throw new Error('No specialist could complete the request.');
+    if (buddy.execution_mode === 'chain' && steps.some((step) => step.kind !== 'verify' && step.status === 'failed')) {
+      throw new Error('A required step in this connected handoff could not complete.');
+    }
     const final = await synthesize(base44, goal, results);
     const verifiedPairs = uniq(results.map((r: any) => `${r.provider}|||${r.capability || 'general'}`));
     for (const pair of verifiedPairs) {
@@ -376,9 +396,10 @@ export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], 
     }
     const verifyIndex = steps.findIndex((s) => s.kind === 'verify');
     if (verifyIndex >= 0) steps[verifyIndex] = { ...steps[verifyIndex], provider: 'buddy-verifier', status: 'completed', output: trim(final?.verification_summary || 'Verified specialist outputs.', 1000), evidence_urls: uniq(results.flatMap((r) => r.urls || [])).slice(0, 12), confidence: 0.9, error: '' };
+    const waitingForApproval = steps.some((step) => step.status === 'waiting_approval');
     await base44.asServiceRole.entities.BuddyJob.update(job.id, {
-      status: 'completed',
-      completed_at: new Date().toISOString(),
+      status: waitingForApproval ? 'needs_approval' : 'completed',
+      completed_at: waitingForApproval ? '' : new Date().toISOString(),
       steps,
       providers_used: uniq([...providers, 'buddy-verifier']),
       fallback_count: fallbackCount,
