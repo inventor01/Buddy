@@ -21,6 +21,7 @@ export function nowInZone(timeZone) {
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit"
+      weekday: "long"
     }).formatToParts(new Date());
 
   let parts;
@@ -34,9 +35,18 @@ export function nowInZone(timeZone) {
   const hour = parseInt(get("hour"), 10);
   return {
     date: `${get("year")}-${get("month")}-${get("day")}`,
+    weekday: get("weekday").toLowerCase(),
     // some runtimes render midnight as 24
     hour: Number.isNaN(hour) ? 0 : hour % 24
   };
+}
+
+export function scheduleMatchesToday(whenLine, timeZone) {
+  const when = typeof whenLine === "string" ? whenLine.toLowerCase() : "";
+  const namedDays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const requestedDays = namedDays.filter((day) => when.includes(day));
+  if (!requestedDays.length) return true;
+  return requestedDays.includes(nowInZone(timeZone).weekday);
 }
 
 export function parseScheduleHour(scheduleTime) {
