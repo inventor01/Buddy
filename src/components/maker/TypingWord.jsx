@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 // The rotating word in the headline — types a word out, holds it, deletes
 // it, then types the next one. A thin caret keeps the chat-like feel.
 
-const WORDS = ["organization", "automation", "reminders", "peace of mind"];
+const WORDS = ["a second set of hands", "less to remember", "things handled", "more breathing room"];
 
 export default function TypingWord() {
   const [index, setIndex] = useState(0);
