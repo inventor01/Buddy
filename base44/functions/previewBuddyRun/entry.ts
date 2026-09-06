@@ -45,6 +45,8 @@ export default async function(req) {
       return Response.json({ state: 'needs_detail', message, lines: [message], items: [] });
     }
 
+    const simplePlanningRequest = /\b(plan|checklist|outline|ideas?)\b/i.test(note) && !/\b(email|gmail|calendar|tasks?|to-?do)\b/i.test(note);
+
     const findings = await base44.asServiceRole.integrations.Core.InvokeLLM({
       model: "gemini_3_flash",
       add_context_from_internet: true,
@@ -62,6 +64,7 @@ export default async function(req) {
               "identify the product in the photo and report today's best prices and where to buy it."
             ]
           : []),
+        simplePlanningRequest ? "This is a simple planning request. Do not ask for a date, whose event it is, or when it happens unless the user explicitly made that detail essential. Produce the useful plan now with the constraints already given." : "",
         "Search the web for today and report back the 5 most useful, concrete findings for this job.",
         "Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
         ...FINDINGS_RULES
@@ -69,7 +72,8 @@ export default async function(req) {
       response_json_schema: FINDINGS_SCHEMA
     });
 
-    const needsContext = typeof findings?.needs_context === 'string' ? findings.needs_context.trim().slice(0, 200) : '';
+    let needsContext = typeof findings?.needs_context === 'string' ? findings.needs_context.trim().slice(0, 200) : '';
+    if (simplePlanningRequest && /\b(date|when|whose|who'?s)\b/i.test(needsContext)) needsContext = '';
     if (needsContext) {
       return Response.json({
         state: 'needs_detail',
