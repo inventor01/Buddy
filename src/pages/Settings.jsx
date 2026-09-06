@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Mail, Type, Loader2, MessageCircle, Check, Clock, UserRound, MapPin, Plane, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Mail, Type, Loader2, MessageCircle, Check, Clock, UserRound, MapPin, Plane, ShoppingBag, ShieldCheck, UsersRound } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Switch } from "@/components/ui/switch";
 import { readBigText, applyBigText } from "@/lib/bigText";
@@ -24,6 +24,11 @@ export default function Settings() {
   const [profileDraft, setProfileDraft] = useState({ display_name: "", home_city: "", home_airport: "", travel_preferences: "", shopping_preferences: "", general_preferences: "" });
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
+  const [policies, setPolicies] = useState([]);
+  const [savingPolicy, setSavingPolicy] = useState("");
+  const [household, setHousehold] = useState(null);
+  const [householdDraft, setHouseholdDraft] = useState({ household_name: "", members: "", shared_preferences: "" });
+  const [savingHousehold, setSavingHousehold] = useState(false);
 
   useEffect(() => {
     base44
@@ -42,6 +47,20 @@ export default function Settings() {
             travel_preferences: Array.isArray(p?.travel_preferences) ? p.travel_preferences.join(", ") : "",
             shopping_preferences: Array.isArray(p?.shopping_preferences) ? p.shopping_preferences.join(", ") : "",
             general_preferences: Array.isArray(p?.general_preferences) ? p.general_preferences.join(", ") : "",
+          });
+        } catch (_) {}
+        try {
+          const rows = await base44.entities.DelegationPolicy.filter({ owner_id: u.id }, "category", 20);
+          setPolicies(Array.isArray(rows) ? rows : []);
+        } catch (_) { setPolicies([]); }
+        try {
+          const rows = await base44.entities.HouseholdProfile.filter({ owner_id: u.id }, "-updated_date", 1);
+          const h = Array.isArray(rows) ? rows[0] || null : null;
+          setHousehold(h);
+          setHouseholdDraft({
+            household_name: h?.household_name || "",
+            members: Array.isArray(h?.members) ? h.members.map((m) => [m.name, m.relation, m.notes].filter(Boolean).join(" | ")).join("\n") : "",
+            shared_preferences: Array.isArray(h?.shared_preferences) ? h.shared_preferences.join(", ") : "",
           });
         } catch (_) {}
         setNotifyEmail(!!u?.notify_email);
@@ -133,6 +152,38 @@ export default function Settings() {
     setProfileDraft((p) => ({ ...p, [key]: value }));
   };
 
+  const policyLevel = (category) => policies.find((p) => p.category === category)?.level || "approve";
+  const savePolicy = async (category, level) => {
+    if (!me?.id) return;
+    setSavingPolicy(category);
+    const current = policies.find((p) => p.category === category);
+    const data = { owner_id: me.id, category, level, enabled: true };
+    try {
+      const saved = current?.id ? await base44.entities.DelegationPolicy.update(current.id, data) : await base44.entities.DelegationPolicy.create(data);
+      setPolicies((prev) => [...prev.filter((p) => p.category !== category), saved]);
+    } finally { setSavingPolicy(""); }
+  };
+
+  const saveHousehold = async () => {
+    if (!me?.id || savingHousehold) return;
+    setSavingHousehold(true);
+    const members = householdDraft.members.split("\n").map((line) => line.trim()).filter(Boolean).slice(0, 12).map((line) => {
+      const [name = "", relation = "", ...notes] = line.split("|").map((x) => x.trim());
+      return { name: name.slice(0, 60), relation: relation.slice(0, 40), notes: notes.join(" | ").slice(0, 240) };
+    }).filter((m) => m.name || m.relation);
+    const data = {
+      owner_id: me.id,
+      household_name: householdDraft.household_name.trim().slice(0, 80),
+      members,
+      shared_preferences: householdDraft.shared_preferences.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 12),
+      shared_notes: [],
+    };
+    try {
+      const saved = household?.id ? await base44.entities.HouseholdProfile.update(household.id, data) : await base44.entities.HouseholdProfile.create(data);
+      setHousehold(saved);
+    } finally { setSavingHousehold(false); }
+  };
+
   const toggleBig = () => {
     const next = !bigText;
     setBigText(next);
@@ -201,6 +252,44 @@ export default function Settings() {
                   </button>
                   <span className="text-[11.5px] text-neutral-400">Comma-separate multiple preferences.</span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="mt-0.5 h-5 w-5 text-neutral-400" />
+              <div className="flex-1">
+                <h3 className="font-medium text-neutral-900">How far Buddy should go</h3>
+                <p className="mt-0.5 text-sm leading-relaxed text-neutral-500">Choose the default level of help by area. Anything that sends, books, pays, buys, deletes, or commits still asks before it happens.</p>
+                <div className="mt-4 space-y-2">
+                  {[["general","Everyday things"],["travel","Travel"],["shopping","Shopping"],["home_services","Home services"]].map(([category,label]) => (
+                    <div key={category} className="flex items-center justify-between gap-3 rounded-xl border border-white/70 bg-white/55 px-3 py-2.5">
+                      <span className="text-[13px] font-medium text-neutral-800">{label}</span>
+                      <select value={policyLevel(category)} disabled={savingPolicy === category} onChange={(e) => savePolicy(category, e.target.value)} className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-[12px] text-neutral-700 outline-none">
+                        <option value="find">Find only</option>
+                        <option value="recommend">Recommend</option>
+                        <option value="prepare">Prepare next step</option>
+                        <option value="approve">Ask me before doing it</option>
+                        <option value="auto">Handle as much as safely allowed</option>
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <UsersRound className="mt-0.5 h-5 w-5 text-neutral-400" />
+              <div className="flex-1">
+                <h3 className="font-medium text-neutral-900">Your household</h3>
+                <p className="mt-0.5 text-sm text-neutral-500">Give Buddy the people and shared preferences that make family requests easier. You stay in control of what is saved.</p>
+                <input value={householdDraft.household_name} onChange={(e) => setHouseholdDraft((h) => ({...h, household_name:e.target.value}))} placeholder="The Smith family" className="mt-3 w-full rounded-xl border border-white/70 bg-white/70 px-3 py-2.5 text-sm outline-none" />
+                <textarea value={householdDraft.members} onChange={(e) => setHouseholdDraft((h) => ({...h, members:e.target.value}))} rows={3} placeholder={"Mom | mom | likes gardening and mystery books\nMia | daughter | dentist after 3:30 PM"} className="mt-2 w-full resize-none rounded-xl border border-white/70 bg-white/70 px-3 py-2.5 text-sm outline-none" />
+                <input value={householdDraft.shared_preferences} onChange={(e) => setHouseholdDraft((h) => ({...h, shared_preferences:e.target.value}))} placeholder="weeknight appointments after 4 PM, groceries under $150" className="mt-2 w-full rounded-xl border border-white/70 bg-white/70 px-3 py-2.5 text-sm outline-none" />
+                <button type="button" onClick={saveHousehold} disabled={savingHousehold} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-2 text-[13px] font-medium text-white disabled:opacity-50">{savingHousehold && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Save household</button>
               </div>
             </div>
           </div>
