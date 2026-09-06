@@ -162,6 +162,12 @@ export default function Home() {
       } catch (_) {
         setProfile(null);
       }
+      try {
+        const rows = await base44.entities.BuddyReceipt.filter({ owner_id: user.id }, "-completed_at", 50);
+        setReceipts(Array.isArray(rows) ? rows : []);
+      } catch (_) {
+        setReceipts([]);
+      }
       await claimPendingNote(user, list);
     } catch (e) {
       setBuddies([]);
