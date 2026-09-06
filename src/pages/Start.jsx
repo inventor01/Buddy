@@ -29,6 +29,7 @@ const EXAMPLES = [
 ];
 
 const CATS = ["when", "what", "tells"];
+const BUDDY_REQUEST_MAX = 8000;
 
 function isSimplePlanningRequest(text) {
   const lower = String(text || "").toLowerCase();
@@ -428,7 +429,7 @@ export default function Start() {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
-                maxLength={300}
+                maxLength={BUDDY_REQUEST_MAX}
                 placeholder="What do you want handled?"
                 className="w-full resize-none bg-transparent px-3 pt-2.5 text-[16px] leading-relaxed text-neutral-900 outline-none placeholder:text-neutral-400"
               />
@@ -469,6 +470,9 @@ export default function Start() {
                     {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
                   </button>
                   <span className="text-[11.5px] text-neutral-400">No account needed</span>
+                  <span className="text-[10.5px] tabular-nums text-neutral-400" aria-label={`${note.length} of ${BUDDY_REQUEST_MAX} characters used`}>
+                    {note.length.toLocaleString()}/{BUDDY_REQUEST_MAX.toLocaleString()}
+                  </span>
                 </div>
                 <button
                   type="button"
