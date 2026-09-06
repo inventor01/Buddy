@@ -129,7 +129,7 @@ export default function CommandCenter({ me, profile, buddies, receipts = [], esc
         </button>
       )}
 
-      <Composer onPin={onPin} busy={busy} />
+      <Composer onPin={onPin} busy={busy} buddies={buddies} />
 
       {(watching.length > 0 || repeating.length > 0 || handled.length > 0) && (
         <div className="grid gap-6 sm:grid-cols-2">
