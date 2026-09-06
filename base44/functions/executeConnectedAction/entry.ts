@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { secrets } from 'base44:runtime';
 import { createReceiptOnce } from '../../shared/receipts.ts';
+import { recordEscalationOnce, resolveEscalation } from '../../shared/escalation.ts';
 
 function base64Url(input: string) {
   const bytes = new TextEncoder().encode(input);
@@ -98,6 +99,7 @@ async function userConnection(base44: any, capability: string) {
 
 export default async function(req: Request) {
   let actionBuddyId = '';
+  let actionBuddy: any = null;
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -111,6 +113,7 @@ export default async function(req: Request) {
     if (!buddyId) return Response.json({ error: 'Missing handoff id.' }, { status: 400 });
 
     const buddy = await base44.entities.Buddy.get(buddyId);
+    actionBuddy = buddy;
     if (!buddy || buddy.owner_id !== user.id) {
       return Response.json({ error: 'That handoff is not yours.' }, { status: 403 });
     }
@@ -228,6 +231,7 @@ export default async function(req: Request) {
       outcome: 'approved and completed',
       estimatedTimeSavedMinutes: 8,
     });
+    await resolveEscalation(base44, buddy.id, user.id);
 
     return Response.json({ ok: true, summary, receipt: receipt ? { id: receipt.id, completed_at: receipt.completed_at } : null });
   } catch (error: any) {
@@ -242,7 +246,8 @@ export default async function(req: Request) {
     try {
       const base44 = createClientFromRequest(req);
       if (actionBuddyId) await base44.entities.Buddy.update(actionBuddyId, { approval_status: 'failed' });
+      if (actionBuddy?.owner_id) await recordEscalationOnce({ base44, buddy: actionBuddy, reason: message, nextStep: 'Reconnect the service or retry the approved action. The request and approval details are preserved.' });
     } catch (_) {}
-    return Response.json({ error: message }, { status: 500 });
+    return Response.json({ error: message, preserved: !!actionBuddyId }, { status: 500 });
   }
 }
