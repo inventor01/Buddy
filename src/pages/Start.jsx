@@ -166,7 +166,7 @@ export default function Start() {
         /* the LLM's first reading of the schedule still stands */
       }
 
-      const created = await base44.entities.Buddy.create({
+      const createRes = await base44.functions.invoke("createBuddyRecord", {
         note: note.trim(),
         image_url: image,
         kind: ["ads", "social"].includes(lines.kind) ? lines.kind : "web",
@@ -183,8 +183,9 @@ export default function Start() {
         what_line: lines.what,
         how_line: lines.tells,
         schedule_time: scheduleTime,
-        status: "active",
       });
+      const created = createRes.data?.buddy;
+      if (!created) throw new Error(createRes.data?.error || "Could not create that thing.");
       setCreatedId(created.id);
 
       if (lines.approvalRequired) {
