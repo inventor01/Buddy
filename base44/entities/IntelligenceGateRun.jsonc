@@ -1,0 +1,98 @@
+{
+  "name": "IntelligenceGateRun",
+  "type": "object",
+  "properties": {
+    "started_at": {
+      "type": "string"
+    },
+    "completed_at": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "running",
+        "completed",
+        "failed"
+      ],
+      "default": "running"
+    },
+    "total_cases": {
+      "type": "number"
+    },
+    "passed_cases": {
+      "type": "number"
+    },
+    "failed_cases": {
+      "type": "number"
+    },
+    "pass_rate": {
+      "type": "number"
+    },
+    "critical_fact_failures": {
+      "type": "number"
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "latency_ms": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "started_at",
+    "status",
+    "total_cases"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

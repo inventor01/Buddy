@@ -1,0 +1,76 @@
+{
+  "name": "ProviderPerformance",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "type": "string"
+    },
+    "capability": {
+      "type": "string"
+    },
+    "runs": {
+      "type": "number",
+      "default": 0
+    },
+    "successes": {
+      "type": "number",
+      "default": 0
+    },
+    "failures": {
+      "type": "number",
+      "default": 0
+    },
+    "verified_successes": {
+      "type": "number",
+      "default": 0
+    },
+    "fallbacks": {
+      "type": "number",
+      "default": 0
+    },
+    "total_latency_ms": {
+      "type": "number",
+      "default": 0
+    },
+    "avg_latency_ms": {
+      "type": "number",
+      "default": 0
+    },
+    "score": {
+      "type": "number",
+      "default": 0.5
+    },
+    "last_error": {
+      "type": "string"
+    },
+    "last_used_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "provider",
+    "capability"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
