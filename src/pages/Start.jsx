@@ -73,7 +73,10 @@ export default function Start() {
         image_url: image || undefined,
       });
       const plan = res.data?.plan;
-      if (!plan) throw new Error("It couldn't read that — try again.");
+      if (!plan) {
+        const serverErr = res.data?.error;
+        throw new Error(serverErr || "It couldn't read that — try again.");
+      }
       setLines({
         when: plan.when_line,
         what: plan.what_line,
