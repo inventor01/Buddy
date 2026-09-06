@@ -55,6 +55,12 @@ export default async function(req) {
     const due = [];
     for (const buddy of buddies) {
       if (due.length >= MAX_DUE) break;
+      // User-presence states must never be picked up by the background sweep.
+      // Connected reply handling needs the person's app-user OAuth context,
+      // and approval/detail states must wait for that person rather than rerun.
+      if (buddy.open_question) continue;
+      if (['pending', 'needs_connection', 'executing'].includes(String(buddy.approval_status || ''))) continue;
+      if (buddy.action_type === 'email_read' && buddy.chain_state?.phase === 'waiting_response') continue;
       const owner = await ownerOf(buddy.owner_id);
       const local = nowInZone(owner?.timezone);
       const scheduledHour = parseScheduleHour(buddy.schedule_time);
