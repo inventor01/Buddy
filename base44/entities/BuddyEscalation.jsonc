@@ -1,0 +1,56 @@
+{
+  "name": "BuddyEscalation",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string"
+    },
+    "buddy_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "next_step": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "resolved"
+      ],
+      "default": "open"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "resolved_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_id",
+    "buddy_id",
+    "title",
+    "reason",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "read": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "update": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "delete": {
+      "data.owner_id": "{{user.id}}"
+    }
+  }
+}
