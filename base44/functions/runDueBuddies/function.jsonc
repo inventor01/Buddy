@@ -5,12 +5,12 @@
     {
       "type": "scheduled",
       "name": "hourly_buddy_sweep",
-      "description": "Runs every active buddy whose schedule time has arrived",
+      "description": "Runs due Buddy handoffs frequently enough to catch up safely under load",
       "function_args": { "mode": "run_due" },
       "is_active": true,
       "schedule_mode": "recurring",
       "schedule_type": "cron",
-      "cron_expression": "0 * * * ?"
+      "cron_expression": "0/10 * * * ?"
     }
   ]
 }
