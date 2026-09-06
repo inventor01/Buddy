@@ -193,7 +193,7 @@ export default async function (req) {
     const delegation = await loadDelegationPolicy(base44, user.id, category);
 
     // ── Mode 2: user sent a specific message ──────────────────────────────
-    const userMessage = typeof body?.message === 'string' ? body.message.trim().slice(0, 500) : ''; 
+    const userMessage = typeof body?.message === 'string' ? body.message.trim().slice(0, BUDDY_FOLLOWUP_MAX) : ''; 
     if (userMessage) {
       const learned = await savePreferenceIfExplicit(base44, user.id, profile, userMessage);
       if (learned) {
@@ -210,7 +210,7 @@ export default async function (req) {
         const facts = Array.isArray(buddy.context)
           ? buddy.context.filter((c) => typeof c === 'string')
           : [];
-        const context = [...facts, userMessage.slice(0, 300)];
+        const context = [...facts, userMessage.slice(0, CONTEXT_ITEM_MAX)];
         await base44.entities.Buddy.update(buddyId, { context, open_question: '' });
         buddy.context = context;
         buddy.open_question = '';
