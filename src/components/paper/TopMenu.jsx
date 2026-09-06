@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Settings } from "lucide-react";
 
 // The shared top menu — a strip of liquid glass floating over the wash.
-export default function TopMenu({ onTryPro, onBook, authed = true, onSignIn = null }) {
+export default function TopMenu({ onBook, authed = true, onSignIn = null }) {
   return (
     <header
       className="sticky top-0 z-30 border-b border-white/60"
@@ -55,20 +55,6 @@ export default function TopMenu({ onTryPro, onBook, authed = true, onSignIn = nu
               </button>
             )
           )}
-          <button
-            type="button"
-            onClick={onTryPro}
-            className="hidden rounded-full px-3 py-2 transition-colors hover:text-neutral-900 sm:block"
-          >
-            $6 a month
-          </button>
-          <button
-            type="button"
-            onClick={onTryPro}
-            className="rounded-full bg-neutral-900 px-[17px] py-2 font-semibold text-white transition-opacity hover:opacity-90"
-          >
-            Try Pro
-          </button>
         </nav>
       </div>
     </header>

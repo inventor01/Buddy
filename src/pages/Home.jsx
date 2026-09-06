@@ -8,7 +8,6 @@ import Rail from "@/components/paper/Rail";
 import Composer from "@/components/paper/Composer";
 import ThreadView from "@/components/paper/ThreadView";
 import BookPage from "@/components/paper/BookPage";
-import PaymentSheet from "@/components/paper/PaymentSheet";
 import PlanPanel from "@/components/maker/PlanPanel";
 import { readBigText, applyBigText } from "@/lib/bigText";
 import { readPendingNote, clearPendingNote } from "@/lib/pendingNote";
@@ -21,7 +20,6 @@ export default function Home() {
   const [params, setParams] = useSearchParams();
   const [buddies, setBuddies] = useState(null);
   const [me, setMe] = useState(null);
-  const [payOpen, setPayOpen] = useState(false);
   const [view, setView] = useState("notes");
   const [railOpen, setRailOpen] = useState(false);
   const [bigText, setBigText] = useState(readBigText());
@@ -30,7 +28,6 @@ export default function Home() {
   const [draft, setDraft] = useState(null); // note + plan awaiting the run button
 
   const selectedId = params.get("note");
-  const pro = me?.plan === "pro";
   const selected = (buddies || []).find((b) => b.id === selectedId) || null;
 
   // Creates a note for real, runs it once, and hands it back with the first
@@ -88,11 +85,6 @@ export default function Home() {
       if (!pending?.note) return;
       clearPendingNote();
 
-      if (user?.plan !== "pro" && existing.length >= 3) {
-        setPayOpen(true);
-        toast({ title: "Three notes are free. Pro is $6 a month for unlimited." });
-        return;
-      }
       if (pending.phone) {
         try {
           await base44.auth.updateMe({ sms_phone: pending.phone });
@@ -183,11 +175,6 @@ export default function Home() {
   };
 
   const handlePin = async (note, imageUrl) => {
-    if (!pro && (buddies?.length || 0) >= 3) {
-      setPayOpen(true);
-      toast({ title: "Three notes are free. Pro is $6 a month for unlimited." });
-      throw new Error("plan limit");
-    }
     setPinning(true);
     try {
       const res = await base44.functions.invoke("createBuddyFromNote", {
@@ -321,7 +308,7 @@ export default function Home() {
 
   return (
     <div className="page-glow min-h-screen">
-      <TopMenu onTryPro={() => setPayOpen(true)} onBook={() => changeView("book")} />
+      <TopMenu onBook={() => changeView("book")} />
 
       <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[250px_1fr]">
         {/* rail — desktop sidebar */}
@@ -386,7 +373,6 @@ export default function Home() {
         </div>
       )}
 
-      <PaymentSheet open={payOpen} onClose={() => setPayOpen(false)} />
     </div>
   );
 }

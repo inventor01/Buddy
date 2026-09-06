@@ -4,7 +4,6 @@ import { ArrowRight, ArrowUp, Check, ImagePlus, Loader2, X } from "lucide-react"
 import { base44 } from "@/api/base44Client";
 import { Image } from "@/components/ui/image";
 import { useToast } from "@/components/ui/use-toast";
-import PaymentSheet from "@/components/paper/PaymentSheet";
 import PlanBoard from "@/components/maker/PlanBoard";
 import FoundIt from "@/components/maker/FoundIt";
 import TypingWord from "@/components/maker/TypingWord";
@@ -40,7 +39,6 @@ export default function Start() {
   const [result, setResult] = useState(null); // { text, source }
   const [createdId, setCreatedId] = useState(null);
   const [phone, setPhone] = useState("");
-  const [payOpen, setPayOpen] = useState(false);
   const [authed, setAuthed] = useState(null); // null while checking
 
   // No account needed to try it — things only get saved once someone is
@@ -142,19 +140,10 @@ export default function Start() {
         return;
       }
 
-      // Three notes are free — the same limit the home page holds to.
-      const me = await base44.auth.me();
       // The note is about to be scheduled, so the account needs to know which
       // clock "every morning at 9" is being kept on.
+      const me = await base44.auth.me();
       await ensureTimezone(base44, me);
-      if (me?.plan !== "pro") {
-        const mine = await base44.entities.Buddy.filter({ created_by_id: me.id }, "-created_date", 4);
-        if (mine.length >= 3) {
-          setPayOpen(true);
-          toast({ title: "Three notes are free. Pro is $6 a month for unlimited." });
-          return;
-        }
-      }
 
       // Recompute the real settings from the (possibly reworded) cards:
       // WHEN → the daily schedule it runs on, TELLS → the channel.
@@ -229,7 +218,7 @@ export default function Start() {
           lines: { ...lines, answer: answer.trim() },
           phone: normalised,
         });
-        base44.auth.redirectToLogin("/");
+        base44.auth.redirectToLogin("/notes");
         return;
       }
 
@@ -293,7 +282,7 @@ export default function Start() {
             {authed === true && (
               <button
                 type="button"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/notes")}
                 className="text-[13px] font-medium text-neutral-600"
               >
                 My things
@@ -487,28 +476,19 @@ export default function Start() {
               It runs every day, quietly — you'll hear about it only when there's news. Most
               people start a second one within the hour.
             </p>
-            <div className="mt-8 rounded-2xl border border-neutral-200 bg-neutral-50 p-6 text-left">
-              <p className="text-[14px] text-neutral-900">Three are free, forever.</p>
-              <p className="mt-1 text-[14px] text-neutral-500">
-                Unlimited is $6 a month — everyone you look after included. Cancel anytime.
-              </p>
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <button type="button" onClick={() => setPayOpen(true)} className={primary}>
-                  Go unlimited
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <button type="button" onClick={restart} className={outline}>
+                Start another
+              </button>
+              {authed !== false && createdId && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/notes?note=${createdId}`)}
+                  className={ghost}
+                >
+                  Open it
                 </button>
-                <button type="button" onClick={restart} className={outline}>
-                  Start another
-                </button>
-                {authed !== false && createdId && (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/?note=${createdId}`)}
-                    className={ghost}
-                  >
-                    Open it
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -518,7 +498,6 @@ export default function Start() {
         Buddy · © {new Date().getFullYear()}
       </footer>
 
-      <PaymentSheet open={payOpen} onClose={() => setPayOpen(false)} />
     </div>
   );
 }
