@@ -32,7 +32,8 @@ export default function Start() {
   const [image, setImage] = useState(null); // uploaded photo that rides along
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
-  const [lines, setLines] = useState(null); // { when, what, tells, name, creature, scheduleTime }
+  const [lines, setLines] = useState(null); // { when, what, tells, name, creature, scheduleTime, question }
+  const [answer, setAnswer] = useState("");
   const [order, setOrder] = useState(CATS);
   const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -86,6 +87,7 @@ export default function Start() {
         name: plan.name,
         creature: plan.creature,
         scheduleTime: plan.schedule_time,
+        question: typeof plan.question === "string" ? plan.question : "",
       });
       setOrder(CATS);
       setEditing(null);
@@ -120,6 +122,7 @@ export default function Start() {
             note: note.trim(),
             what: lines.what,
             image_url: image || undefined,
+            ...(answer.trim() ? { context: [answer.trim()] } : {}),
           });
           const ls = res.data?.lines || [];
           if (ls.length) {
@@ -169,6 +172,7 @@ export default function Start() {
       const created = await base44.entities.Buddy.create({
         note: note.trim(),
         image_url: image,
+        ...(answer.trim() ? { context: [answer.trim()] } : {}),
         name: lines.name || "Your helper",
         creature: lines.creature || "sam",
         when_line: lines.when,
@@ -217,7 +221,12 @@ export default function Start() {
         // Nothing a visitor typed has been saved — there was no account to
         // save it to. Carry the note and the number across the sign-in and
         // let the home page start it for real on the way back.
-        savePendingNote({ note: note.trim(), image, lines, phone: normalised });
+        savePendingNote({
+          note: note.trim(),
+          image,
+          lines: { ...lines, answer: answer.trim() },
+          phone: normalised,
+        });
         base44.auth.redirectToLogin("/");
         return;
       }
@@ -235,6 +244,7 @@ export default function Start() {
     setNote("");
     setImage(null);
     setLines(null);
+    setAnswer("");
     setOrder(CATS);
     setEditing(null);
     setResult(null);
@@ -399,6 +409,21 @@ export default function Start() {
                 onCommit={() => setEditing(null)}
               />
             </div>
+
+            {lines.question && (
+              <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/80 p-4">
+                <p className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-amber-700">
+                  One more thing
+                </p>
+                <p className="mt-1.5 text-[15px] leading-snug text-neutral-800">{lines.question}</p>
+                <input
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  placeholder="Your answer — it remembers this for every run"
+                  className="mt-3 w-full rounded-xl border border-amber-300 bg-white px-3.5 py-2.5 text-[15px] text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-amber-400"
+                />
+              </div>
+            )}
 
             <div className="mt-7 flex flex-wrap items-center gap-4">
               <button type="button" onClick={runOnce} disabled={busy} className={primary}>

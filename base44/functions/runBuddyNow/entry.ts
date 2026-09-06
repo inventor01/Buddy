@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { runBuddy, FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines } from '../../shared/runBuddy.ts';
+import { runBuddy, FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines, contextLines } from '../../shared/runBuddy.ts';
 
 // "Run now" — two modes:
 //   1. buddyId only → standard daily run (same as the scheduler).
@@ -28,6 +28,19 @@ export default async function (req) {
       // Answer the question in the context of the buddy, with web search.
       // Don't update last_result or last_run_date — this is a conversation
       // turn, not a scheduled run.
+
+      // If this reply answers a question it asked, the answer becomes a
+      // fact it keeps for every future run — ask once, remember forever.
+      if (typeof buddy.open_question === 'string' && buddy.open_question) {
+        const facts = Array.isArray(buddy.context)
+          ? buddy.context.filter((c) => typeof c === 'string')
+          : [];
+        const context = [...facts, userMessage.slice(0, 300)];
+        await base44.entities.Buddy.update(buddyId, { context, open_question: '' });
+        buddy.context = context;
+        buddy.open_question = '';
+      }
+
       const imageUrl =
         typeof buddy.image_url === 'string' && /^https?:\/\//i.test(buddy.image_url.trim())
           ? buddy.image_url.trim()
@@ -41,6 +54,7 @@ export default async function (req) {
           'You are ' + buddy.name + ', a helper for one person.',
           'Their original request: "' + buddy.note + '"',
           'Your daily job: ' + (buddy.what_line || buddy.note),
+          ...contextLines(buddy),
           'The user is now asking you a follow-up question: "' + userMessage + '"',
           'Answer the question concretely and helpfully, using today\'s web data where relevant.',
           'Give up to 5 short findings (one sentence each, under 120 characters).',

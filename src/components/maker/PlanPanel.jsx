@@ -8,7 +8,7 @@ import PlanBoard from "./PlanBoard";
 
 const CATS = ["when", "what", "tells"];
 
-export default function PlanPanel({ note, lines, onChange, onRun, onCancel, busy }) {
+export default function PlanPanel({ note, lines, question, answer, onAnswer, onChange, onRun, onCancel, busy }) {
   const [order, setOrder] = useState(CATS);
   const [editing, setEditing] = useState(null);
 
@@ -43,6 +43,21 @@ export default function PlanPanel({ note, lines, onChange, onRun, onCancel, busy
             onCommit={() => setEditing(null)}
           />
         </div>
+
+        {question && (
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/80 p-4">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-amber-700">
+              One more thing
+            </p>
+            <p className="mt-1.5 text-[15px] leading-snug text-neutral-800">{question}</p>
+            <input
+              value={answer || ""}
+              onChange={(e) => onAnswer(e.target.value)}
+              placeholder="Your answer — it remembers this for every run"
+              className="mt-3 w-full rounded-xl border border-amber-300 bg-white px-3.5 py-2.5 text-[15px] text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-amber-400"
+            />
+          </div>
+        )}
 
         <div className="mt-7 flex flex-wrap items-center gap-4">
           <button

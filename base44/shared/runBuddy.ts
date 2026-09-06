@@ -46,13 +46,27 @@ export function parseScheduleHour(scheduleTime) {
   return hour;
 }
 
+// Facts the user handed over when it asked — they ride along every run,
+// so an answer given once is remembered forever.
+export function contextLines(buddy) {
+  const facts = Array.isArray(buddy?.context)
+    ? buddy.context.filter((f) => typeof f === "string" && f.trim())
+    : [];
+  if (!facts.length) return [];
+  return [
+    "Details the user gave you when you asked — use them and don't ask again:",
+    ...facts.map((f) => "- " + f.trim().slice(0, 300))
+  ];
+}
+
 // The rules every findings call shares — sources are proof of work.
 export const FINDINGS_RULES = [
   "For every finding include source_name (the site or store it came from) and the exact URL it was read from.",
   "Only give a URL you actually read — never invent one. If a finding has no source URL, leave url empty.",
   "When the finding is a specific product, listing, or deal, also include a product object: name, price as a short string (like \"price under $1.50\" → \"$1.29/lb\"), stock only when the page shows it, image_url — the exact product image URL shown on the page — and url, the direct link to that product's own page (never a search results or homepage). For product findings, make a real effort to read the listing page and copy its main product image URL; never invent one, and omit image_url only when the page truly shows no image.",
   "Only include a product object when the finding is a genuinely purchasable product with a real price or product photo — never for news, reminders, permit openings, birthdays, or general updates; those are plain findings with no product object.",
-  "If today has nothing genuinely useful, say so plainly — never invent codes or prices."
+  "If today has nothing genuinely useful, say so plainly — never invent codes or prices.",
+  "Only when a detail from the user would genuinely change the answer (which account, whose birthday, which store, which exact item), set needs_context to ONE short friendly question asking for exactly that detail and return findings: []. Never use needs_context just because today is quiet — quiet days get an honest \"nothing new\" finding instead."
 ];
 
 export const FINDINGS_SCHEMA = {
@@ -79,7 +93,8 @@ export const FINDINGS_SCHEMA = {
         },
         required: ["text"]
       }
-    }
+    },
+    needs_context: { type: "string" }
   },
   required: ["findings"]
 };
@@ -190,6 +205,7 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
       "You are " + buddy.name + ", a helper for one person.",
       'Their exact words: "' + buddy.note + '"',
       "Your daily job: " + (buddy.what_line || buddy.note),
+      ...contextLines(buddy),
       ...(imageUrl
         ? [
             "A photo of the exact thing to track is attached. Treat it like a reverse image search:",
@@ -202,6 +218,44 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
     ].join("\n"),
     response_json_schema: FINDINGS_SCHEMA
   });
+
+  // The one case where guessing is wrong: a detail the user could hand over
+  // in one line is missing. Ask instead of invent — the question lands in
+  // the thread and, when a number is on file, as a text.
+  const question =
+    typeof findings?.needs_context === "string" ? findings.needs_context.trim().slice(0, 200) : "";
+  if (question) {
+    const msg = { who: "note", at: new Date().toISOString(), text: question };
+    const messages = [...(Array.isArray(buddy.messages) ? buddy.messages : []), msg];
+    await entityClient.entities.Buddy.update(buddy.id, {
+      messages,
+      last_run_date: nowInZone(timeZone).date,
+      open_question: question
+    });
+    let questionSmsSent = false;
+    if (typeof smsPhone === "string" && smsPhone.trim().startsWith("+")) {
+      try {
+        questionSmsSent = await sendSms(
+          smsPhone.trim(),
+          buddy.name + " needs one detail:\n" + question
+        );
+      } catch (e) {
+        questionSmsSent = false;
+      }
+    }
+    if (!questionSmsSent && typeof userEmail === "string" && userEmail.includes("@")) {
+      try {
+        await client.asServiceRole.integrations.Core.SendEmail({
+          to: userEmail,
+          subject: buddy.name + " needs one detail",
+          body: question
+        });
+      } catch (e) {
+        /* the question is already pinned in the thread */
+      }
+    }
+    return { items: [], lines: [question], question: true, deliveredBySms: questionSmsSent };
+  }
 
   const items = toFindingItems(findings?.findings);
   if (items.length === 0) {

@@ -51,6 +51,7 @@ export default function Home() {
     const created = await base44.entities.Buddy.create({
       note: spec.note,
       image_url: spec.image,
+      ...(spec.context && spec.context.length ? { context: spec.context } : {}),
       name: spec.name || "Your helper",
       creature: spec.creature || "sam",
       when_line: spec.when,
@@ -110,6 +111,7 @@ export default function Home() {
           what: l.what,
           tells: l.tells,
           scheduleTime: l.scheduleTime,
+          context: typeof l.answer === "string" && l.answer.trim() ? [l.answer.trim()] : undefined,
         });
         setBuddies((prev) => [b, ...(prev ?? [])]);
         setParams({ note: b.id });
@@ -200,7 +202,12 @@ export default function Home() {
       setDraft({
         note,
         image: imageUrl,
-        plan: { name: plan.name, creature: plan.creature, scheduleTime: plan.schedule_time },
+        plan: {
+          name: plan.name,
+          creature: plan.creature,
+          scheduleTime: plan.schedule_time,
+          question: plan.question || "",
+        },
         lines: { when: plan.when_line, what: plan.what_line, tells: plan.how_line },
       });
     } catch (e) {
@@ -227,6 +234,7 @@ export default function Home() {
         what: d.lines.what,
         tells: d.lines.tells,
         scheduleTime: d.plan.scheduleTime,
+        context: typeof d.answer === "string" && d.answer.trim() ? [d.answer.trim()] : undefined,
       });
 
       setBuddies((prev) => [saved, ...(prev ?? [])]);
@@ -348,6 +356,9 @@ export default function Home() {
             <PlanPanel
               note={draft.note}
               lines={draft.lines}
+              question={draft.plan.question}
+              answer={draft.answer || ""}
+              onAnswer={(v) => setDraft((d) => ({ ...d, answer: v }))}
               onChange={(cat, v) => setDraft((d) => ({ ...d, lines: { ...d.lines, [cat]: v } }))}
               onRun={runDraft}
               onCancel={() => setDraft(null)}

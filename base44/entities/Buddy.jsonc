@@ -37,6 +37,17 @@
       "type": "string",
       "description": "Plain-English line: how it tells you"
     },
+    "context": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Details the user gave when it asked for more \u2014 folded into every run"
+    },
+    "open_question": {
+      "type": "string",
+      "description": "A question it asked that's still waiting on the user's answer"
+    },
     "schedule_time": {
       "type": "string",
       "description": "The time it runs, e.g. 9:00 AM"
@@ -125,8 +136,7 @@
           "at",
           "text"
         ]
-      },
-      "description": "The note's thread: what you asked and what it found, oldest first"
+      }
     }
   },
   "required": [

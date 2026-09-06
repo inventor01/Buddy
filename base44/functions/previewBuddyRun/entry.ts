@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines } from '../../shared/runBuddy.ts';
+import { FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines, contextLines } from '../../shared/runBuddy.ts';
 
 // Runs a visitor's typed note once, with no account and nothing saved —
 // the "watch it run" step for people who haven't signed in. Anonymous by
@@ -22,6 +22,10 @@ export default async function(req) {
     const imageUrl = typeof body.image_url === 'string' && /^https?:\/\//i.test(body.image_url.trim())
       ? body.image_url.trim().slice(0, 500)
       : '';
+    // Answers the visitor typed when the plan asked — a few, bounded.
+    const context = Array.isArray(body.context)
+      ? body.context.filter((c) => typeof c === 'string' && c.trim()).slice(0, 5)
+      : [];
 
     const findings = await base44.asServiceRole.integrations.Core.InvokeLLM({
       model: "gemini_3_flash",
@@ -31,6 +35,7 @@ export default async function(req) {
         "You are a helper for one person.",
         'Their exact words: "' + note + '"',
         what ? "Your daily job: " + what : "",
+        ...contextLines({ context }),
         ...(imageUrl
           ? [
               "A photo of the exact thing to find is attached. Treat it like a reverse image search:",
