@@ -40,7 +40,8 @@ export default function ThreadView({ buddy, onPause, onTakeDown, onEditNote, onS
             {buddy.name}
           </h2>
           <p className="mt-0.5 text-[11.5px] text-neutral-500">
-            {[buddy.when_line, buddy.what_line].filter(Boolean).join(" · ")}
+            {buddy.run_mode === "once" ? "Handled once" : buddy.run_mode === "repeat" ? "Keeps doing this" : "Keeping watch"}
+            {buddy.when_line ? ` · ${buddy.when_line}` : ""}
           </p>
         </div>
         <div className="flex gap-2">
@@ -116,7 +117,7 @@ export default function ThreadView({ buddy, onPause, onTakeDown, onEditNote, onS
       <div className="mt-6">
         {messages.length === 0 && (
           <p className="py-6 text-center text-[13px] text-neutral-400">
-            Nothing yet — it runs on its schedule, or ask it something below.
+            Nothing yet — Buddy will handle it the way you asked, or you can add a follow-up below.
           </p>
         )}
         {messages.map((m, i) => {
@@ -166,7 +167,7 @@ export default function ThreadView({ buddy, onPause, onTakeDown, onEditNote, onS
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Change something about this note, or ask it a question…"
+          placeholder="Change the request or ask a follow-up…"
           className="flex-1 bg-transparent text-[14px] text-neutral-900 outline-none placeholder:text-neutral-400"
         />
         <button
@@ -179,7 +180,7 @@ export default function ThreadView({ buddy, onPause, onTakeDown, onEditNote, onS
         </button>
       </div>
       <p className="mt-2 text-[11.5px] text-neutral-400">
-        Every reply names where it read the answer. When it finds nothing, it says so.
+        When Buddy uses the web, it shows where the answer came from. If nothing meaningful changed, it stays quiet.
       </p>
     </div>
   );
