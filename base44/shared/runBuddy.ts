@@ -125,12 +125,14 @@ export function toLines(items) {
   );
 }
 
-// Sends one SMS via Twilio. Silently does nothing when texting isn't configured.
+// Sends one SMS via Twilio. Returns false when texting isn't configured for
+// this app, so the caller can fall back to email instead of dropping the
+// findings on the floor.
 async function sendSms(to, body) {
   const sid = secrets.get("TWILIO_ACCOUNT_SID");
   const token = secrets.get("TWILIO_AUTH_TOKEN");
   const from = secrets.get("TWILIO_FROM_NUMBER");
-  if (!sid || !token || !from) return;
+  if (!sid || !token || !from) return false;
 
   const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
     method: "POST",
@@ -141,6 +143,7 @@ async function sendSms(to, body) {
     body: new URLSearchParams({ To: to, From: from, Body: body.slice(0, 300) })
   });
   if (!res.ok) throw new Error("Twilio responded " + res.status);
+  return true;
 }
 
 export async function runBuddy({ client, entityClient, buddy, userEmail, notifyEmail, smsPhone }) {
@@ -183,7 +186,25 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
   // "email me" → email only, anything else → both.
   const delivery = parseDelivery(buddy.how_line || "");
 
-  if (delivery.email && notifyEmail && typeof userEmail === "string" && userEmail.includes("@")) {
+  let smsSent = false;
+  if (delivery.sms && typeof smsPhone === "string" && smsPhone.trim().startsWith("+")) {
+    try {
+      smsSent = await sendSms(
+        smsPhone.trim(),
+        buddy.name + " pinned something for you:\n" + lines.join("\n")
+      );
+    } catch (e) {
+      // text failure should never fail the run — findings are already pinned
+      smsSent = false;
+    }
+  }
+
+  // Email goes out when the switch is on, and also as the rescue when a note
+  // asked to be texted but no text could leave (no number saved, or texting
+  // isn't configured for this app) — findings should never vanish quietly.
+  const canEmail = typeof userEmail === "string" && userEmail.includes("@");
+  const rescueEmail = delivery.sms && !smsSent;
+  if (canEmail && ((delivery.email && notifyEmail) || rescueEmail)) {
     try {
       await client.asServiceRole.integrations.Core.SendEmail({
         to: userEmail,
@@ -195,13 +216,5 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
     }
   }
 
-  if (delivery.sms && typeof smsPhone === "string" && smsPhone.trim().startsWith("+")) {
-    try {
-      await sendSms(smsPhone.trim(), buddy.name + " pinned something for you:\n" + lines.join("\n"));
-    } catch (e) {
-      // text failure should never fail the run — findings are already pinned
-    }
-  }
-
-  return { items, lines };
+  return { items, lines, deliveredBySms: smsSent };
 }
