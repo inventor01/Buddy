@@ -152,6 +152,11 @@ export default async function(req) {
       return /^(n\/?a|none|null|not applicable|unknown)$/i.test(text) ? '' : text;
     };
     const safeQuery = explicitMoney.length ? note.slice(0, 300) : cleanField(rawPayload.query, 300);
+    const simplePlanningRequest = /\b(plan|checklist|outline|ideas?)\b/.test(lowerNote) && guardedCapability === 'web' && guardedRunMode === 'once';
+    if (simplePlanningRequest && /\b(whose|who'?s|what date|date of|when is|when should)\b/i.test(question)) {
+      question = '';
+    }
+
     if (connectedBackgroundUnsupported) {
       question = `I can handle this while you're here, but I can't keep checking your ${guardedCapability === 'gmail' ? 'Email' : guardedCapability === 'calendar' ? 'Calendar' : 'Tasks'} in the background yet. Want me to handle it now?`;
     } else if (emailNeedsAddress) {
