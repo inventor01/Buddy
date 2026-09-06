@@ -82,9 +82,11 @@ export default function Home() {
 
     let text = "Buddy couldn't finish that request right now. Nothing was changed.";
     let items = [];
+    let buddyPatch = {};
     try {
       const res = await base44.functions.invoke("runBuddyNow", { buddyId: created.id });
       const lines = res.data?.lines || [];
+      if (res.data?.buddy_patch && typeof res.data.buddy_patch === "object") buddyPatch = res.data.buddy_patch;
       if (lines.length) {
         text = lines.join("\n");
         items = res.data?.items || [];
@@ -95,7 +97,7 @@ export default function Home() {
       text = e?.response?.data?.error || e?.message || text;
     }
     const msgs = [{ who: "note", at: new Date().toISOString(), text, items }];
-    const saved = await base44.entities.Buddy.update(created.id, { messages: msgs });
+    const saved = await base44.entities.Buddy.update(created.id, { ...buddyPatch, messages: msgs });
     return { ...saved, messages: msgs };
   }, []);
 
@@ -334,11 +336,12 @@ export default function Home() {
     try {
       const res = await base44.functions.invoke("executeConnectedAction", { buddyId: b.id, approve });
       const summary = res.data?.summary;
+      const serverPatch = res.data?.buddy_patch && typeof res.data.buddy_patch === "object" ? res.data.buddy_patch : {};
       const nextStatus = approve ? "executed" : "rejected";
       const next = {
         ...b,
-        approval_status: nextStatus,
-        status: b.run_mode === "once" ? "done" : b.status,
+        ...(approve ? { approval_status: nextStatus, status: b.run_mode === "once" ? "done" : b.status } : { approval_status: nextStatus, status: "done" }),
+        ...serverPatch,
         ...(summary ? { messages: [...(b.messages || []), { who: "note", at: new Date().toISOString(), text: summary }] } : {}),
       };
       setBuddies((p) => p.map((x) => (x.id === b.id ? next : x)));
