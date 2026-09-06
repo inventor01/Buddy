@@ -139,7 +139,7 @@ async function runConnectedRead({ base44, buddy, message = '' }) {
   if (buddy.action_type === 'email_read') {
     const threadId = String(buddy.action_payload?.thread_id || buddy.chain_state?.gmail_thread_id || '').trim();
     if (threadId) {
-      const threadRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${encodeURIComponent(threadId)}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`, {
+      const threadRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${encodeURIComponent(threadId)}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date&metadataHeaders=Message-ID`, {
         headers: { Authorization: `Bearer ${connection.accessToken}` },
       });
       if (!threadRes.ok) throw new Error(`Gmail rejected the thread read (${threadRes.status}).`);
@@ -149,7 +149,7 @@ async function runConnectedRead({ base44, buddy, message = '' }) {
       const newMessages = allMessages.slice(Math.min(baseline, allMessages.length));
       const rows = newMessages.map((data) => {
         const headers = Object.fromEntries((data?.payload?.headers || []).map((h) => [String(h.name || '').toLowerCase(), h.value || '']));
-        return { id: data.id || '', from: headers.from || '', to: headers.to || '', subject: headers.subject || '', date: headers.date || '', snippet: data?.snippet || '' };
+        return { id: data.id || '', from: headers.from || '', to: headers.to || '', subject: headers.subject || '', date: headers.date || '', message_id: headers['message-id'] || '', snippet: data?.snippet || '' };
       }).filter((row) => row.from || row.snippet);
       if (!rows.length) {
         return {
@@ -287,6 +287,7 @@ async function prepareReplyFromThread(base44: any, buddy: any, rows: any[], thre
     body: String(drafted.body).trim().slice(0, 6000),
     query: String(buddy.action_payload?.query || '').slice(0, 2000),
     thread_id: threadId,
+    in_reply_to: String(latest.message_id || '').slice(0, 500),
   };
 }
 
