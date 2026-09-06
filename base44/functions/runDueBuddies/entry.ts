@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { runBuddy, parseScheduleHour } from '../../shared/runBuddy.ts';
+import { runBuddy, parseScheduleHour, nowInZone } from '../../shared/runBuddy.ts';
 
 // Hourly sweep: runs every active buddy whose schedule time has arrived and
 // that hasn't already run today. Triggered by the platform's scheduler.
@@ -19,29 +19,43 @@ export default async function(req) {
       100
     );
 
-    const today = new Date().toISOString().slice(0, 10);
-    const currentHour = new Date().getHours();
+    // "9 in the morning" means the owner's morning, and "already ran today"
+    // their today — so the hour and the date are read on their clock. One
+    // lookup per owner, reused across all of that person's notes.
+    const owners = new Map();
+    const ownerOf = async (userId) => {
+      if (owners.has(userId)) return owners.get(userId);
+      let owner = null;
+      try {
+        owner = await base44.asServiceRole.entities.User.get(userId);
+      } catch (e) {
+        owner = null;
+      }
+      owners.set(userId, owner);
+      return owner;
+    };
 
-    const due = buddies
-      .filter((b) => parseScheduleHour(b.schedule_time) === currentHour && b.last_run_date !== today)
-      .slice(0, 25);
+    const due = [];
+    for (const buddy of buddies) {
+      if (due.length >= 25) break;
+      const owner = await ownerOf(buddy.created_by_id);
+      const local = nowInZone(owner?.timezone);
+      if (parseScheduleHour(buddy.schedule_time) === local.hour && buddy.last_run_date !== local.date) {
+        due.push({ buddy, owner });
+      }
+    }
 
     const results = [];
-    for (const buddy of due) {
+    for (const { buddy, owner } of due) {
       try {
-        let owner = null;
-        try {
-          owner = await base44.asServiceRole.entities.User.get(buddy.created_by_id);
-        } catch (e) {
-          owner = null;
-        }
         const result = await runBuddy({
           client: base44,
           entityClient: base44.asServiceRole,
           buddy,
           userEmail: owner?.email,
           notifyEmail: !!owner?.notify_email,
-          smsPhone: typeof owner?.sms_phone === 'string' ? owner.sms_phone : ''
+          smsPhone: typeof owner?.sms_phone === 'string' ? owner.sms_phone : '',
+          timeZone: typeof owner?.timezone === 'string' ? owner.timezone : ''
         });
         results.push({ id: buddy.id, name: buddy.name, ok: true, count: result.lines.length });
       } catch (e) {
