@@ -5,7 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import TopMenu from "@/components/paper/TopMenu";
 import Rail from "@/components/paper/Rail";
-import Composer from "@/components/paper/Composer";
+import CommandCenter from "@/components/paper/CommandCenter";
 import ThreadView from "@/components/paper/ThreadView";
 import BookPage from "@/components/paper/BookPage";
 import PlanPanel from "@/components/maker/PlanPanel";
@@ -74,7 +74,7 @@ export default function Home() {
       return { ...saved, messages: msgs };
     }
 
-    let text = "It couldn't reach the page just now. It'll try again in the morning.";
+    let text = "Buddy couldn't finish that request right now. Nothing was changed.";
     let items = [];
     try {
       const res = await base44.functions.invoke("runBuddyNow", { buddyId: created.id });
@@ -82,9 +82,11 @@ export default function Home() {
       if (lines.length) {
         text = lines.join("\n");
         items = res.data?.items || [];
+      } else if (res.data?.state === "empty") {
+        text = res.data?.message || "Buddy couldn't verify a useful answer yet.";
       }
-    } catch (_) {
-      /* the fallback text covers it */
+    } catch (e) {
+      text = e?.response?.data?.error || e?.message || text;
     }
     const msgs = [{ who: "note", at: new Date().toISOString(), text, items }];
     const saved = await base44.entities.Buddy.update(created.id, { messages: msgs });
@@ -433,7 +435,14 @@ export default function Home() {
               busy={sending}
             />
           ) : (
-            <Composer onPin={handlePin} busy={pinning} />
+            <CommandCenter
+              me={me}
+              profile={profile}
+              buddies={buddies || []}
+              onOpen={selectNote}
+              onPin={handlePin}
+              busy={pinning}
+            />
           )}
         </main>
       </div>
