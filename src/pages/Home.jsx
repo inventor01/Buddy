@@ -486,6 +486,7 @@ export default function Home() {
               onApprove={(b) => decideAction(b, true)}
               onReject={(b) => decideAction(b, false)}
               onContinueChain={continueChain}
+              onOpenBuddy={selectNote}
               busy={sending}
             />
           ) : draft ? (
