@@ -48,9 +48,10 @@ export default function Home() {
     const created = await base44.entities.Buddy.create({
       note: spec.note,
       kind: ["ads", "social"].includes(spec.kind) ? spec.kind : "web",
+      run_mode: ["once", "watch", "repeat"].includes(spec.runMode) ? spec.runMode : "once",
       image_url: spec.image,
       ...(spec.context && spec.context.length ? { context: spec.context } : {}),
-      name: spec.name || "Your helper",
+      name: spec.name || "Your thing",
       creature: spec.creature || "sam",
       when_line: spec.when,
       what_line: spec.what,
@@ -98,6 +99,7 @@ export default function Home() {
         const b = await createNoteAndRun({
           note: pending.note,
           kind: ["ads", "social"].includes(l.kind) ? l.kind : "web",
+          runMode: ["once", "watch", "repeat"].includes(l.runMode) ? l.runMode : "once",
           image: pending.image,
           name: l.name,
           creature: l.creature,
@@ -197,11 +199,12 @@ export default function Home() {
           scheduleTime: plan.schedule_time,
           question: plan.question || "",
           kind: ["ads", "social"].includes(plan.kind) ? plan.kind : "web",
+          runMode: ["once", "watch", "repeat"].includes(plan.run_mode) ? plan.run_mode : "once",
         },
         lines: { when: plan.when_line, what: plan.what_line, tells: plan.how_line },
       });
     } catch (e) {
-      toast({ title: e.message || "That note didn't hatch — try again.", variant: "destructive" });
+      toast({ title: e.message || "That didn’t come together — try again.", variant: "destructive" });
       throw e;
     } finally {
       setPinning(false);
@@ -218,6 +221,7 @@ export default function Home() {
       const saved = await createNoteAndRun({
         note: d.note,
         kind: ["ads", "social"].includes(d.plan.kind) ? d.plan.kind : "web",
+        runMode: ["once", "watch", "repeat"].includes(d.plan.runMode) ? d.plan.runMode : "once",
         image: d.image,
         name: d.plan.name,
         creature: d.plan.creature,
