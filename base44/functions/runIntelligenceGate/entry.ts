@@ -28,8 +28,8 @@ function cleanCase(row: any) {
 
 async function latestStatus(base44: any) {
   const [runs, scores] = await Promise.all([
-    base44.asServiceRole.entities.IntelligenceGateRun.list('-started_at', 1),
-    base44.asServiceRole.entities.ProviderPerformance.list('-score', 100),
+    base44.asServiceRole.entities.IntelligenceGateRun.filter({}, '-started_at', 1),
+    base44.asServiceRole.entities.ProviderPerformance.filter({}, '-score', 100),
   ]);
   return {
     latest: Array.isArray(runs) ? runs[0] || null : null,
