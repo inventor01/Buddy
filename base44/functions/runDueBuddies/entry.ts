@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { runBuddy, parseScheduleHour, nowInZone, scheduleMatchesToday } from '../../shared/runBuddy.ts';
-import { loadProfile, relevantProfileFacts } from '../../shared/personalization.ts';
+import { loadProfile, loadHousehold, householdFacts, relevantProfileFacts } from '../../shared/personalization.ts';
+import { requestCategory, loadDelegationPolicy, delegationPromptLines } from '../../shared/delegation.ts';
 
 // Hourly sweep: runs every active buddy whose schedule time has arrived and
 // that hasn't already run today. Triggered by the platform's scheduler.
@@ -67,7 +68,11 @@ export default async function(req) {
     const runOne = async ({ buddy, owner }) => {
       try {
         const profile = await loadProfile(base44, buddy.owner_id);
-        const personalFacts = relevantProfileFacts(profile, `${buddy.note || ''} ${buddy.what_line || ''}`);
+        const household = await loadHousehold(base44, buddy.owner_id);
+        const requestText = `${buddy.note || ''} ${buddy.what_line || ''}`;
+        const personalFacts = [...relevantProfileFacts(profile, requestText), ...householdFacts(household, requestText)].slice(0, 14);
+        const category = requestCategory(requestText, buddy.capability || 'web');
+        const delegation = await loadDelegationPolicy(base44, buddy.owner_id, category);
         const result = await runBuddy({
           client: base44,
           entityClient: base44.asServiceRole,
@@ -79,7 +84,8 @@ export default async function(req) {
           metaToken: typeof owner?.meta_token === 'string' ? owner.meta_token : '',
           metaAccount: typeof owner?.meta_ad_account === 'string' ? owner.meta_ad_account : '',
           metaPage: typeof owner?.meta_page_id === 'string' ? owner.meta_page_id : '',
-          personalFacts
+          personalFacts,
+          delegationLines: delegationPromptLines(delegation)
         });
         return { id: buddy.id, name: buddy.name, ok: true, count: result.lines.length };
       } catch (e) {
