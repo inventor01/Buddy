@@ -22,6 +22,7 @@ export default function Home() {
   const [me, setMe] = useState(null);
   const [profile, setProfile] = useState(null);
   const [receipts, setReceipts] = useState([]);
+  const [escalations, setEscalations] = useState([]);
   const [view, setView] = useState("notes");
   const [railOpen, setRailOpen] = useState(false);
   const [bigText, setBigText] = useState(readBigText());
@@ -168,6 +169,12 @@ export default function Home() {
       } catch (_) {
         setReceipts([]);
       }
+      try {
+        const rows = await base44.entities.BuddyEscalation.filter({ owner_id: user.id, status: "open" }, "-created_at", 50);
+        setEscalations(Array.isArray(rows) ? rows : []);
+      } catch (_) {
+        setEscalations([]);
+      }
       await claimPendingNote(user, list);
     } catch (e) {
       setBuddies([]);
@@ -279,6 +286,7 @@ export default function Home() {
       setBuddies((prev) => [saved, ...(prev ?? [])]);
       setDraft(null);
       setParams({ note: saved.id });
+      await load();
     } catch (e) {
       toast({ title: "Something went wrong — try again.", variant: "destructive" });
     } finally {
@@ -316,6 +324,7 @@ export default function Home() {
         ...(summary ? { messages: [...(b.messages || []), { who: "note", at: new Date().toISOString(), text: summary }] } : {}),
       };
       setBuddies((p) => p.map((x) => (x.id === b.id ? next : x)));
+      await load();
     } catch (e) {
       if (e?.response?.data?.needs_connection) {
         setBuddies((p) => p.map((x) => (x.id === b.id ? { ...x, approval_status: "needs_connection" } : x)));
@@ -448,6 +457,7 @@ export default function Home() {
               profile={profile}
               buddies={buddies || []}
               receipts={receipts}
+              escalations={escalations}
               onOpen={selectNote}
               onPin={handlePin}
               busy={pinning}
