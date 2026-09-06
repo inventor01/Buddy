@@ -65,6 +65,7 @@ export default async function (req) {
       userEmail: user.email,
       notifyEmail: !!user.notify_email,
       smsPhone: typeof user.sms_phone === 'string' ? user.sms_phone : '',
+      timeZone: typeof user.timezone === 'string' ? user.timezone : '',
     });
 
     return Response.json({ lines: result.lines, items: result.items });
