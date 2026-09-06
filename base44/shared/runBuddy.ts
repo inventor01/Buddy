@@ -137,21 +137,38 @@ export const FINDINGS_SCHEMA = {
   required: ["findings", "should_notify"]
 };
 
+// Generic homepages are technically valid URLs but poor handoff destinations.
+// Strip them at the shared boundary so every result surface — preview, thread,
+// scheduler, and orchestrated runs — follows the same deep-link standard.
+export function sanitizeResultUrl(value) {
+  let url = typeof value === "string" ? value.trim() : "";
+  if (!url) return "";
+  if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+  try {
+    const parsed = new URL(url);
+    if (!/^https?:$/.test(parsed.protocol)) return "";
+    const path = parsed.pathname.replace(/\/+$/, "") || "/";
+    const genericPath = /^\/(?:home|index(?:\.html?|\.php)?)$/i.test(path);
+    const meaningfulQueryKeys = [...parsed.searchParams.keys()].filter(
+      (key) => !/^(?:utm_.+|gclid|fbclid|msclkid|ref|referrer|source)$/i.test(key)
+    );
+    const bareHomepage = path === "/" && !parsed.hash && meaningfulQueryKeys.length === 0;
+    if (bareHomepage || genericPath) return "";
+    return parsed.toString().slice(0, 800);
+  } catch (_) {
+    return "";
+  }
+}
+
 // Turns whatever the model returned into bounded finding objects:
-// { text, url, source }. Anything that isn't a real link is dropped.
+// { text, url, source }. Anything that isn't a real, useful destination is dropped.
 export function toFindingItems(raw) {
   const list = Array.isArray(raw) ? raw : [];
   const items = [];
   for (const f of list) {
     const text = (typeof f === "string" ? f : f?.text || "").trim().slice(0, 160);
     if (!text) continue;
-    let url = typeof f?.url === "string" ? f.url.trim() : "";
-    if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
-    try {
-      if (url) new URL(url);
-    } catch (_) {
-      url = "";
-    }
+    const url = sanitizeResultUrl(f?.url);
     let source = typeof f?.source_name === "string" ? f.source_name.trim().slice(0, 60) : "";
     const why_fit = typeof f?.why_fit === "string" ? f.why_fit.trim().slice(0, 140) : "";
     if (url && !source) {
@@ -193,13 +210,7 @@ export function toFindingItems(raw) {
           : "";
       // The product's own page beats the finding's source link — it's the
       // direct route to buy the thing.
-      let pUrl = typeof p.url === "string" ? p.url.trim() : "";
-      if (pUrl && !/^https?:\/\//i.test(pUrl)) pUrl = "https://" + pUrl;
-      try {
-        if (pUrl) new URL(pUrl);
-      } catch (_) {
-        pUrl = "";
-      }
+      const pUrl = sanitizeResultUrl(p.url);
       if (price || imageUrl) {
         product = {
           name: (typeof p.name === "string" ? p.name.trim().slice(0, 80) : "") || text.slice(0, 60),
