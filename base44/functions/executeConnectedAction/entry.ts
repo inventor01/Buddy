@@ -18,13 +18,14 @@ function cleanPayload(raw: any) {
   return {
     recipient: s(raw?.recipient, 200),
     subject: s(raw?.subject, 200),
-    body: s(raw?.body, 1200),
-    query: s(raw?.query, 300),
+    body: s(raw?.body, 6000),
+    query: s(raw?.query, 2000),
     title: s(raw?.title, 200),
     start: s(raw?.start, 100),
     end: s(raw?.end, 100),
     due: s(raw?.due, 100),
-    notes: s(raw?.notes, 600),
+    notes: s(raw?.notes, 2000),
+    thread_id: s(raw?.thread_id, 300),
   };
 }
 
@@ -140,6 +141,7 @@ export default async function(req: Request) {
     const { accessToken } = await userConnection(base44, buddy.capability || 'web');
 
     let summary = '';
+    let continuationPatch: any = null;
 
     if (action === 'email_send') {
       if (!payload.recipient || !payload.subject || !payload.body) {
@@ -152,13 +154,45 @@ export default async function(req: Request) {
         '',
         payload.body,
       ].join('\r\n');
+      const existingThreadId = payload.thread_id || String(buddy.chain_state?.gmail_thread_id || '');
+      const sendBody: any = { raw: base64Url(mime) };
+      if (existingThreadId) sendBody.threadId = existingThreadId;
       const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ raw: base64Url(mime) }),
+        body: JSON.stringify(sendBody),
       });
       if (!r.ok) throw new Error(`Gmail rejected the send (${r.status}).`);
-      summary = `Sent the email to ${payload.recipient}.`;
+      const sent = await r.json();
+      const handlesResponses = buddy.execution_mode === 'chain' && Array.isArray(buddy.task_steps) && buddy.task_steps.some((step: any) => step?.type === 'handle_responses');
+      if (handlesResponses && sent?.threadId) {
+        let messageCount = Number(buddy.chain_state?.gmail_message_count) || 1;
+        try {
+          const threadRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${encodeURIComponent(sent.threadId)}?format=metadata`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (threadRes.ok) {
+            const thread = await threadRes.json();
+            if (Array.isArray(thread?.messages)) messageCount = thread.messages.length;
+          }
+        } catch (_) {}
+        continuationPatch = {
+          action_type: 'email_read',
+          action_payload: { query: payload.subject || payload.recipient, thread_id: sent.threadId },
+          approval_status: 'not_needed',
+          deferred_action: false,
+          status: 'active',
+          chain_state: {
+            phase: 'waiting_response',
+            gmail_thread_id: sent.threadId,
+            gmail_message_count: messageCount,
+            last_checked_at: '',
+          },
+        };
+        summary = `Sent the email to ${payload.recipient}. Buddy is ready to check this thread for replies.`;
+      } else {
+        summary = `Sent the email to ${payload.recipient}.`;
+      }
     } else if (action === 'calendar_create') {
       if (!payload.title || !payload.start) {
         return Response.json({ error: 'The calendar item is missing a title or start time.' }, { status: 400 });
@@ -206,9 +240,12 @@ export default async function(req: Request) {
 
     const msg = { who: 'note', at: new Date().toISOString(), text: summary };
     const messages = [...(Array.isArray(buddy.messages) ? buddy.messages : []), msg];
-    await base44.entities.Buddy.update(buddy.id, {
+    const finalPatch: any = continuationPatch || {
       approval_status: 'executed',
       status: buddy.run_mode === 'once' ? 'done' : buddy.status,
+    };
+    await base44.entities.Buddy.update(buddy.id, {
+      ...finalPatch,
       messages,
       last_result: [summary],
     });
@@ -233,7 +270,7 @@ export default async function(req: Request) {
     });
     await resolveEscalation(base44, buddy.id, user.id);
 
-    return Response.json({ ok: true, summary, receipt: receipt ? { id: receipt.id, completed_at: receipt.completed_at } : null });
+    return Response.json({ ok: true, summary, buddy_patch: finalPatch, receipt: receipt ? { id: receipt.id, completed_at: receipt.completed_at } : null });
   } catch (error: any) {
     const message = String(error?.message || error || 'That handoff could not finish.');
     if (error?.code === 'NEEDS_CONNECTION') {
