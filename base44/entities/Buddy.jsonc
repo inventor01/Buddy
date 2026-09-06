@@ -2,6 +2,10 @@
   "name": "Buddy",
   "type": "object",
   "properties": {
+    "owner_id": {
+      "type": "string",
+      "description": "App user who owns this Buddy record. Explicit because service-role creates do not preserve created_by_id as the end user."
+    },
     "kind": {
       "type": "string",
       "enum": [
@@ -139,7 +143,7 @@
       "items": {
         "type": "string"
       },
-      "description": "Details the user gave when it asked for more \u2014 folded into every run"
+      "description": "Details the user gave when it asked \u2014 folded into every run"
     },
     "open_question": {
       "type": "string",
@@ -249,13 +253,13 @@
       }
     },
     "read": {
-      "created_by_id": "{{user.id}}"
+      "data.owner_id": "{{user.id}}"
     },
     "update": {
-      "created_by_id": "{{user.id}}"
+      "data.owner_id": "{{user.id}}"
     },
     "delete": {
-      "created_by_id": "{{user.id}}"
+      "data.owner_id": "{{user.id}}"
     }
   }
 }
