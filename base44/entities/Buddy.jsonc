@@ -79,6 +79,9 @@
         },
         "notes": {
           "type": "string"
+        },
+        "thread_id": {
+          "type": "string"
         }
       },
       "description": "Bounded structured details used to preview and, after approval, carry out a connected action."
@@ -102,6 +105,90 @@
       "type": "boolean",
       "default": false,
       "description": "True when a write must wait for a user choice or missing dependency before approval can be requested."
+    },
+    "linked_buddy_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Other owner-scoped Buddy threads explicitly referenced with @ and allowed to contribute context."
+    },
+    "execution_mode": {
+      "type": "string",
+      "enum": [
+        "single",
+        "chain"
+      ],
+      "default": "single",
+      "description": "Whether this handoff is one unit of work or an ordered dependency chain."
+    },
+    "task_steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "research",
+              "review",
+              "prepare_message",
+              "send_email",
+              "handle_responses",
+              "action",
+              "verify"
+            ]
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "approval_required": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "completed",
+              "waiting_approval",
+              "waiting_response",
+              "failed"
+            ]
+          }
+        }
+      },
+      "description": "Ordered steps for a complex handoff. Each later step consumes the completed output of its dependencies."
+    },
+    "chain_state": {
+      "type": "object",
+      "properties": {
+        "phase": {
+          "type": "string"
+        },
+        "gmail_thread_id": {
+          "type": "string"
+        },
+        "gmail_message_count": {
+          "type": "number"
+        },
+        "last_checked_at": {
+          "type": "string"
+        }
+      },
+      "description": "Small server-managed cursor for multi-step connected handoffs such as send then check replies."
     },
     "note": {
       "type": "string",
