@@ -1,0 +1,85 @@
+{
+  "name": "BuddyProfile",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string",
+      "description": "App user who owns this personal Buddy profile."
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Name Buddy should use for the person."
+    },
+    "home_city": {
+      "type": "string",
+      "description": "Default city or area Buddy may use when location is relevant."
+    },
+    "home_airport": {
+      "type": "string",
+      "description": "Default departure airport Buddy may use when travel origin is omitted."
+    },
+    "travel_preferences": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Stable travel preferences such as nonstop, aisle seat, preferred airlines, or avoid-airline notes."
+    },
+    "shopping_preferences": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Stable shopping preferences such as lowest total price, favorite stores, brands, sizes, or delivery preference."
+    },
+    "general_preferences": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Other stable preferences Buddy may apply when relevant."
+    },
+    "people": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Important people and the facts the user wants Buddy to remember about them."
+    },
+    "learned_facts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "User-approved stable facts learned from conversations."
+    }
+  },
+  "required": [
+    "owner_id"
+  ],
+  "rls": {
+    "create": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "read": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "update": {
+      "data.owner_id": "{{user.id}}"
+    },
+    "delete": {
+      "data.owner_id": "{{user.id}}"
+    }
+  }
+}
