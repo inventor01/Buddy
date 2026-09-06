@@ -172,6 +172,8 @@ export default function Start() {
             note: note.trim(),
             what: lines.what,
             image_url: image || undefined,
+            execution_mode: lines.executionMode === "chain" ? "chain" : "single",
+            task_steps: Array.isArray(lines.taskSteps) ? lines.taskSteps : [],
             ...(answer.trim() ? { context: [answer.trim()] } : {}),
           });
           const state = res.data?.state || "answer";
