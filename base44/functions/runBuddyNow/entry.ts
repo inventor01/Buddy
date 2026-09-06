@@ -70,7 +70,8 @@ export default async function (req) {
           facts: contextLines(buddy),
           token: typeof user.meta_token === 'string' ? user.meta_token : '',
           pageId: typeof user.meta_page_id === 'string' ? user.meta_page_id : '',
-          message: userMessage
+          message: userMessage,
+          timeZone: typeof user.timezone === 'string' ? user.timezone : ''
         });
         const socialItems = toFindingItems(social?.findings);
         if (socialItems.length === 0) {

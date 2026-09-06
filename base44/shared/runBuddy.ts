@@ -218,7 +218,8 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
       buddy,
       facts: contextLines(buddy),
       token: metaToken,
-      pageId: metaPage
+      pageId: metaPage,
+      timeZone
     });
   } else {
   findings = await client.asServiceRole.integrations.Core.InvokeLLM({

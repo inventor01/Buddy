@@ -42,7 +42,7 @@ const POST_SCHEMA = {
 // note's words (or the thread message), publish it once, and report back.
 // Returns the same { findings, needs_context } shape as a web run, so
 // pinning and delivery work unchanged.
-export async function runSocialBuddy({ client, buddy, facts = [], token = "", pageId = "", message = "" }) {
+export async function runSocialBuddy({ client, buddy, facts = [], token = "", pageId = "", message = "", timeZone = "" }) {
   const simple = (text) => ({ findings: [{ text, source_name: "Buddy" }], needs_context: "" });
 
   if (typeof token !== "string" || token.trim().length < 20) {
@@ -67,12 +67,29 @@ export async function runSocialBuddy({ client, buddy, facts = [], token = "", pa
       );
     }
 
+    // Weekly or monthly jobs only fire on the right day — so the model
+    // needs to know what today is, on the person's own clock.
+    let dateLine = "";
+    try {
+      const fmt = new Intl.DateTimeFormat("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        ...(timeZone ? { timeZone } : {})
+      });
+      dateLine = `Today is ${fmt.format(new Date())} where they are.`;
+    } catch (_) {
+      /* the model posts without knowing the day */
+    }
+
     const decision = await client.asServiceRole.integrations.Core.InvokeLLM({
       model: "gemini_3_flash",
       prompt: [
         `You are ${buddy.name}, managing one person's Facebook Page "${page.name}".`,
         `Their exact words: "${buddy.note}"`,
         `Your daily job: ${buddy.what_line || buddy.note}`,
+        ...(dateLine ? [dateLine] : []),
         ...facts,
         message ? `\nThe user says: "${message}"` : "",
         "",
@@ -80,7 +97,7 @@ export async function runSocialBuddy({ client, buddy, facts = [], token = "", pa
         "- findings: up to 3 short plain sentences (under 120 characters) — what you posted or why you held back. Never invent likes, comments, or numbers.",
         message
           ? "- They are asking for a post: fill post.text (the full post, friendly and specific, under 1200 characters), post.image_prompt (a short visual description — leave empty when the post works better without a picture), and post.link (a URL only when they gave one)."
-          : "- If their words describe a posting job that is due today (a daily tip, a weekly deal), fill post.text the same way. If nothing is genuinely due or a needed detail is missing, leave post empty and say so in findings.",
+          : "- If their words describe a posting job that is due today (a daily tip, a weekly deal on its day), fill post.text the same way — weekly or monthly jobs only fire on their day. If nothing is genuinely due or a needed detail is missing, leave post empty and say so in findings.",
         "- At most one post. Never invent prices, sales, or events that were not given to you."
       ].join("\n"),
       response_json_schema: POST_SCHEMA
