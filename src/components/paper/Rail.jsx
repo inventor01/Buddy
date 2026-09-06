@@ -43,7 +43,7 @@ export default function Rail({
         onClick={onNewNote}
         className="w-full rounded-xl border border-dashed border-neutral-300 px-3 py-2.5 text-left text-[13.5px] font-medium text-neutral-700 transition-colors hover:border-neutral-400 hover:bg-white/50"
       >
-        + New note
+        + Hand off something
       </button>
 
       <div
@@ -51,10 +51,10 @@ export default function Rail({
         style={{ background: "rgba(255,255,255,.45)" }}
       >
         <SegmentButton selected={view === "notes"} onClick={() => onViewChange("notes")} icon={<PencilIcon />}>
-          Notes
+          Things
         </SegmentButton>
         <SegmentButton selected={view === "book"} onClick={() => onViewChange("book")} icon={<BookIcon />}>
-          Book
+          History
         </SegmentButton>
       </div>
 
@@ -87,13 +87,13 @@ export default function Rail({
         })}
         {(!buddies || buddies.length === 0) && (
           <p className="px-2.5 py-2 text-[12px] text-neutral-400">
-            Nothing pinned yet. Write your first note.
+            Nothing handed off yet. Start with one thing you want handled.
           </p>
         )}
       </div>
 
       <div className="mt-auto border-t border-white/60 pt-3">
-        <p className="text-[11px] text-neutral-500">Three notes free · $6 a month for unlimited</p>
+        <p className="text-[11px] text-neutral-500">Three things free · $6 a month for unlimited</p>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-neutral-500">
           <Link to="/settings" className="transition-colors hover:text-neutral-900">
             Settings
