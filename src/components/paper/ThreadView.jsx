@@ -25,8 +25,9 @@ export default function ThreadView({ buddy, onPause, onTakeDown, onEditNote, onS
       : [];
 
   const send = () => {
-    if (!draft.trim() || busy) return;
-    onSend(buddy, draft.trim());
+    const msg = draft.trim();
+    if (!msg || busy) return;
+    onSend(buddy, msg);
     setDraft("");
   };
 
