@@ -6,6 +6,8 @@ import { isWholesalePropertyRequest, runWholesaleDealFinder } from '../../shared
 // Runs a visitor's typed note once, with no account and nothing saved —
 // the "watch it run" step for people who haven't signed in. Anonymous by
 // design: it only reads the note, bounds its size, and returns findings.
+const BUDDY_REQUEST_MAX = 8000;
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -19,7 +21,14 @@ export default async function(req) {
 
     let body = {};
     try { body = await req.json(); } catch (e) { body = {}; }
-    const note = typeof body.note === 'string' ? body.note.trim().slice(0, 300) : '';
+    const rawNote = typeof body.note === 'string' ? body.note.trim() : '';
+    if (rawNote.length > BUDDY_REQUEST_MAX) {
+      return Response.json(
+        { error: `Keep the request under ${BUDDY_REQUEST_MAX.toLocaleString()} characters.` },
+        { status: 413 }
+      );
+    }
+    const note = rawNote;
     if (note.length < 3) {
       return Response.json(
         { error: 'Write a little more — even one sentence is enough to get started.' },
@@ -27,7 +36,7 @@ export default async function(req) {
       );
     }
     // The WHAT card, if the visitor reworded it — it's the exact job.
-    const what = typeof body.what === 'string' ? body.what.trim().slice(0, 200) : '';
+    const what = typeof body.what === 'string' ? body.what.trim().slice(0, 1000) : '';
     const imageUrl = typeof body.image_url === 'string' && /^https?:\/\//i.test(body.image_url.trim())
       ? body.image_url.trim().slice(0, 500)
       : '';
