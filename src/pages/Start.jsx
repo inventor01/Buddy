@@ -126,6 +126,10 @@ export default function Start() {
         actionPayload: plan.action_payload || {},
         approvalRequired: plan.approval_required === true,
         deferredAction: plan.deferred_action === true,
+        linkedBuddyIds: Array.isArray(plan.linked_buddy_ids) ? plan.linked_buddy_ids : [],
+        linkedBuddyNames: Array.isArray(plan.linked_buddy_names) ? plan.linked_buddy_names : [],
+        executionMode: plan.execution_mode === "chain" ? "chain" : "single",
+        taskSteps: Array.isArray(plan.task_steps) ? plan.task_steps : [],
         scheduleTime: plan.schedule_time,
         question: requiredDetail,
       });
@@ -230,6 +234,9 @@ export default function Start() {
         action_payload: lines.actionPayload || {},
         approval_status: lines.approvalRequired ? "pending" : "not_needed",
         deferred_action: lines.deferredAction === true,
+        linked_buddy_ids: Array.isArray(lines.linkedBuddyIds) ? lines.linkedBuddyIds : [],
+        execution_mode: lines.executionMode === "chain" ? "chain" : "single",
+        task_steps: Array.isArray(lines.taskSteps) ? lines.taskSteps : [],
         ...(answer.trim() ? { context: [answer.trim()] } : {}),
         name: lines.name || "Your helper",
         creature: lines.creature || "sam",
@@ -259,6 +266,16 @@ export default function Start() {
         const res = await base44.functions.invoke("runBuddyNow", { buddyId: created.id });
         if (res.data?.needs_connection) {
           setResult({ state: "needs_connection", text: res.data?.lines?.[0] || "Connect the account this request needs before Buddy can continue." });
+          setStep("ran");
+          return;
+        }
+        if (res.data?.state === "approval") {
+          const ls = res.data?.lines || [];
+          setResult({
+            state: "approval",
+            text: res.data?.message || ls.join("\n") || "The next step is ready for your approval.",
+            items: res.data?.items || [],
+          });
           setStep("ran");
           return;
         }
