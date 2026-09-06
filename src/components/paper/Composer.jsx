@@ -6,6 +6,8 @@ import { Image } from "@/components/ui/image";
 // The composer — one question, one plain sentence, and the note goes off
 // to do the thing. Suggestion pills fill the input; they don't submit.
 // A photo can ride along too — the note hunts for that exact thing daily.
+const BUDDY_REQUEST_MAX = 8000;
+
 const SUGGESTIONS = [
   "Find me the best nonstop flight to Miami next month under $300",
   "Tell me when a PS6 preorder opens at a major retailer",
@@ -70,7 +72,7 @@ export default function Composer({ onPin, busy }) {
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={2}
-          maxLength={300}
+          maxLength={BUDDY_REQUEST_MAX}
           placeholder="Tell Buddy what you want handled…"
           className="w-full resize-none bg-transparent px-1 text-[16px] leading-snug text-neutral-900 outline-none placeholder:text-neutral-400"
         />
@@ -93,9 +95,14 @@ export default function Composer({ onPin, busy }) {
           </div>
         )}
         <div className="mt-2 flex items-center justify-between gap-3">
-          <span className="font-mono text-[9.5px] tracking-[0.14em] text-neutral-400">
-            YOU’LL SEE HOW IT PLANS TO HANDLE IT FIRST
-          </span>
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="font-mono text-[9.5px] tracking-[0.14em] text-neutral-400">
+              YOU’LL SEE HOW IT PLANS TO HANDLE IT FIRST
+            </span>
+            <span className="shrink-0 text-[10px] tabular-nums text-neutral-400" aria-label={`${note.length} of ${BUDDY_REQUEST_MAX} characters used`}>
+              {note.length.toLocaleString()}/{BUDDY_REQUEST_MAX.toLocaleString()}
+            </span>
+          </div>
           <div className="flex items-center gap-1.5">
             <input
               ref={fileRef}
