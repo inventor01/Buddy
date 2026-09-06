@@ -252,17 +252,25 @@ async function runConnectedRead({ base44, buddy, message = '' }) {
   return { lines: ['That connected read is not supported yet.'], items: [] };
 }
 
-async function prepareReplyFromThread(base44: any, buddy: any, rows: any[], threadId: string) {
-  const latest = Array.isArray(rows) && rows.length ? rows[rows.length - 1] : null;
+async function prepareReplyFromThread(base44: any, buddy: any, rows: any[], threadId: string, userEmail = '') {
+  const candidates = Array.isArray(rows) ? rows : [];
+  const latest = [...candidates].reverse().find((row) => {
+    const match = String(row?.from || '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    return match?.[0] && match[0].toLowerCase() !== String(userEmail || '').toLowerCase();
+  });
   if (!latest) return null;
   const emailMatch = String(latest.from || '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
   const recipient = emailMatch?.[0] || '';
   if (!recipient) return null;
+  const linkedBuddies = await loadLinkedBuddies(base44, buddy.owner_id, buddy.linked_buddy_ids);
+  const recentConversation = (Array.isArray(buddy.messages) ? buddy.messages : []).slice(-8).map((m) => `${m?.who === 'you' ? 'User' : 'Buddy'}: ${String(m?.text || '').slice(0, 900)}`).filter(Boolean);
   const drafted = await base44.asServiceRole.integrations.Core.InvokeLLM({
     model: 'gemini_3_flash',
     prompt: [
       `Original goal: ${buddy.note}`,
+      ...linkedBuddyPromptLines(linkedBuddies),
       ...taskStepPromptLines(buddy.task_steps),
+      recentConversation.length ? `Recent work in this handoff:\n${recentConversation.join('\n')}` : '',
       'New reply data:',
       JSON.stringify(rows).slice(0, 12000),
       'Decide whether a response is useful for the original goal. If yes, draft a concise plain-text reply using only supported facts. Never invent an agreement, price, deadline, promise, or commitment.',
@@ -511,7 +519,7 @@ export default async function (req) {
           await base44.entities.Buddy.update(buddy.id, patch);
           return Response.json({ ...read, state: 'answer', buddy_patch: patch });
         }
-        const reply = await prepareReplyFromThread(base44, buddy, read.raw_rows || [], read.thread_id);
+        const reply = await prepareReplyFromThread(base44, buddy, read.raw_rows || [], read.thread_id, user.email);
         if (reply) {
           const patch = {
             action_type: 'email_send',
