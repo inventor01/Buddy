@@ -74,6 +74,7 @@ export function contextLines(buddy) {
 // The rules every findings call shares — sources are proof of work.
 export const FINDINGS_RULES = [
   "Set should_notify=true only when the person should be interrupted now. For watch/repeat/reminder requests, use false when the condition has not happened or nothing meaningful changed. For a one-time request, use true when you have a useful answer.",
+  "Do not ask for optional details when the request is already answerable. For provider comparisons (plumbers, electricians, mechanics, cleaners, dentists, restaurants, etc.), if a city/ZIP/location is already present, compare providers generally using public ratings, published/service-call pricing, availability, and 'quote required' where exact pricing is unavailable. Do NOT ask what exact repair/service/job they need unless the user explicitly asks for a quote for that specific job.",
   "For every web-based finding include source_name (the site or store it came from) and the exact URL it was read from.",
   "Only give a URL you actually read — never invent one. If a finding has no source URL, leave url empty.",
   "When the finding is a specific product, listing, or deal, also include a product object: name, price as a short string (like \"price under $1.50\" → \"$1.29/lb\"), stock only when the page shows it, image_url — the exact product image URL shown on the page — and url, the direct link to that product's own page (never a search results or homepage). For product findings, make a real effort to read the listing page and copy its main product image URL; never invent one, and omit image_url only when the page truly shows no image.",
@@ -266,8 +267,23 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
   // The one case where guessing is wrong: a detail the user could hand over
   // in one line is missing. Ask instead of invent — the question lands in
   // the thread and, when a number is on file, as a text.
-  const question =
+  let question =
     typeof findings?.needs_context === "string" ? findings.needs_context.trim().slice(0, 200) : "";
+
+  // Deterministic guard against model over-clarification. If a comparison
+  // already names a usable location, a specific repair/project is optional.
+  // Answer with public pricing/ratings/availability and say "quote required"
+  // rather than turning a complete preset into another question.
+  const requestText = `${buddy.note || ''} ${buddy.what_line || ''}`;
+  const providerComparison = /\b(compare|comparison|find\s+(?:three|3|several|a few))\b/i.test(requestText) &&
+    /\b(plumber|electrician|mechanic|cleaner|dentist|contractor|roofer|salon|barber|restaurant)s?\b/i.test(requestText);
+  const hasUsableLocation = /\b(?:in|near|around)\s+[A-Za-z][A-Za-z .'-]{1,40}\b/i.test(requestText) ||
+    /\b\d{5}(?:-\d{4})?\b/.test(requestText) ||
+    (Array.isArray(buddy.context) && buddy.context.some((x) => /\b\d{5}(?:-\d{4})?\b|[A-Za-z]{3,}/.test(String(x || ''))));
+  if (providerComparison && hasUsableLocation && /\b(specific|which|what).*(service|repair|project|issue|job)|\b(service|repair|project|issue|job).*(need|looking for)\b/i.test(question)) {
+    question = '';
+  }
+
   if (question) {
     const msg = { who: "note", at: new Date().toISOString(), text: question };
     const messages = [...(Array.isArray(buddy.messages) ? buddy.messages : []), msg];
