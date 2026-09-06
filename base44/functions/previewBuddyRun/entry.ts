@@ -51,6 +51,8 @@ export default async function(req) {
       ...(imageUrl ? { file_urls: [imageUrl] } : {}),
       prompt: [
         "You are a helper for one person.",
+        `The actual current UTC date is ${new Date().toISOString().slice(0, 10)}. Use this date as authoritative even if your training data suggests an older year.`,
+        "For travel searches, never reject a future date merely because your internal knowledge cutoff makes it feel too far away. Search the current web and verify availability instead.",
         'Their exact words: "' + note + '"',
         what ? "Your daily job: " + what : "",
         ...contextLines({ context }),
