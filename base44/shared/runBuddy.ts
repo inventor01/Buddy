@@ -69,7 +69,7 @@ export function contextLines(buddy) {
   if (!facts.length) return [];
   return [
     "Details the user gave you when you asked — use them and don't ask again:",
-    ...facts.map((f) => "- " + f.trim().slice(0, 300))
+    ...facts.map((f) => "- " + f.trim().slice(0, 2000))
   ];
 }
 
@@ -188,7 +188,7 @@ export function toFindingItems(raw) {
         max_contract: Number(d.max_contract) || 0, assignment_fee: Number(d.assignment_fee) || 0, investor_arv_percent: Number(d.investor_arv_percent) || 0,
         deal_score: Number(d.deal_score) || 0, days_on_market: Number(d.days_on_market) || 0, price_cuts: Number(d.price_cuts) || 0,
         listing_type: String(d.listing_type || '').slice(0, 60), square_footage: Number(d.square_footage) || 0, bedrooms: Number(d.bedrooms) || 0,
-        bathrooms: Number(d.bathrooms) || 0, listing_url: /^https?:\/\//i.test(String(d.listing_url || '')) ? String(d.listing_url).slice(0, 500) : '',
+        bathrooms: Number(d.bathrooms) || 0, listing_url: sanitizeResultUrl(d.listing_url),
         listing_source: String(d.listing_source || '').slice(0, 60), image_url: /^https?:\/\//i.test(String(d.image_url || '')) ? String(d.image_url).slice(0, 500) : '',
         caveat: String(d.caveat || '').slice(0, 400), comps: Array.isArray(d.comps) ? d.comps.slice(0, 5).map((c) => ({ address: String(c?.address || '').slice(0, 140), price: Number(c?.price) || 0, distance: Number(c?.distance) || 0, correlation: Number(c?.correlation) || 0 })).filter((c) => c.address && c.price) : []
       };
