@@ -358,6 +358,7 @@ export default async function (req) {
       metaAccount: typeof user.meta_ad_account === 'string' ? user.meta_ad_account : '',
       metaPage: typeof user.meta_page_id === 'string' ? user.meta_page_id : '',
       personalFacts,
+      delegationLines: delegationPromptLines(delegation),
     });
 
     if (result?.question) {
