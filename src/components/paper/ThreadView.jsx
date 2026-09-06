@@ -23,7 +23,7 @@ const STEP_LABELS = {
   verify: "Verified the result",
 };
 
-export default function ThreadView({ buddy, buddies = [], profile, receipt, job, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, onContinueChain, busy }) {
+export default function ThreadView({ buddy, buddies = [], profile, receipt, job, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, onContinueChain, onOpenBuddy, busy }) {
   const done = buddy.status === "done";
   const active = buddy.status === "active";
   const waitingForResponse = buddy.chain_state?.phase === "waiting_response" && buddy.action_type === "email_read";
@@ -109,7 +109,7 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-700">Connected chats</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {linkedBuddies.map((linked) => (
-              <button key={linked.id} type="button" onClick={() => window.location.assign(`/notes?note=${linked.id}`)} className="rounded-full border border-sky-100 bg-white/80 px-2.5 py-1 text-[11.5px] font-medium text-sky-800 hover:bg-white">@{linked.name}</button>
+              <button key={linked.id} type="button" onClick={() => onOpenBuddy?.(linked.id)} className="rounded-full border border-sky-100 bg-white/80 px-2.5 py-1 text-[11.5px] font-medium text-sky-800 hover:bg-white">@{linked.name}</button>
             ))}
           </div>
         </div>
