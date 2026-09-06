@@ -210,7 +210,7 @@ async function sendSms(to, body) {
   return true;
 }
 
-export async function runBuddy({ client, entityClient, buddy, userEmail, notifyEmail, smsPhone, timeZone, metaToken, metaAccount, metaPage }) {
+export async function runBuddy({ client, entityClient, buddy, userEmail, notifyEmail, smsPhone, timeZone, metaToken, metaAccount, metaPage, personalFacts = [] }) {
   // A photo pinned to the note rides along every run — reverse-search style.
   const imageUrl =
     typeof buddy.image_url === "string" && /^https?:\/\//i.test(buddy.image_url.trim())
@@ -249,6 +249,11 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
       "How this should behave: " + (buddy.run_mode || "watch") + ".",
       "What to handle: " + (buddy.what_line || buddy.note),
       "Today's local date: " + nowInZone(timeZone).date + ".",
+      ...(Array.isArray(personalFacts) && personalFacts.length ? [
+        "Relevant things this person previously asked Buddy to remember. Use them only when helpful and never override the current request:",
+        ...personalFacts.slice(0, 12).map((f) => "- " + String(f).slice(0, 220)),
+        "When a remembered preference affects the recommendation, explain that briefly in the result when useful."
+      ] : []),
       ...contextLines(buddy),
       ...(imageUrl
         ? [
