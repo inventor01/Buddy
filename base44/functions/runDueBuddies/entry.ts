@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { runBuddy, parseScheduleHour, nowInZone, scheduleMatchesToday } from '../../shared/runBuddy.ts';
 import { loadProfile, loadHousehold, householdFacts, relevantProfileFacts } from '../../shared/personalization.ts';
 import { requestCategory, loadDelegationPolicy, delegationPromptLines } from '../../shared/delegation.ts';
+import { loadVerifiedPhone } from '../../shared/phone.ts';
 
 // Hourly sweep: runs every active buddy whose schedule time has arrived and
 // that hasn't already run today. Triggered by the platform's scheduler.
@@ -73,13 +74,14 @@ export default async function(req) {
         const personalFacts = [...relevantProfileFacts(profile, requestText), ...householdFacts(household, requestText)].slice(0, 14);
         const category = requestCategory(requestText, buddy.capability || 'web');
         const delegation = await loadDelegationPolicy(base44, buddy.owner_id, category);
+        const verifiedPhone = await loadVerifiedPhone(base44, buddy.owner_id);
         const result = await runBuddy({
           client: base44,
           entityClient: base44.asServiceRole,
           buddy,
           userEmail: owner?.email,
           notifyEmail: !!owner?.notify_email,
-          smsPhone: typeof owner?.sms_phone === 'string' ? owner.sms_phone : '',
+          smsPhone: verifiedPhone,
           timeZone: typeof owner?.timezone === 'string' ? owner.timezone : '',
           metaToken: typeof owner?.meta_token === 'string' ? owner.meta_token : '',
           metaAccount: typeof owner?.meta_ad_account === 'string' ? owner.meta_ad_account : '',
