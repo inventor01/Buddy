@@ -83,6 +83,25 @@ export async function rankProviders(base44: any, capability: string, providers: 
   });
 }
 
+export async function markProviderVerified(base44: any, provider: string, capability: string) {
+  if (!provider || !capability) return;
+  try {
+    const rows = await base44.asServiceRole.entities.ProviderPerformance.filter({ provider, capability }, '-updated_date', 1);
+    const current = Array.isArray(rows) ? rows[0] || null : null;
+    if (!current?.id) return;
+    const next = {
+      ...current,
+      verified_successes: (Number(current.verified_successes) || 0) + 1,
+    };
+    next.score = computeProviderScore(next);
+    await base44.asServiceRole.entities.ProviderPerformance.update(current.id, {
+      verified_successes: next.verified_successes,
+      score: next.score,
+      last_used_at: new Date().toISOString(),
+    });
+  } catch (_) {}
+}
+
 export async function recordProviderAttempt({
   base44,
   provider,
