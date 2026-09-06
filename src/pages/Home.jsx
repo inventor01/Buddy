@@ -45,7 +45,7 @@ export default function Home() {
     } catch (_) {
       /* the first reading of the schedule still stands */
     }
-    const created = await base44.entities.Buddy.create({
+    const createRes = await base44.functions.invoke("createBuddyRecord", {
       note: spec.note,
       kind: ["ads", "social"].includes(spec.kind) ? spec.kind : "web",
       run_mode: ["once", "watch", "repeat"].includes(spec.runMode) ? spec.runMode : "once",
@@ -62,8 +62,9 @@ export default function Home() {
       what_line: spec.what,
       how_line: spec.tells,
       schedule_time: scheduleTime,
-      status: "active",
     });
+    const created = createRes.data?.buddy;
+    if (!created) throw new Error(createRes.data?.error || "Could not create that thing.");
 
     if (spec.approvalRequired) {
       const text = "Ready for your approval. Review the details before Buddy sends or changes anything.";
