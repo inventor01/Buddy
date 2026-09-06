@@ -57,13 +57,28 @@ export default async function(req) {
       response_json_schema: FINDINGS_SCHEMA
     });
 
-    const items = toFindingItems(findings?.findings);
-    if (items.length === 0) {
-      items.push({ text: "Nothing new today — I will look again next time.", url: '', source: '' });
+    const needsContext = typeof findings?.needs_context === 'string' ? findings.needs_context.trim().slice(0, 200) : '';
+    if (needsContext) {
+      return Response.json({
+        state: 'needs_detail',
+        message: needsContext,
+        lines: [needsContext],
+        items: [],
+      });
     }
-    const lines = toLines(items);
 
-    return Response.json({ lines, items });
+    const items = toFindingItems(findings?.findings);
+    const lines = toLines(items);
+    if (!items.length) {
+      return Response.json({
+        state: 'empty',
+        message: "Buddy couldn't verify a useful answer yet.",
+        lines: [],
+        items: [],
+      });
+    }
+
+    return Response.json({ state: 'answer', lines, items });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
