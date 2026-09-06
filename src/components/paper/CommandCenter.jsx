@@ -42,7 +42,7 @@ function Section({ title, children }) {
   );
 }
 
-export default function CommandCenter({ me, profile, buddies, onOpen, onPin, busy }) {
+export default function CommandCenter({ me, profile, buddies, receipts = [], onOpen, onPin, busy }) {
   const name = String(profile?.display_name || me?.name || me?.email?.split("@")[0] || "there").trim();
   const needsYou = buddies.filter((b) => b.approval_status === "pending" || b.approval_status === "needs_connection" || b.open_question);
   const handled = buddies.filter((b) => b.status === "done").slice(0, 3);
@@ -50,6 +50,7 @@ export default function CommandCenter({ me, profile, buddies, onOpen, onPin, bus
   const repeating = buddies.filter((b) => b.status === "active" && b.run_mode === "repeat").slice(0, 3);
   const activeCount = buddies.filter((b) => b.status === "active").length;
   const handledCount = buddies.filter((b) => b.status === "done").length;
+  const timeSaved = receipts.reduce((sum, r) => sum + (Number(r?.estimated_time_saved_minutes) || 0), 0);
   const recentInsight = [...buddies]
     .filter((b) => firstLine(b))
     .sort((a, b) => String(b.updated_date || b.created_date).localeCompare(String(a.updated_date || a.created_date)))[0];
@@ -70,6 +71,12 @@ export default function CommandCenter({ me, profile, buddies, onOpen, onPin, bus
                 ? `${handledCount} ${handledCount === 1 ? "thing is" : "things are"} already off your plate.`
                 : "Hand something off and Buddy will keep the important part here."}
         </p>
+        {receipts.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="rounded-full border border-emerald-100 bg-emerald-50/70 px-3 py-1.5 text-[11.5px] font-medium text-emerald-700">{receipts.length} handled with receipts</span>
+            {timeSaved > 0 && <span className="rounded-full border border-white/70 bg-white/60 px-3 py-1.5 text-[11.5px] font-medium text-neutral-600">About {timeSaved >= 60 ? `${Math.floor(timeSaved / 60)}h ${timeSaved % 60}m` : `${timeSaved}m`} back</span>}
+          </div>
+        )}
       </div>
 
       {needsYou.length > 0 && (
