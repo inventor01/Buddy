@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { runBuddy, parseScheduleHour, nowInZone } from '../../shared/runBuddy.ts';
+import { runBuddy, parseScheduleHour, nowInZone, scheduleMatchesToday } from '../../shared/runBuddy.ts';
 
 // Hourly sweep: runs every active buddy whose schedule time has arrived and
 // that hasn't already run today. Triggered by the platform's scheduler.
@@ -40,7 +40,9 @@ export default async function(req) {
       if (due.length >= 25) break;
       const owner = await ownerOf(buddy.created_by_id);
       const local = nowInZone(owner?.timezone);
-      if (parseScheduleHour(buddy.schedule_time) === local.hour && buddy.last_run_date !== local.date) {
+      const rightHour = parseScheduleHour(buddy.schedule_time) === local.hour;
+      const rightDay = buddy.run_mode !== 'repeat' || scheduleMatchesToday(buddy.when_line, owner?.timezone);
+      if (rightHour && rightDay && buddy.last_run_date !== local.date) {
         due.push({ buddy, owner });
       }
     }
