@@ -38,6 +38,7 @@ export default async function(req) {
       ...(imageUrl ? { file_urls: [imageUrl] } : {}),
       prompt: [
         'A person wrote down something they want handled. Turn it into the simplest useful plan.',
+        `The actual current UTC date is ${new Date().toISOString().slice(0, 10)}. Treat this as authoritative for relative dates like today, next month, and next week.`,
         'Note: "' + note + '"',
         'CRITICAL: preserve every explicit constraint exactly as written — prices, dates, times, locations, names, quantities, thresholds, recipients, and frequency. Never loosen, round, substitute, or invent a constraint.',
         'Do not ask a question for information already present in the note. Only ask when a genuinely required detail is missing.',
