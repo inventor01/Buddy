@@ -576,27 +576,43 @@ export default function Start() {
                 ? "Add a number if you want important updates outside the app. A quick account keeps your requests saved."
                 : "Add a number if you want important updates outside the app. You can leave this blank and keep everything here."}
             </p>
-            <div className="mt-5 flex items-stretch rounded-xl border border-neutral-300 bg-white focus-within:border-neutral-500">
-              <span className="grid place-items-center px-4 text-[16px] text-neutral-400">+1</span>
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                inputMode="tel"
-                placeholder="555 123 4567"
-                className="flex-1 bg-transparent py-3.5 pr-4 text-[16px] text-neutral-900 outline-none placeholder:text-neutral-400"
-              />
-            </div>
+            {!phoneCodeSent && (
+              <div className="mt-5 flex items-stretch rounded-xl border border-neutral-300 bg-white focus-within:border-neutral-500">
+                <span className="grid place-items-center px-4 text-[16px] text-neutral-400">+1</span>
+                <input
+                  value={phone}
+                  onChange={(e) => { setPhone(e.target.value); setPhoneError(""); }}
+                  inputMode="tel"
+                  placeholder="555 123 4567"
+                  className="flex-1 bg-transparent py-3.5 pr-4 text-[16px] text-neutral-900 outline-none placeholder:text-neutral-400"
+                />
+              </div>
+            )}
+            {phoneCodeSent && (
+              <div className="mt-5 rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
+                <p className="text-[13px] text-neutral-700">Enter the 6-digit code sent to {phoneMasked || "your phone"}.</p>
+                <input
+                  value={phoneCode}
+                  onChange={(e) => { setPhoneCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setPhoneError(""); }}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="123456"
+                  className="mt-3 w-36 rounded-xl border border-white bg-white px-3 py-2.5 text-center font-mono text-[17px] tracking-[0.18em] outline-none"
+                />
+              </div>
+            )}
+            {phoneError && <p className="mt-3 text-[12.5px] text-red-600">{phoneError}</p>}
             <div className="mt-5 flex flex-wrap items-center gap-4">
               <button type="button" onClick={pinPhone} disabled={busy} className={primary}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {authed === false ? "Save this and make my account" : "Save this"}
+                {authed === false ? "Save this and make my account" : phoneCodeSent ? "Confirm number" : phone.trim() ? "Send confirmation code" : "Keep it in the app"}
               </button>
               <button type="button" onClick={() => setStep("ran")} className={ghost}>
                 Back
               </button>
             </div>
             <p className="mt-4 text-[12.5px] text-neutral-400">
-              Buddy only reaches out when the request calls for it. You stay in control of what runs and what gets sent.
+              Buddy only texts confirmed numbers. You can skip this and keep every update inside the app.
             </p>
           </div>
         )}
