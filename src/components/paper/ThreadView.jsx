@@ -11,7 +11,7 @@ import FindingRow from "@/components/maker/FindingRow";
 // or ask it something.
 const fmtAt = (at) => moment(at).format("MMM D, h:mm A");
 
-export default function ThreadView({ buddy, onPause, onTakeDown, onEditNote, onSend, busy }) {
+export default function ThreadView({ buddy, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, busy }) {
   const done = buddy.status === "done";
   const active = buddy.status === "active";
   const [draft, setDraft] = useState("");
@@ -68,6 +68,40 @@ export default function ThreadView({ buddy, onPause, onTakeDown, onEditNote, onS
           </button>
         </div>
       </div>
+
+      {(buddy.approval_status === "pending" || buddy.approval_status === "needs_connection") && (
+        <div className="glass mt-6 rounded-2xl p-5">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+            {buddy.approval_status === "needs_connection" ? "One connection needed" : "Ready for your approval"}
+          </p>
+          <h3 className="mt-2 font-heading text-[19px] font-semibold text-neutral-900">
+            {buddy.action_type === "email_send" ? "Send this email" : buddy.action_type === "calendar_create" ? "Add this to your calendar" : buddy.action_type === "task_create" ? "Add this to your tasks" : "Carry this out"}
+          </h3>
+          <div className="mt-3 space-y-1.5 text-[13.5px] leading-relaxed text-neutral-600">
+            {buddy.action_payload?.recipient && <p><span className="font-medium text-neutral-900">To:</span> {buddy.action_payload.recipient}</p>}
+            {buddy.action_payload?.subject && <p><span className="font-medium text-neutral-900">Subject:</span> {buddy.action_payload.subject}</p>}
+            {buddy.action_payload?.title && <p><span className="font-medium text-neutral-900">What:</span> {buddy.action_payload.title}</p>}
+            {buddy.action_payload?.start && <p><span className="font-medium text-neutral-900">When:</span> {buddy.action_payload.start}</p>}
+            {buddy.action_payload?.body && <p className="mt-2 whitespace-pre-line rounded-xl bg-white/60 p-3 text-neutral-700">{buddy.action_payload.body}</p>}
+            {buddy.action_payload?.notes && <p className="mt-2 whitespace-pre-line rounded-xl bg-white/60 p-3 text-neutral-700">{buddy.action_payload.notes}</p>}
+          </div>
+          {buddy.approval_status === "needs_connection" ? (
+            <a href="/settings" className="mt-4 inline-flex rounded-full bg-neutral-900 px-4 py-2 text-[13px] font-medium text-white">
+              Connect it in Settings
+            </a>
+          ) : (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" onClick={() => onApprove?.(buddy)} disabled={busy} className="rounded-full bg-neutral-900 px-4 py-2 text-[13px] font-medium text-white disabled:opacity-40">
+                Approve and do it
+              </button>
+              <button type="button" onClick={() => onReject?.(buddy)} disabled={busy} className="rounded-full border border-neutral-200 bg-white/70 px-4 py-2 text-[13px] font-medium text-neutral-600 disabled:opacity-40">
+                Don’t do this
+              </button>
+            </div>
+          )}
+          <p className="mt-3 text-[11.5px] text-neutral-400">Buddy will never send or change this without your approval.</p>
+        </div>
+      )}
 
       {/* the original note, pinned */}
       {editing ? (
