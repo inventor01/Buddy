@@ -21,6 +21,49 @@ async function currentUserConnection(base44, capability) {
   }
 }
 
+async function savePreferenceIfExplicit(base44, userId, profile, message) {
+  const text = String(message || '').trim();
+  if (!text) return null;
+  const lower = text.toLowerCase();
+  const rememberSignal = /^(remember( that)?|from now on|for future|going forward)\b/i.test(text) || /\bi (prefer|like|love|hate|avoid|don'?t like)\b/i.test(text);
+  const forgetSignal = /^(forget|don'?t remember|stop remembering)\b/i.test(text);
+  if (!rememberSignal && !forgetSignal) return null;
+
+  let current = profile;
+  if (!current) {
+    current = await base44.asServiceRole.entities.BuddyProfile.create({ owner_id: userId });
+  }
+  const arrays = {
+    travel_preferences: Array.isArray(current.travel_preferences) ? current.travel_preferences.filter(Boolean) : [],
+    shopping_preferences: Array.isArray(current.shopping_preferences) ? current.shopping_preferences.filter(Boolean) : [],
+    general_preferences: Array.isArray(current.general_preferences) ? current.general_preferences.filter(Boolean) : [],
+  };
+  const target = /\b(flight|airline|airport|seat|nonstop|layover|hotel|travel|spirit|delta|american airlines|united|southwest)\b/i.test(text)
+    ? 'travel_preferences'
+    : /\b(shop|shopping|store|brand|delivery|pickup|price|cheapest|target|walmart|amazon|costco)\b/i.test(text)
+      ? 'shopping_preferences'
+      : 'general_preferences';
+
+  const cleaned = text
+    .replace(/^(remember( that)?|from now on|for future|going forward|forget|don'?t remember|stop remembering)[:,\s-]*/i, '')
+    .trim()
+    .slice(0, 180);
+  if (!cleaned) return null;
+
+  if (forgetSignal) {
+    for (const key of Object.keys(arrays)) {
+      arrays[key] = arrays[key].filter((x) => !String(x).toLowerCase().includes(cleaned.toLowerCase()) && !cleaned.toLowerCase().includes(String(x).toLowerCase()));
+    }
+    await base44.asServiceRole.entities.BuddyProfile.update(current.id, arrays);
+    return { text: `Got it. I won’t use that preference anymore.`, profile: { ...current, ...arrays } };
+  }
+
+  if (!arrays[target].some((x) => String(x).toLowerCase() === cleaned.toLowerCase())) arrays[target].push(cleaned);
+  arrays[target] = arrays[target].slice(-12);
+  await base44.asServiceRole.entities.BuddyProfile.update(current.id, arrays);
+  return { text: `Got it. I’ll remember that for future requests.`, profile: { ...current, ...arrays } };
+}
+
 async function runConnectedRead({ base44, buddy, message = '' }) {
   const connection = await currentUserConnection(base44, buddy.capability);
   if (!connection?.accessToken) {
@@ -137,6 +180,11 @@ export default async function (req) {
     // ── Mode 2: user sent a specific message ──────────────────────────────
     const userMessage = typeof body?.message === 'string' ? body.message.trim().slice(0, 500) : ''; 
     if (userMessage) {
+      const learned = await savePreferenceIfExplicit(base44, user.id, profile, userMessage);
+      if (learned) {
+        return Response.json({ lines: [learned.text], items: [], profile_updated: true });
+      }
+
       // Answer the question in the context of the buddy, with web search.
       // Don't update last_result or last_run_date — this is a conversation
       // turn, not a scheduled run.
