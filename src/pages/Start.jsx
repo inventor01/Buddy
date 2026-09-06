@@ -87,6 +87,10 @@ export default function Start() {
         creature: plan.creature,
         kind: ["ads", "social"].includes(plan.kind) ? plan.kind : "web",
         runMode: ["once", "watch", "repeat"].includes(plan.run_mode) ? plan.run_mode : "once",
+        capability: ["gmail", "calendar", "tasks"].includes(plan.capability) ? plan.capability : "web",
+        actionType: plan.action_type || "none",
+        actionPayload: plan.action_payload || {},
+        approvalRequired: plan.approval_required === true,
         scheduleTime: plan.schedule_time,
         question: typeof plan.question === "string" ? plan.question : "",
       });
@@ -166,6 +170,10 @@ export default function Start() {
         image_url: image,
         kind: ["ads", "social"].includes(lines.kind) ? lines.kind : "web",
         run_mode: ["once", "watch", "repeat"].includes(lines.runMode) ? lines.runMode : "once",
+        capability: ["gmail", "calendar", "tasks"].includes(lines.capability) ? lines.capability : "web",
+        action_type: lines.actionType || "none",
+        action_payload: lines.actionPayload || {},
+        approval_status: lines.approvalRequired ? "pending" : "not_needed",
         ...(answer.trim() ? { context: [answer.trim()] } : {}),
         name: lines.name || "Your helper",
         creature: lines.creature || "sam",
@@ -176,6 +184,12 @@ export default function Start() {
         status: "active",
       });
       setCreatedId(created.id);
+
+      if (lines.approvalRequired) {
+        setResult({ text: "Buddy has this ready for your approval. Open it after sign-in to review exactly what will happen before anything is sent or changed.", source: null });
+        setStep("ran");
+        return;
+      }
 
       let found = null;
       let foundItems = null;
