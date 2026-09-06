@@ -100,10 +100,34 @@ export default async function(req) {
     let question = typeof plan?.question === 'string' ? plan.question.trim().slice(0, 200) : '';
     if (explicitMoney.length && /price|budget|maximum|max|dollar|cost/i.test(question)) question = '';
 
+    const lowerNote = note.toLowerCase();
+    const explicitEmail = /\b(email|gmail|inbox|mail)\b/.test(lowerNote);
+    const explicitCalendar = /\b(calendar|schedule)\b/.test(lowerNote);
+    const explicitTasks = /\b(tasks?|to-?do|google tasks)\b/.test(lowerNote);
+    const wantsWrite = /\b(send|email|add|create|put|schedule)\b/.test(lowerNote);
+    const wantsRead = /\b(read|check|search|find|summarize|summary|look through|show me)\b/.test(lowerNote);
+
+    let guardedCapability = 'web';
+    let guardedActionType = 'none';
+    if (explicitEmail) {
+      guardedCapability = 'gmail';
+      if (wantsWrite && /\b(send|email)\b/.test(lowerNote)) guardedActionType = 'email_send';
+      else if (wantsRead) guardedActionType = 'email_read';
+    } else if (explicitCalendar) {
+      guardedCapability = 'calendar';
+      if (wantsWrite && /\b(add|create|put|schedule)\b/.test(lowerNote)) guardedActionType = 'calendar_create';
+      else if (wantsRead) guardedActionType = 'calendar_read';
+    } else if (explicitTasks) {
+      guardedCapability = 'tasks';
+      if (wantsWrite && /\b(add|create|put)\b/.test(lowerNote)) guardedActionType = 'task_create';
+    }
+
+    const recurring = /\b(every|daily|weekly|monthly|each (day|week|month|morning|evening)|every (day|week|month|monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b/.test(lowerNote);
+    const watching = /\b(tell me when|let me know when|notify me when|watch for|keep an eye on|when .* (opens?|drops?|changes?|available|in stock))\b/.test(lowerNote);
+    const guardedRunMode = recurring ? 'repeat' : watching ? 'watch' : 'once';
+
     const rawPayload = plan?.action_payload && typeof plan.action_payload === 'object' ? plan.action_payload : {};
-    const safeQuery = String(rawPayload.query || '').slice(0, 300);
-    const queryMoney = safeQuery.match(/\$\s*\d+(?:\.\d+)?/g) || [];
-    const moneyMismatch = explicitMoney.length && queryMoney.some((m) => !explicitMoney.includes(m.replace(/\s+/g, '')) && !explicitMoney.includes(m));
+    const safeQuery = explicitMoney.length ? note.slice(0, 300) : String(rawPayload.query || '').slice(0, 300);
 
     const safePlan = {
       name: typeof plan?.buddy_name === 'string' && plan.buddy_name.trim()
@@ -111,15 +135,15 @@ export default async function(req) {
         : 'Helpful Buddy',
       creature: CREATURES.includes(plan?.creature) ? plan.creature : 'sam',
       kind: ['ads', 'social'].includes(plan?.kind) ? plan.kind : 'web',
-      run_mode: ['once', 'watch', 'repeat'].includes(plan?.run_mode) ? plan.run_mode : 'once',
-      capability: ['gmail', 'calendar', 'tasks'].includes(plan?.capability) ? plan.capability : 'web',
-      action_type: ['email_read', 'email_send', 'calendar_read', 'calendar_create', 'task_create'].includes(plan?.action_type) ? plan.action_type : 'none',
-      approval_required: plan?.approval_required === true,
+      run_mode: guardedRunMode,
+      capability: guardedCapability,
+      action_type: guardedActionType,
+      approval_required: ['email_send', 'calendar_create', 'task_create'].includes(guardedActionType),
       action_payload: {
         recipient: String(rawPayload.recipient || '').slice(0, 200),
         subject: String(rawPayload.subject || '').slice(0, 200),
         body: String(rawPayload.body || '').slice(0, 1200),
-        query: moneyMismatch ? note.slice(0, 300) : safeQuery,
+        query: safeQuery,
         title: String(rawPayload.title || '').slice(0, 200),
         start: String(rawPayload.start || '').slice(0, 100),
         end: String(rawPayload.end || '').slice(0, 100),
