@@ -369,7 +369,8 @@ export default function Home() {
       const lines = res.data?.lines || [];
       const items = res.data?.items || [];
       const serverPatch = res.data?.buddy_patch && typeof res.data.buddy_patch === "object" ? res.data.buddy_patch : {};
-      const noteMsg = lines.length ? { who: "note", at: new Date().toISOString(), text: lines.join("\n"), items } : null;
+      if (res.data?.no_new_reply) toast({ title: "No new reply yet." });
+      const noteMsg = lines.length && !res.data?.no_new_reply ? { who: "note", at: new Date().toISOString(), text: lines.join("\n"), items } : null;
       const messages = noteMsg ? [...(b.messages || []), noteMsg] : (b.messages || []);
       const patch = { ...serverPatch, ...(noteMsg ? { messages } : {}) };
       if (noteMsg) await base44.entities.Buddy.update(b.id, { messages });
