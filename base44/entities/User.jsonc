@@ -26,6 +26,10 @@
     "sms_phone": {
       "description": "Phone number in E.164 form (like +15551234567) that notes text their findings to. Empty means texts are off.",
       "type": "string"
+    },
+    "timezone": {
+      "description": "IANA timezone of the person (like America/New_York), read from their browser. A note that says 9 in the morning means their morning, so the hourly sweep runs on this clock.",
+      "type": "string"
     }
   },
   "required": [
