@@ -20,6 +20,7 @@ export default function Home() {
   const [params, setParams] = useSearchParams();
   const [buddies, setBuddies] = useState(null);
   const [me, setMe] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [view, setView] = useState("notes");
   const [railOpen, setRailOpen] = useState(false);
   const [bigText, setBigText] = useState(readBigText());
@@ -152,6 +153,12 @@ export default function Home() {
       setMe(user);
       const list = await base44.entities.Buddy.filter({ owner_id: user.id }, "-updated_date", 50);
       setBuddies(list);
+      try {
+        const rows = await base44.entities.BuddyProfile.filter({ owner_id: user.id }, "-updated_date", 1);
+        setProfile(Array.isArray(rows) ? rows[0] || null : null);
+      } catch (_) {
+        setProfile(null);
+      }
       await claimPendingNote(user, list);
     } catch (e) {
       setBuddies([]);
@@ -330,6 +337,12 @@ export default function Home() {
         });
         const lines = res.data?.lines || [];
         const buddyPatch = res.data?.buddy_patch;
+        if (res.data?.profile_updated && me?.id) {
+          try {
+            const rows = await base44.entities.BuddyProfile.filter({ owner_id: me.id }, "-updated_date", 1);
+            setProfile(Array.isArray(rows) ? rows[0] || null : null);
+          } catch (_) {}
+        }
         if (buddyPatch && typeof buddyPatch === "object") {
           setBuddies((p) => p.map((x) => (x.id === b.id ? { ...x, ...buddyPatch } : x)));
         }
@@ -398,6 +411,7 @@ export default function Home() {
           ) : selected ? (
             <ThreadView
               buddy={selected}
+              profile={profile}
               onPause={togglePause}
               onTakeDown={takeDown}
               onEditNote={editNote}
