@@ -15,6 +15,7 @@
 // (order.checkoutId === checkoutSession.id). Skipping this write makes fulfillment impossible.
 
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.31";
+import { checkUsageLimit } from '../../shared/rateLimit.ts';
 
 const CONSTRUCT_URL = "https://www.wixapis.com/payments/platform/v1/checkout-sessions/construct";
 
@@ -55,6 +56,13 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Payments not configured" }), { status: 500 });
     }
     const base44 = createClientFromRequest(req);
+    const quota = await checkUsageLimit({ base44, req, scope: 'checkout', minuteLimit: 10, dayLimit: 50 });
+    if (!quota.ok) {
+      return new Response(JSON.stringify({ error: 'Too many checkout attempts. Try again shortly.' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': String(quota.retryAfter || 60) },
+      });
+    }
 
     // Capture the buyer's app-user id IF signed in — but never REQUIRE it. This is the
     // fulfillment target the webhook grants to; when absent (anonymous buyer) the webhook grants
@@ -77,13 +85,13 @@ Deno.serve(async (req: Request) => {
     // Price is resolved here, server-side — the client only sends the id.
     const PLANS: Record<string, any> = {
       pro: {
-        name: "Agent Buddy Pro",
+        name: "Buddy Pro",
         price: "6.00",
         currency: "USD",
         subscriptionInfo: {
           subscriptionSettings: { frequency: "MONTH" },
-          title: "Agent Buddy Pro",
-          description: "Unlimited notes, everyone you look after, weekly page of your book.",
+          title: "Buddy Pro",
+          description: "Unlimited handoffs and more room to let Buddy handle what is on your plate.",
         },
       },
     };
