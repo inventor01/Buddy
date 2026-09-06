@@ -22,10 +22,10 @@ function flightDate(daysFromNow) {
 const EXAMPLES = [
   { label: "Find it", text: `Find me the best nonstop roundtrip flight from Detroit to Miami departing ${flightDate(28)} and returning ${flightDate(31)} under $300` },
   { label: "Keep watch", text: "Tell me when a PS6 preorder opens at a major retailer" },
-  { label: "Compare it", text: "Find three well-rated plumbers near me and compare their prices and availability" },
-  { label: "Remember it", text: "A week before my mom's birthday, remind me and suggest three gifts under $75" },
+  { label: "Compare it", text: "Find three well-rated plumbers in Detroit and compare their prices, ratings, and availability" },
+  { label: "Remember it", text: "My mom likes gardening, coffee, and mystery books. Suggest three birthday gifts for her under $75 and remember those preferences" },
   { label: "Plan it", text: "Plan a simple birthday party for 12 people under $400 and make me a checklist" },
-  { label: "Handle weekly", text: "Every Monday morning, give me the five most important things I should remember this week" },
+  { label: "Handle weekly", text: "Every Monday morning, give me the five biggest AI and technology stories from the past week with one sentence on why each matters" }]}
 ];
 
 const CATS = ["when", "what", "tells"];
