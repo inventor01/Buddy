@@ -31,6 +31,7 @@ function cleanPayload(raw: any) {
     due: clean(raw?.due, 100),
     notes: clean(raw?.notes, 2000),
     thread_id: clean(raw?.thread_id, 300),
+    in_reply_to: clean(raw?.in_reply_to, 500),
   };
 }
 
