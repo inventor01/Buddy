@@ -425,7 +425,8 @@ export default function Home() {
           await base44.entities.Buddy.update(b.id, { messages: msgs });
         }
       } catch (e) {
-        toast({ title: "That run didn't finish — try again.", variant: "destructive" });
+        const message = e?.response?.data?.error || e?.message || "That run didn't finish — try again.";
+        toast({ title: message, variant: "destructive" });
       }
     } finally {
       setSending(false);
