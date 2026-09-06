@@ -15,6 +15,7 @@ export default function Settings() {
   const [smsPhone, setSmsPhone] = useState("");
   const [phoneSaved, setPhoneSaved] = useState(false);
   const [savingPhone, setSavingPhone] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
 
   useEffect(() => {
     base44
@@ -42,6 +43,7 @@ export default function Settings() {
   const savePhone = async () => {
     setSavingPhone(true);
     setPhoneSaved(false);
+    setPhoneError("");
     try {
       const raw = smsPhone.trim();
       // Normalise: digits-only → prepend +1; already has + → use as-is; empty → clear.
@@ -53,6 +55,8 @@ export default function Settings() {
       setSmsPhone(normalised);
       await base44.auth.updateMe({ sms_phone: normalised });
       setPhoneSaved(true);
+    } catch (e) {
+      setPhoneError("That number didn't save — try again.");
     } finally {
       setSavingPhone(false);
     }
@@ -136,6 +140,7 @@ export default function Settings() {
                     {phoneSaved ? "Saved" : "Save"}
                   </button>
                 </div>
+                {phoneError && <p className="mt-2 text-xs text-red-600">{phoneError}</p>}
                 <p className="mt-2 text-xs text-neutral-400">
                   Include the country code (like +1 for the US). Leave empty to turn texts off.
                 </p>
