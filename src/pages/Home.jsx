@@ -282,6 +282,31 @@ export default function Home() {
     setBuddies((prev) => prev.map((x) => (x.id === b.id ? { ...x, note: text } : x)));
   };
 
+  const decideAction = async (b, approve) => {
+    setSending(true);
+    try {
+      const res = await base44.functions.invoke("executeConnectedAction", { buddyId: b.id, approve });
+      const summary = res.data?.summary;
+      const nextStatus = approve ? "executed" : "rejected";
+      const next = {
+        ...b,
+        approval_status: nextStatus,
+        status: b.run_mode === "once" ? "done" : b.status,
+        ...(summary ? { messages: [...(b.messages || []), { who: "note", at: new Date().toISOString(), text: summary }] } : {}),
+      };
+      setBuddies((p) => p.map((x) => (x.id === b.id ? next : x)));
+    } catch (e) {
+      if (e?.response?.data?.needs_connection) {
+        setBuddies((p) => p.map((x) => (x.id === b.id ? { ...x, approval_status: "needs_connection" } : x)));
+        toast({ title: "Connect this account in Settings before Buddy can do that." });
+      } else {
+        toast({ title: e?.response?.data?.error || "That handoff didn’t finish — try again.", variant: "destructive" });
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
   const sendInThread = async (b, text) => {
     setSending(true);
     try {
@@ -368,6 +393,8 @@ export default function Home() {
               onTakeDown={takeDown}
               onEditNote={editNote}
               onSend={sendInThread}
+              onApprove={(b) => decideAction(b, true)}
+              onReject={(b) => decideAction(b, false)}
               busy={sending}
             />
           ) : draft ? (
