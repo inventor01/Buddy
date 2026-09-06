@@ -1,6 +1,7 @@
 import { secrets } from 'base44:runtime';
 import { isWholesalePropertyRequest, runWholesaleDealFinder } from './realEstate.ts';
 import { markProviderVerified, providerCapability, rankProviders, recordProviderAttempt } from './providerPerformance.ts';
+import { taskStepsToOrchestration } from './taskChain.ts';
 
 const PLAN_SCHEMA = {
   type: 'object',
@@ -73,8 +74,16 @@ export function orchestrationReadiness() {
   return providerReadiness();
 }
 
-export async function planOrchestration(base44: any, buddy: any, personalFacts: string[] = [], delegationLines: string[] = []) {
+export async function planOrchestration(base44: any, buddy: any, personalFacts: string[] = [], delegationLines: string[] = [], linkedContextLines: string[] = []) {
   const request = `${buddy.note || ''} ${buddy.what_line || ''}`.trim();
+  const savedChain = buddy.execution_mode === 'chain' ? taskStepsToOrchestration(buddy.task_steps) : [];
+  if (savedChain.length > 1) {
+    return {
+      complexity: Math.min(5, Math.max(2, savedChain.length)),
+      should_orchestrate: true,
+      steps: savedChain,
+    };
+  }
   if (isWholesalePropertyRequest(request)) {
     return {
       complexity: 5,
@@ -93,6 +102,7 @@ export async function planOrchestration(base44: any, buddy: any, personalFacts: 
       `Request: ${request}`,
       personalFacts.length ? `Relevant saved context: ${personalFacts.join(' | ')}` : '',
       delegationLines.length ? delegationLines.join(' ') : '',
+      linkedContextLines.length ? linkedContextLines.join('\n') : '',
       'Use at most 5 steps. Prefer authoritative APIs/data for domain facts, browser_fetch for a specific URL, web_research for current public research, calculation for deterministic math, and verify as the final step.',
       'Do not create a connected_action step that sends, books, pays, posts, deletes, or commits without approval. Such a step may only prepare or identify the required approval.',
     ].filter(Boolean).join('\n'),
@@ -201,6 +211,12 @@ async function runBase44Research(base44: any, instruction: string, goal: string,
 async function executeStep({ base44, buddy, step, goal, priorResults = [] }: any) {
   const ready = providerReadiness();
   const capability = providerCapability(step.kind);
+  const priorContext = priorResults.length
+    ? priorResults.map((r: any, index: number) => `Previous step ${index + 1} (${r.provider || 'worker'}):\n${trim(r.output, 4500)}`).join('\n\n')
+    : '';
+  const instructionWithInputs = priorContext
+    ? `${step.instruction}\n\nUse these completed dependency outputs as input. Do not ignore or redo them unless verification requires it:\n${priorContext}`
+    : step.instruction;
   let targetUrl = step.target_url;
   if (step.kind === 'browser_fetch' && (targetUrl === '$top_listing' || !/^https?:\/\//i.test(String(targetUrl || '')))) {
     const domain = priorResults.find((r: any) => r?.raw?.findings);
@@ -238,18 +254,18 @@ async function executeStep({ base44, buddy, step, goal, priorResults = [] }: any
         result = { output: JSON.stringify(raw).slice(0, 16000), urls: uniq(collectUrls(raw)).slice(0, 20), confidence: 0.92, provider, raw };
       } else if (provider === 'browserbase') {
         if (!targetUrl) throw new Error('No concrete page URL was available for the browser check.');
-        result = await runBrowserbase(targetUrl, `${step.instruction}\nTarget: ${targetUrl}`);
+        result = await runBrowserbase(targetUrl, `${instructionWithInputs}\nTarget: ${targetUrl}`);
       } else if (provider === 'openai') {
         const instruction = step.kind === 'browser_fetch' && targetUrl
-          ? `${step.instruction}\nCheck this exact page and corroborate it with current web evidence: ${targetUrl}`
-          : step.instruction;
+          ? `${instructionWithInputs}\nCheck this exact page and corroborate it with current web evidence: ${targetUrl}`
+          : instructionWithInputs;
         result = await runOpenAI(instruction, goal);
       } else if (provider === 'buddy-web') {
-        result = await runBase44Research(base44, targetUrl ? `${step.instruction}\nTarget page: ${targetUrl}` : step.instruction, goal, true);
+        result = await runBase44Research(base44, targetUrl ? `${instructionWithInputs}\nTarget page: ${targetUrl}` : instructionWithInputs, goal, true);
       } else if (provider === 'buddy-reasoner') {
-        result = await runBase44Research(base44, step.instruction, goal, false);
+        result = await runBase44Research(base44, instructionWithInputs, goal, false);
       } else if (provider === 'buddy-safety') {
-        result = { output: 'This step requires Buddy’s existing connection and approval flow. It was prepared but not executed automatically.', urls: [], confidence: 1, provider };
+        result = { output: `${instructionWithInputs}\n\nThis outside action is prepared only. Buddy must use its existing connection and approval flow before anything is sent or changed.`, urls: [], confidence: 1, provider };
       } else {
         throw new Error(`Unsupported specialist: ${provider}`);
       }
@@ -307,9 +323,9 @@ async function synthesize(base44: any, goal: string, results: any[]) {
   });
 }
 
-export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], delegationLines = [] }: any) {
+export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], delegationLines = [], linkedContextLines = [] }: any) {
   const goal = `${buddy.note || ''} ${buddy.what_line || ''}`.trim();
-  const plan = await planOrchestration(base44, buddy, personalFacts, delegationLines);
+  const plan = await planOrchestration(base44, buddy, personalFacts, delegationLines, linkedContextLines);
   if (!plan.should_orchestrate || !plan.steps.length) throw new Error('This request does not need orchestration.');
 
   const job = await base44.asServiceRole.entities.BuddyJob.create({
