@@ -27,6 +27,8 @@ export default async function(req) {
       prompt: [
         'A person wrote down something they want handled. Turn it into the simplest useful plan.',
         'Note: "' + note + '"',
+        'CRITICAL: preserve every explicit constraint exactly as written — prices, dates, times, locations, names, quantities, thresholds, recipients, and frequency. Never loosen, round, substitute, or invent a constraint.',
+        'Do not ask a question for information already present in the note. Only ask when a genuinely required detail is missing.',
         ...(imageUrl
           ? ['A photo is attached — identify the product or thing it shows, and make what_line about finding that exact thing every day.']
           : []),
@@ -42,6 +44,7 @@ export default async function(req) {
         'email_read = search/read email only. email_send = send an email. calendar_read = inspect calendar only. calendar_create = add an event. task_create = add a task. none = no outside action.',
         'For any write action (email_send, calendar_create, task_create), approval_required MUST be true. Never silently send, schedule, post, buy, book, delete, pay, or change anything.',
         'Fill action_payload only with details explicitly supported by the request. Never invent recipients, dates, addresses, money amounts, or commitments.',
+        'For action_payload.query, copy the user’s important search constraints faithfully. If they say under $300, the query must stay under $300 — never change it.',
         'Pick the best creature:',
         'sam = shopping, errands, deals. sid = stores, products, prices. bells = dates, birthdays, greetings, reminders. med = medications, health check-ins.',
         'Give the thing a short, friendly two-word title a normal person would understand (like "Miami Flights" or "Renewal Watch").',
