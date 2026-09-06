@@ -239,56 +239,38 @@ export async function runAdsBuddy({ client, buddy, facts = [], token = "", accou
     const campaignIds = new Set(snap.campaigns.map((c) => String(c.id)));
     const adsetIds = new Set(snap.adsets.map((s) => String(s.id)));
 
-    // Bounded actions: only ids from the live snapshot, at most three,
-    // budgets clamped to $5–$500 a day.
+    // Production safety gate: Meta changes are recommendation-only until
+    // they are routed through Buddy's explicit approval executor. Never let
+    // an LLM decision directly pause/resume campaigns, change spend, or
+    // create/launch an ad from a scheduled run or ordinary thread message.
     for (const a of (Array.isArray(decision?.actions) ? decision.actions : []).slice(0, 3)) {
       const id = String(a?.id || "");
       const label = `"${(a?.name || id).slice(0, 40)}"`;
-      try {
-        if ((a.op === "pause" || a.op === "resume") && campaignIds.has(id)) {
-          await graphPost(token, id, { status: a.op === "pause" ? "PAUSED" : "ACTIVE" });
-          findings.push({
-            text: `${a.op === "pause" ? "Paused" : "Turned on"} ${label} — ${(a.reason || "per your rules").slice(0, 60)}`,
-            source_name: "Meta Ads",
-            url: adsManagerUrl(actId)
-          });
-        } else if (a.op === "budget" && adsetIds.has(id)) {
-          const usd = Math.max(5, Math.min(500, Number(a.budget_usd) || 0));
-          if (!usd) continue;
-          await graphPost(token, id, { daily_budget: Math.round(usd * 100) });
-          findings.push({
-            text: `Set ${label} to $${usd} a day — ${(a.reason || "per your rules").slice(0, 60)}`,
-            source_name: "Meta Ads",
-            url: adsManagerUrl(actId)
-          });
-        }
-      } catch (e) {
+      if ((a.op === "pause" || a.op === "resume") && campaignIds.has(id)) {
         findings.push({
-          text: `Tried to ${a.op} ${label} but Meta said no: ${String(e.message).slice(0, 100)}`,
-          source_name: "Meta Ads"
+          text: `Ready for review: ${a.op === "pause" ? "pause" : "turn on"} ${label} — ${(a.reason || "based on your rule").slice(0, 60)}`,
+          source_name: "Meta Ads",
+          url: adsManagerUrl(actId)
+        });
+      } else if (a.op === "budget" && adsetIds.has(id)) {
+        const usd = Math.max(5, Math.min(500, Number(a.budget_usd) || 0));
+        if (!usd) continue;
+        findings.push({
+          text: `Ready for review: set ${label} to $${usd} a day — ${(a.reason || "based on your rule").slice(0, 60)}`,
+          source_name: "Meta Ads",
+          url: adsManagerUrl(actId)
         });
       }
     }
 
-    // A new ad is only ever built when the person asked for one in
-    // this thread message — never on a scheduled run.
     const spec = decision?.create_ad;
     if (message && spec && typeof spec.link === "string" && /^https?:\/\//.test(spec.link)) {
-      try {
-        const made = await createAd({ client, token, actId, spec });
-        findings.push({
-          text: `New ad "${made.name}" built — $${made.budget} a day, ${
-            made.running ? "running now" : 'paused until you say "turn it on"'
-          }`,
-          source_name: "Meta Ads",
-          url: adsManagerUrl(actId)
-        });
-      } catch (e) {
-        findings.push({
-          text: `The new ad didn't go through: ${String(e.message).slice(0, 140)}`,
-          source_name: "Meta Ads"
-        });
-      }
+      const budgetUsd = Math.max(5, Math.min(500, Number(spec.budget_usd) || 10));
+      findings.push({
+        text: `Ad draft ready for review: "${String(spec.headline || "New ad").slice(0, 40)}" at $${budgetUsd} a day. Nothing was published.`,
+        source_name: "Meta Ads",
+        url: adsManagerUrl(actId)
+      });
     }
 
     if (!findings.length) {
