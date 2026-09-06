@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-09-06 — Response error debugging
+
+### Root causes found
+- Anonymous `previewBuddyRun` was limited to 6 requests/minute and 30/day, but the Start page discarded the actual 429 response with `catch (_)`, making rate limits look like broken Buddy answers.
+- The server-side three-free-handoff limit correctly returned `403 { upgrade_required: true }`, but the existing PaymentSheet was not mounted in Start or Home, so users saw a generic failure instead of the upgrade flow.
+- Signed-in thread replies also replaced backend/provider errors with a generic “That run didn't finish” toast, hiding missing connections, rate limits, and real provider errors behind one message.
+
+### Permanent fixes
+- Raised anonymous try-it-now preview allowance to 12/minute and 100/day while keeping a bounded abuse/cost control.
+- Added structured `RATE_LIMITED` responses with `retry_after` on preview, run-now, and handoff creation paths.
+- Start now surfaces the real backend error instead of silently swallowing preview failures.
+- Home thread replies now surface the backend-provided reason.
+- Mounted the existing Buddy Pro PaymentSheet in both Start and Home and route `upgrade_required` responses into it while preserving the current prompt/plan.
+- Hardened preview error serialization so thrown non-Error values still return a useful message.
+
+### Verification
+- Direct call to the currently published anonymous planner returned HTTP 200.
+- Direct call to the currently published anonymous plumber-comparison preview returned HTTP 200 with five findings and source URLs.
+- Production build passes.
+- ESLint passes.
+- Backend bundles pass for preview, run-now, create-record, and planning functions.
+- Response-error regression markers and `git diff --check` pass.
+
+
 ## 2026-09-06 — Connected chats + multi-step handoff QA hardening
 
 ### Root causes found during QA
