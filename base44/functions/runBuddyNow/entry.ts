@@ -7,6 +7,7 @@ import { checkUsageLimit } from '../../shared/rateLimit.ts';
 import { loadProfile, loadHousehold, householdFacts, profilePromptLines, relevantProfileFacts } from '../../shared/personalization.ts';
 import { requestCategory, loadDelegationPolicy, delegationPromptLines } from '../../shared/delegation.ts';
 import { createReceiptOnce } from '../../shared/receipts.ts';
+import { recordEscalationOnce, resolveEscalation } from '../../shared/escalation.ts';
 
 async function currentUserConnection(base44, capability) {
   const envName = capability === 'gmail'
@@ -152,8 +153,11 @@ async function runConnectedRead({ base44, buddy, message = '' }) {
 //   2. buddyId + message → answer the user's specific question in context
 //      of the buddy, without overwriting last_result or last_run_date.
 export default async function (req) {
+  let failureBase44: any = null;
+  let failureBuddy: any = null;
   try {
     const base44 = createClientFromRequest(req);
+    failureBase44 = base44;
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const quota = await checkUsageLimit({ base44, req, scope: 'run-now', minuteLimit: 20, dayLimit: 300 });
@@ -171,6 +175,7 @@ export default async function (req) {
     if (!buddyId) return Response.json({ error: 'Which buddy should run? (buddyId is required)' }, { status: 400 });
 
     const buddy = await base44.entities.Buddy.get(buddyId);
+    failureBuddy = buddy;
     if (!buddy || buddy.owner_id !== user.id) {
       return Response.json({ error: 'That Buddy is not yours.' }, { status: 403 });
     }
@@ -378,8 +383,13 @@ export default async function (req) {
       });
     }
 
+    await resolveEscalation(base44, buddy.id, user.id);
     return Response.json({ state: 'answer', lines: result.lines, items: result.items, receipt: receipt ? { id: receipt.id, completed_at: receipt.completed_at } : null, delegation: delegation ? { category, level: delegation.level } : null });
   } catch (error) {
-    return Response.json({ error: (error as Error).message }, { status: 500 });
+    const message = (error as Error).message || 'Buddy could not finish this automatically.';
+    if (failureBase44 && failureBuddy?.owner_id) {
+      await recordEscalationOnce({ base44: failureBase44, buddy: failureBuddy, reason: message, nextStep: 'Retry this request. If it still cannot finish, change the request or take over from the saved details.' });
+    }
+    return Response.json({ error: message, preserved: !!failureBuddy?.id }, { status: 500 });
   }
 }
