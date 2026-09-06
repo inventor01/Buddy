@@ -313,9 +313,14 @@ export default async function (req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const quota = await checkUsageLimit({ base44, req, scope: 'run-now', minuteLimit: 20, dayLimit: 300 });
     if (!quota.ok) {
+      const retryAfter = Number(quota.retryAfter || 60);
       return Response.json(
-        { error: 'Too many runs right now. Try again shortly.' },
-        { status: 429, headers: { 'Retry-After': String(quota.retryAfter || 60) } }
+        {
+          error: 'Buddy is handling too many requests from this account right now. Try again shortly.',
+          code: 'RATE_LIMITED',
+          retry_after: retryAfter,
+        },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
       );
     }
 
