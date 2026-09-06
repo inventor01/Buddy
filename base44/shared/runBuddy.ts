@@ -82,6 +82,7 @@ export const FINDINGS_RULES = [
   "If today has nothing genuinely useful, say so plainly — never invent codes or prices.",
   "Only when a detail from the user would genuinely change the answer, set needs_context to ONE short friendly question asking for exactly that detail and return findings: []. Examples: a flight search without a departure city/airport; a local-service search without a location; a birthday reminder without the person/date; an account-specific request without the account. Never ask for information already present in the request.",
   "When the person asks to compare a small number of options, structure the findings so each option is directly comparable on the requested dimensions. Prefer one finding per option with its own rating/price/availability/source instead of separate generic market-price findings.",
+  "For each finding, set why_fit to one short sentence only when a remembered preference or explicit request constraint clearly makes that option a better fit for this person. Examples: '$58 under your budget', 'matches your nonstop preference', 'near your saved home area'. Leave why_fit empty when there is no genuine personalized reason. Never invent a preference.",
   "For current news, breaking developments, technology releases, company announcements, laws, safety claims, or other time-sensitive facts: prefer primary sources first (official company/government/release pages), then Reuters/AP or other major established reporting. Avoid SEO aggregators and low-authority roundup sites when a stronger source is available. Extraordinary claims should be supported by a primary source or a major independent outlet, not just a niche aggregator.",
   "For flight searches: if the request includes origin, destination, travel dates (or a clearly flexible month/window), cabin/stop constraints, and budget, return current fare options instead of asking another question. Prefer directly bookable/searchable sources such as Google Flights, airline sites, Expedia, or similar. Clearly state whether each price is roundtrip or one-way, the route, requested dates when the source verifies them, airline when available, and the exact source URL. If a page only shows a route-level or monthly starting fare, label it honestly as a starting/route fare rather than implying that exact itinerary is available at that price. Never invent live inventory or a fare you did not verify. Do not attach a product object to a flight result unless the source actually shows a fare for the requested itinerary; otherwise return it as a plain finding with its booking/search URL.",
   "For one-time research, do not say 'nothing new' or imply you will keep watching unless the request is actually a watch/repeat request. If no reliable answer is available, say what could not be verified or ask for the missing detail."
@@ -98,6 +99,7 @@ export const FINDINGS_SCHEMA = {
           text: { type: "string" },
           source_name: { type: "string" },
           url: { type: "string" },
+          why_fit: { type: "string" },
           product: {
             type: "object",
             properties: {
@@ -134,6 +136,7 @@ export function toFindingItems(raw) {
       url = "";
     }
     let source = typeof f?.source_name === "string" ? f.source_name.trim().slice(0, 60) : "";
+    const why_fit = typeof f?.why_fit === "string" ? f.why_fit.trim().slice(0, 140) : "";
     if (url && !source) {
       try {
         source = new URL(url).hostname.replace(/^www\./, "");
@@ -175,7 +178,7 @@ export function toFindingItems(raw) {
         };
       }
     }
-    items.push({ text, url, source, product });
+    items.push({ text, url, source, why_fit, product });
     if (items.length >= 5) break;
   }
   return items;
