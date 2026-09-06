@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines, contextLines } from '../../shared/runBuddy.ts';
+import { checkUsageLimit } from '../../shared/rateLimit.ts';
 
 // Runs a visitor's typed note once, with no account and nothing saved —
 // the "watch it run" step for people who haven't signed in. Anonymous by
@@ -7,6 +8,13 @@ import { FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines, contextLines 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    const quota = await checkUsageLimit({ base44, req, scope: 'preview', minuteLimit: 6, dayLimit: 30 });
+    if (!quota.ok) {
+      return Response.json(
+        { error: 'Too many previews right now. Try again shortly.' },
+        { status: 429, headers: { 'Retry-After': String(quota.retryAfter || 60) } }
+      );
+    }
 
     let body = {};
     try { body = await req.json(); } catch (e) { body = {}; }
