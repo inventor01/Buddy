@@ -44,6 +44,7 @@ async function userConnection(base44: any, capability: string) {
 }
 
 export default async function(req: Request) {
+  let actionBuddyId = '';
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -52,6 +53,7 @@ export default async function(req: Request) {
     let body: any = {};
     try { body = await req.json(); } catch (_) { body = {}; }
     const buddyId = typeof body?.buddyId === 'string' ? body.buddyId.trim() : '';
+    actionBuddyId = buddyId;
     const approve = body?.approve === true;
     if (!buddyId) return Response.json({ error: 'Missing handoff id.' }, { status: 400 });
 
@@ -67,6 +69,14 @@ export default async function(req: Request) {
 
     if (buddy.approval_status !== 'pending' && buddy.approval_status !== 'needs_connection') {
       return Response.json({ error: 'This handoff is not waiting for approval.' }, { status: 409 });
+    }
+
+    // Move into an explicit in-flight state before touching an outside service.
+    // This blocks ordinary retries/double-clicks from reusing an approval.
+    await base44.entities.Buddy.update(buddy.id, { approval_status: 'executing' });
+    const locked = await base44.entities.Buddy.get(buddy.id);
+    if (!locked || locked.approval_status !== 'executing') {
+      return Response.json({ error: 'This handoff is already being handled.' }, { status: 409 });
     }
 
     const action = buddy.action_type || 'none';
@@ -150,11 +160,14 @@ export default async function(req: Request) {
     if (error?.code === 'NEEDS_CONNECTION') {
       try {
         const base44 = createClientFromRequest(req);
-        const body = await req.clone().json();
-        if (body?.buddyId) await base44.entities.Buddy.update(body.buddyId, { approval_status: 'needs_connection' });
+        if (actionBuddyId) await base44.entities.Buddy.update(actionBuddyId, { approval_status: 'needs_connection' });
       } catch (_) {}
       return Response.json({ error: message, needs_connection: true }, { status: 409 });
     }
+    try {
+      const base44 = createClientFromRequest(req);
+      if (actionBuddyId) await base44.entities.Buddy.update(actionBuddyId, { approval_status: 'failed' });
+    } catch (_) {}
     return Response.json({ error: message }, { status: 500 });
   }
 }
