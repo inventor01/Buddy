@@ -9,6 +9,7 @@ import PlanBoard from "@/components/maker/PlanBoard";
 import FoundIt from "@/components/maker/FoundIt";
 import TypingWord from "@/components/maker/TypingWord";
 import { savePendingNote } from "@/lib/pendingNote";
+import { ensureTimezone } from "@/lib/timezone";
 
 // One box, like a chat window — but what you type becomes a small set of
 // cards you can drag and reword before it runs. Simple enough for anyone,
@@ -139,6 +140,9 @@ export default function Start() {
 
       // Three notes are free — the same limit the home page holds to.
       const me = await base44.auth.me();
+      // The note is about to be scheduled, so the account needs to know which
+      // clock "every morning at 9" is being kept on.
+      await ensureTimezone(base44, me);
       if (me?.plan !== "pro") {
         const mine = await base44.entities.Buddy.filter({ created_by_id: me.id }, "-created_date", 4);
         if (mine.length >= 3) {
