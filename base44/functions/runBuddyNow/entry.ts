@@ -24,7 +24,6 @@ async function currentUserConnection(base44, capability) {
 async function savePreferenceIfExplicit(base44, userId, profile, message) {
   const text = String(message || '').trim();
   if (!text) return null;
-  const lower = text.toLowerCase();
   const rememberSignal = /^(remember( that)?|from now on|for future|going forward)\b/i.test(text) || /\bi (prefer|like|love|hate|avoid|don'?t like)\b/i.test(text);
   const forgetSignal = /^(forget|don'?t remember|stop remembering)\b/i.test(text);
   if (!rememberSignal && !forgetSignal) return null;
