@@ -6,6 +6,7 @@ import { Image } from "@/components/ui/image";
 import { useToast } from "@/components/ui/use-toast";
 import PlanBoard from "@/components/maker/PlanBoard";
 import FoundIt from "@/components/maker/FoundIt";
+import PaymentSheet from "@/components/paper/PaymentSheet";
 import { savePendingNote } from "@/lib/pendingNote";
 import { ensureTimezone } from "@/lib/timezone";
 
@@ -72,6 +73,7 @@ export default function Start() {
   const [phoneError, setPhoneError] = useState("");
   const [authed, setAuthed] = useState(null); // null while checking
   const [mentionBuddies, setMentionBuddies] = useState([]);
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const mentionMatch = note.match(/(?:^|\s)@([^\s\[]*)$/);
   const mentionQuery = mentionMatch ? String(mentionMatch[1] || "").toLowerCase() : null;
   const mentionChoices = mentionQuery === null
@@ -342,7 +344,11 @@ export default function Start() {
       );
       setStep("ran");
     } catch (e) {
-      toast({ title: "Something went wrong — try again.", variant: "destructive" });
+      if (e?.response?.data?.upgrade_required) {
+        setPaymentOpen(true);
+      } else {
+        toast({ title: e?.response?.data?.error || e?.message || "Something went wrong — try again.", variant: "destructive" });
+      }
     } finally {
       setBusy(false);
     }
@@ -750,6 +756,7 @@ export default function Start() {
         Buddy · © {new Date().getFullYear()}
       </footer>
 
+      <PaymentSheet open={paymentOpen} onClose={() => setPaymentOpen(false)} />
     </div>
   );
 }
