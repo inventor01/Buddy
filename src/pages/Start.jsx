@@ -469,7 +469,7 @@ export default function Start() {
                   >
                     {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
                   </button>
-                  <span className="text-[11.5px] text-neutral-400">No account needed</span>
+                  <span className="hidden text-[11.5px] text-neutral-400 sm:inline">No account needed</span>
                   <span className="text-[10.5px] tabular-nums text-neutral-400" aria-label={`${note.length} of ${BUDDY_REQUEST_MAX} characters used`}>
                     {note.length.toLocaleString()}/{BUDDY_REQUEST_MAX.toLocaleString()}
                   </span>
