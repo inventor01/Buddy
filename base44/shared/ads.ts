@@ -19,19 +19,6 @@ export async function graphGet(token, path, params = {}) {
   return data;
 }
 
-export async function graphPost(token, path, body = {}) {
-  const res = await fetch(`${GRAPH}/${path}?access_token=${encodeURIComponent(token)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  const data = await res.json().catch(() => null);
-  if (data?.error) {
-    throw new Error(`${data.error.message} (Meta code ${data.error.code ?? "?"})`);
-  }
-  return data;
-}
-
 export async function listAdAccounts(token) {
   const res = await graphGet(token, "me/adaccounts", { fields: "account_id,name", limit: "25" });
   return (res.data || []).map((a) => ({ account_id: a.account_id, name: a.name }));
