@@ -7,9 +7,11 @@ import TopMenu from "@/components/paper/TopMenu";
 import Rail from "@/components/paper/Rail";
 import Composer from "@/components/paper/Composer";
 import ThreadView from "@/components/paper/ThreadView";
+import BookPage from "@/components/paper/BookPage";
 import PaymentSheet from "@/components/paper/PaymentSheet";
 import PlanPanel from "@/components/maker/PlanPanel";
 import { readBigText, applyBigText } from "@/lib/bigText";
+import { readPendingNote, clearPendingNote } from "@/lib/pendingNote";
 
 // The home page IS the product (10a) — a rail of note threads on the left,
 // the composer or the open thread on the right.
@@ -30,16 +32,111 @@ export default function Home() {
   const pro = me?.plan === "pro";
   const selected = (buddies || []).find((b) => b.id === selectedId) || null;
 
+  // Creates a note for real, runs it once, and hands it back with the first
+  // reply already in its thread. Shared by the plan panel and by a note
+  // written on the landing page before there was an account to save it to.
+  const createNoteAndRun = useCallback(async (spec) => {
+    let scheduleTime = spec.scheduleTime || "9:00 AM";
+    try {
+      const rec = await base44.functions.invoke("recompilePlan", {
+        when_line: spec.when,
+        what_line: spec.what,
+        how_line: spec.tells,
+      });
+      if (rec.data?.schedule_time) scheduleTime = rec.data.schedule_time;
+    } catch (_) {
+      /* the first reading of the schedule still stands */
+    }
+    const created = await base44.entities.Buddy.create({
+      note: spec.note,
+      image_url: spec.image,
+      name: spec.name || "Your helper",
+      creature: spec.creature || "sam",
+      when_line: spec.when,
+      what_line: spec.what,
+      how_line: spec.tells,
+      schedule_time: scheduleTime,
+      status: "active",
+    });
+
+    let text = "It couldn't reach the page just now. It'll try again in the morning.";
+    let items = [];
+    try {
+      const res = await base44.functions.invoke("runBuddyNow", { buddyId: created.id });
+      const lines = res.data?.lines || [];
+      if (lines.length) {
+        text = lines.join("\n");
+        items = res.data?.items || [];
+      }
+    } catch (_) {
+      /* the fallback text covers it */
+    }
+    const msgs = [{ who: "note", at: new Date().toISOString(), text, items }];
+    const saved = await base44.entities.Buddy.update(created.id, { messages: msgs });
+    return { ...saved, messages: msgs };
+  }, []);
+
+  // A note typed on the landing page before signing in was never saved —
+  // nothing runs until it exists. Create it now that there's an account,
+  // along with the number they left for it to text.
+  const claimPendingNote = useCallback(
+    async (user, existing) => {
+      const pending = readPendingNote();
+      if (!pending?.note) return;
+      clearPendingNote();
+
+      if (user?.plan !== "pro" && existing.length >= 3) {
+        setPayOpen(true);
+        toast({ title: "Three notes are free. Pro is $6 a month for unlimited." });
+        return;
+      }
+      if (pending.phone) {
+        try {
+          await base44.auth.updateMe({ sms_phone: pending.phone });
+        } catch (_) {
+          /* they can set the number again in settings */
+        }
+      }
+      setSending(true);
+      try {
+        const l = pending.lines || {};
+        const b = await createNoteAndRun({
+          note: pending.note,
+          image: pending.image,
+          name: l.name,
+          creature: l.creature,
+          when: l.when,
+          what: l.what,
+          tells: l.tells,
+          scheduleTime: l.scheduleTime,
+        });
+        setBuddies((prev) => [b, ...(prev ?? [])]);
+        setParams({ note: b.id });
+      } catch (_) {
+        toast({
+          title: "That note didn't come across — write it again here.",
+          variant: "destructive",
+        });
+      } finally {
+        setSending(false);
+      }
+    },
+    // setParams and toast are stable for the life of the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [createNoteAndRun]
+  );
+
   const load = useCallback(async () => {
     try {
       const user = await base44.auth.me();
       setMe(user);
       const list = await base44.entities.Buddy.filter({ created_by_id: user.id }, "-updated_date", 50);
       setBuddies(list);
+      await claimPendingNote(user, list);
     } catch (e) {
       setBuddies([]);
     }
-  }, []);
+  }, [claimPendingNote]);
 
   useEffect(() => {
     applyBigText(readBigText());
@@ -49,13 +146,26 @@ export default function Home() {
   const selectNote = (id) => {
     setParams({ note: id });
     setView("notes");
+    setDraft(null);
     setRailOpen(false);
   };
 
   const newNote = () => {
     setParams({});
     setView("notes");
+    setDraft(null);
     setRailOpen(false);
+  };
+
+  // The book is the whole history, so it opens in the main column rather
+  // than the rail — switching to it puts any open note away.
+  const changeView = (next) => {
+    setView(next);
+    setRailOpen(false);
+    if (next === "book") {
+      setParams({});
+      setDraft(null);
+    }
   };
 
   const toggleBigText = () => {
@@ -115,36 +225,20 @@ export default function Home() {
       } catch (_) {
         /* the first reading of the schedule still stands */
       }
-      const created = await base44.entities.Buddy.create({
+      const saved = await createNoteAndRun({
         note: d.note,
-        image_url: d.image,
-        name: d.plan.name || "Your helper",
-        creature: d.plan.creature || "sam",
-        when_line: d.lines.when,
-        what_line: d.lines.what,
-        how_line: d.lines.tells,
-        schedule_time: scheduleTime,
-        status: "active",
+        image: d.image,
+        name: d.plan.name,
+        creature: d.plan.creature,
+        when: d.lines.when,
+        what: d.lines.what,
+        tells: d.lines.tells,
+        scheduleTime,
       });
 
-      let text = "It couldn't reach the page just now. It'll try again in the morning.";
-      let items = [];
-      try {
-        const res = await base44.functions.invoke("runBuddyNow", { buddyId: created.id });
-        const lines = res.data?.lines || [];
-        if (lines.length) {
-          text = lines.join("\n");
-          items = res.data?.items || [];
-        }
-      } catch (_) {
-        /* the fallback text covers it */
-      }
-      const msgs = [{ who: "note", at: new Date().toISOString(), text, items }];
-      const saved = await base44.entities.Buddy.update(created.id, { messages: msgs });
-
-      setBuddies((prev) => [{ ...saved, messages: msgs }, ...(prev ?? [])]);
+      setBuddies((prev) => [saved, ...(prev ?? [])]);
       setDraft(null);
-      setParams({ note: created.id });
+      setParams({ note: saved.id });
     } catch (e) {
       toast({ title: "Something went wrong — try again.", variant: "destructive" });
     } finally {
@@ -214,7 +308,7 @@ export default function Home() {
     onSelect: selectNote,
     onNewNote: newNote,
     view,
-    onViewChange: setView,
+    onViewChange: changeView,
     onSignOut: () => base44.auth.logout("/login"),
     onToggleBigText: toggleBigText,
     bigText,
@@ -222,7 +316,7 @@ export default function Home() {
 
   return (
     <div className="page-glow min-h-screen">
-      <TopMenu onTryPro={() => setPayOpen(true)} onBook={() => { setView("book"); setParams({}); }} />
+      <TopMenu onTryPro={() => setPayOpen(true)} onBook={() => changeView("book")} />
 
       <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[250px_1fr]">
         {/* rail — desktop sidebar */}
@@ -246,6 +340,8 @@ export default function Home() {
             <p className="flex items-center gap-2 text-[13px] text-neutral-400">
               <Loader2 className="h-4 w-4 animate-spin" /> Opening your notes…
             </p>
+          ) : view === "book" ? (
+            <BookPage buddies={buddies} />
           ) : selected ? (
             <ThreadView
               buddy={selected}
