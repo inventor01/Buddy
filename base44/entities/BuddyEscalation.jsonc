@@ -41,13 +41,17 @@
   ],
   "rls": {
     "create": {
-      "data.owner_id": "{{user.id}}"
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "read": {
       "data.owner_id": "{{user.id}}"
     },
     "update": {
-      "data.owner_id": "{{user.id}}"
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "delete": {
       "data.owner_id": "{{user.id}}"
