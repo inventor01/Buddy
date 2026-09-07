@@ -1,3 +1,23 @@
+export function extractArbitrageProfitTarget(value: unknown) {
+  const text = String(value || '').toLowerCase();
+  const moneyNearGoal = text.match(/(?:profit|make|earn|goal|target|minimum|min|at least|for)\D{0,18}\$?\s*(\d+(?:\.\d+)?)\s*([km])?\b/i)
+    || text.match(/\$\s*(\d+(?:\.\d+)?)\s*([km])?\b/i)
+    || text.match(/\b(\d+(?:\.\d+)?)\s*([km])\b/i);
+  if (!moneyNearGoal) return 0;
+  const base = Number(moneyNearGoal[1]) || 0;
+  const suffix = String(moneyNearGoal[2] || '').toLowerCase();
+  const valueNumber = suffix === 'k' ? base * 1000 : suffix === 'm' ? base * 1000000 : base;
+  return valueNumber >= 100 ? Math.round(valueNumber) : 0;
+}
+
+export function arbitragePortfolioSummary(items: any[], target = 0) {
+  const opportunities = (Array.isArray(items) ? items : []).filter((item) => item?.arbitrage);
+  const verifiedPotential = Math.round(opportunities.reduce((sum, item) => sum + Math.max(0, Number(item.arbitrage?.estimated_profit) || 0), 0) * 100) / 100;
+  const goal = Math.max(0, Number(target) || 0);
+  const gap = Math.max(0, Math.round((goal - verifiedPotential) * 100) / 100);
+  return { verified_potential: verifiedPotential, target: goal, gap, count: opportunities.length };
+}
+
 export function isGenericArbitrageEvidenceUrl(value: unknown) {
   try {
     const url = new URL(String(value || ''));
