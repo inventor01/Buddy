@@ -280,7 +280,10 @@ export function toFindingItems(raw) {
         };
       }
     }
-    items.push({ text, url, source, why_fit, deal, product, arbitrage });
+    const finalUrl = arbitrage?.buy_url || url;
+    const finalSource = source || arbitrage?.retailer || '';
+    const finalWhyFit = arbitrage ? '' : why_fit;
+    items.push({ text, url: finalUrl, source: finalSource, why_fit: finalWhyFit, deal, product, arbitrage });
     if (items.length >= 5) break;
   }
   return items;
