@@ -446,9 +446,12 @@ export async function runRetailArbitragePipeline({ base44, buddy, personalFacts 
       brand: lead.brand || '',
       identifier: lead.identifier,
       variant: '',
+      original_price: lead.original_price || lead.buy_price,
       buy_price: lead.buy_price,
-      discount_amount: 0,
-      discount_description: '',
+      price_status: lead.price_status || '',
+      discount_amount: lead.discount_amount || 0,
+      discount_description: lead.discount_description || '',
+      discounts: Array.isArray(lead.discounts) ? lead.discounts : [],
       buy_url: lead.buy_url,
       availability_note: '',
       evidence_note: 'Carried forward from a recent unresolved Buddy lead.',
@@ -462,8 +465,16 @@ export async function runRetailArbitragePipeline({ base44, buddy, personalFacts 
   const candidates = dedupeCandidates([...priorAsCandidates, ...discovered]);
   if (!candidates.length) return { findings: [], should_notify: false, verification_summary: 'No exact priced product pages were discovered in this pass.' };
 
+  // Dedicated coupon/discount pass: discovery finds products; this pass looks
+  // specifically for extra savings before resale matching. If a batch fails,
+  // keep the original candidates rather than losing the entire arbitrage run.
+  const discountBatches: any[][] = [];
+  for (let i = 0; i < candidates.length; i += 8) discountBatches.push(candidates.slice(i, i + 8));
+  const discountSettled = await Promise.allSettled(discountBatches.slice(0, 5).map((batch) => enrichDiscountBatch(base44, batch, request)));
+  const enrichedCandidates = discountSettled.flatMap((result, index) => result.status === 'fulfilled' ? result.value : discountBatches[index]);
+
   const batches: any[][] = [];
-  for (let i = 0; i < candidates.length; i += 8) batches.push(candidates.slice(i, i + 8));
+  for (let i = 0; i < enrichedCandidates.length; i += 8) batches.push(enrichedCandidates.slice(i, i + 8));
   const matchedSettled = await Promise.allSettled(batches.slice(0, 5).map((batch) => crossMatchBatch(base44, batch, request)));
   const matches = matchedSettled.flatMap((r) => r.status === 'fulfilled' ? r.value : []);
 
@@ -486,6 +497,6 @@ export async function runRetailArbitragePipeline({ base44, buddy, personalFacts 
   return {
     findings: [...selectedVerified, ...leads.slice(0, Math.max(0, 12 - selectedVerified.length))],
     should_notify: strongVerified.length > 0,
-    verification_summary: `Ran ${retailers.length * DISCOVERY_FOCUSES.length} target-aware discovery passes across ${retailers.length} retailers, preserved ${candidates.length} exact priced candidates, and cross-matched ${matches.length} candidates against resale evidence.`,
+    verification_summary: `Ran ${retailers.length * DISCOVERY_FOCUSES.length} target-aware discovery passes across ${retailers.length} retailers, preserved ${candidates.length} exact priced candidates, ran ${Math.min(5, discountBatches.length)} dedicated coupon/discount verification batches, and cross-matched ${matches.length} candidates against resale evidence.`, 
   };
 }
