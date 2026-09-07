@@ -12,6 +12,7 @@ import { isWholesalePropertyRequest, runWholesaleDealFinder } from "./realEstate
 import { runOrchestratedBuddy, shouldOrchestrateRequest } from "./orchestrator.ts";
 import { loadLinkedBuddies, linkedBuddyPromptLines } from "./linkedBuddies.ts";
 import { taskStepPromptLines } from "./taskChain.ts";
+import { suppressOptionalClarification } from "./clarification.ts";
 
 // The clock where the person actually is. A note set for 9 in the morning
 // should run at their 9, and "already ran today" means their today — so both
@@ -87,6 +88,8 @@ export const FINDINGS_RULES = [
   "Only include a product object when the finding is a genuinely purchasable product with a real price or product photo — never for news, reminders, permit openings, birthdays, or general updates; those are plain findings with no product object.",
   "If today has nothing genuinely useful, say so plainly — never invent codes or prices.",
   "Only when a detail from the user would genuinely change the answer, set needs_context to ONE short friendly question asking for exactly that detail and return findings: []. Examples: a flight search without a departure city/airport; a local-service search without a location; a birthday reminder without the person/date; an account-specific request without the account. Never ask for information already present in the request.",
+  "Open-ended discovery is allowed. For broad retail-arbitrage/resale scans that already name the source stores and resale marketplaces, do NOT ask for a product category or specific items. Treat the broad scope as intentional, scan across verifiable products, and return the strongest opportunities you can support.",
+  "For retail arbitrage, calculate the buy side from verifiable current store price minus only coupons/discounts/loyalty offers whose eligibility you can confirm. Compare with verifiable Amazon/eBay resale pricing. When fees, shipping, tax, condition, or sell-through are unknown, label them as unknown or estimated instead of inventing them. Prefer findings that show enough numbers to understand the potential spread and direct links to the exact source product/listing pages.",
   "When the person asks to compare a small number of options, structure the findings so each option is directly comparable on the requested dimensions. Prefer one finding per option with its own rating/price/availability/source instead of separate generic market-price findings.",
   "For each finding, set why_fit to one short sentence only when a remembered preference or explicit request constraint clearly makes that option a better fit for this person. Examples: '$58 under your budget', 'matches your nonstop preference', 'near your saved home area'. Leave why_fit empty when there is no genuine personalized reason. Never invent a preference.",
   "For current news, breaking developments, technology releases, company announcements, laws, safety claims, or other time-sensitive facts: prefer primary sources first (official company/government/release pages), then Reuters/AP or other major established reporting. Avoid SEO aggregators and low-authority roundup sites when a stronger source is available. Extraordinary claims should be supported by a primary source or a major independent outlet, not just a niche aggregator.",
@@ -345,6 +348,7 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
   // the thread and, when a number is on file, as a text.
   let question =
     typeof findings?.needs_context === "string" ? findings.needs_context.trim().slice(0, 200) : "";
+  question = suppressOptionalClarification(`${buddy.note || ''} ${buddy.what_line || ''}`, question);
 
   // Deterministic guard against model over-clarification. If a comparison
   // already names a usable location, a specific repair/project is optional.
