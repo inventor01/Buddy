@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-09-07 — Response intelligence + bounded self-repair
+
+### Root cause
+- Buddy had strong specialist routing and evidence verification, but the final user response was still mostly specialist output followed by one synthesis pass.
+- There was no dedicated decision-quality layer checking whether the answer actually resolved the user’s goal, chose/ranked when appropriate, identified the best next action, or surfaced the one uncertainty most likely to change the decision.
+- Complex research could detect weak evidence only after the response was already formed; it did not get a bounded chance to repair one important public-web evidence gap before answering.
+- Adding more prompt text alone would increase verbosity without reliably improving judgment.
+
+### Permanent fix
+- Added a shared Response Intelligence layer for complex research/decision requests.
+- After normalized evidence is ready, Buddy now produces a concise evidence-bound `Bottom line`, `Best next move`, and `What could change this` overlay. It cannot browse or invent new facts during this judgment pass.
+- Arbitrage intelligence explicitly treats verified opportunities above leads, never calls a lead buy-ready, never counts lead profit, and makes the best next move close the strongest missing evidence gap.
+- Added a decision-quality gate scoring directness, evidence specificity, constraint coverage, ranking usefulness, actionability, uncertainty calibration, and unsupported-claim risk.
+- For complexity 4–5 research only, a score below 80 may trigger at most ONE narrow public-web repair step when one concrete missing fact could materially change the recommendation.
+- The repair instruction must name the exact evidence gap; broad `research more` loops are rejected.
+- After a successful repair, Buddy re-synthesizes once using the original specialist evidence plus the targeted repair evidence.
+- Simple reminders, connected-action chains, specialized arbitrage, and wholesale underwriting skip generic self-repair to control cost/latency and preserve their dedicated safety/math paths.
+- Preview and saved/scheduled runs now use the same response-intelligence behavior.
+- BuddyJob verification records whether a decision-quality review ran and whether the bounded repair pass completed.
+
+### QA
+- Production build and ESLint pass.
+- Response-intelligence, orchestrator, shared runner, and preview bundles pass.
+- Simple reminder test confirms the intelligence pass is skipped.
+- Decision/research and arbitrage-lead tests confirm the intelligence pass is enabled.
+- Low-quality (62/100) response with a narrow repair instruction triggers repair eligibility.
+- High-quality (91/100) response cannot trigger an unnecessary repair even when the model asks for one.
+- Bottom-line and next-move output contract passes.
+- `git diff --check` passes.
+
+
 ## 2026-09-07 — Exact resale-comp product-page evidence
 
 ### Root cause
