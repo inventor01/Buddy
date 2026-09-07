@@ -253,7 +253,7 @@ export function toFindingItems(raw) {
       const buyPrice = Number(a.buy_price) || 0;
       const discountAmount = Math.max(0, Number(a.discount_amount) || 0);
       const statedNet = Number(a.net_buy_cost) || 0;
-      const netBuyCost = statedNet > 0 ? statedNet : Math.max(0, buyPrice - discountAmount);
+      const netBuyCost = buyPrice > 0 ? Math.max(0, buyPrice - discountAmount) : statedNet;
       const resalePrice = Number(a.resale_price) || 0;
       const estimatedFees = Math.max(0, Number(a.estimated_fees) || 0);
       const buyUrl = sanitizeResultUrl(a.buy_url);
