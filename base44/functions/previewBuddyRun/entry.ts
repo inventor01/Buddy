@@ -89,20 +89,30 @@ export default async function(req) {
 
     const broadArbitrageRequest = isBroadArbitrageScan(`${note} ${what}`);
     if (broadArbitrageRequest) {
-      const pipeline = await runRetailArbitragePipeline({
-        base44,
-        buddy: { note, what_line: what, context, run_mode: 'repeat', kind: 'web', arbitrage_leads: [] },
-        personalFacts: context,
-      });
+      let pipeline;
+      try {
+        pipeline = await runRetailArbitragePipeline({
+          base44,
+          buddy: { note, what_line: what, context, run_mode: 'repeat', kind: 'web', arbitrage_leads: [] },
+          personalFacts: context,
+        });
+      } catch (error) {
+        return Response.json({
+          state: 'error',
+          message: `Buddy’s dedicated arbitrage search could not finish this pass: ${String(error?.message || 'pipeline error').slice(0, 220)}. No generic substitute was shown as an arbitrage result.`,
+          lines: [],
+          items: [],
+        }, { status: 502 });
+      }
       const target = extractArbitrageProfitTarget(`${note} ${what}`);
       const items = toFindingItems(pipeline?.findings, 12).filter((item) => item?.arbitrage || item?.arbitrage_lead);
       if (!items.length) {
         return Response.json({
           state: 'empty',
           message: target > 0
-            ? `Buddy searched multiple retailer sources but could not produce an exact actionable item this pass. Your $${target.toLocaleString()} weekly target stays in place.`
-            : 'Buddy searched multiple retailer sources but could not produce an exact actionable item this pass.',
-          lines: [],
+            ? `Buddy completed the dedicated arbitrage pass but did not yet have an exact product with enough buy-side and resale evidence to count toward your $${target.toLocaleString()} weekly target.${pipeline?.verification_summary ? ` ${pipeline.verification_summary}` : ''}`
+            : `Buddy completed the dedicated arbitrage pass but did not yet have an exact product with enough evidence to calculate a verified spread.${pipeline?.verification_summary ? ` ${pipeline.verification_summary}` : ''}`,
+          lines: pipeline?.verification_summary ? [pipeline.verification_summary] : [],
           items: [],
         });
       }
@@ -162,8 +172,8 @@ export default async function(req) {
         state: 'empty',
         message: broadArbitrage
           ? (arbitrageTarget > 0
-              ? `No specific arbitrage opportunity cleared Buddy’s evidence and profit checks on this run. Your $${arbitrageTarget.toLocaleString()} weekly target stays in place.`
-              : "No specific arbitrage opportunity cleared Buddy’s evidence and profit checks today.")
+              ? `Buddy did not get an exact product through both buy-side and resale verification in this fallback path. Your $${arbitrageTarget.toLocaleString()} weekly target remains unchanged.`
+              : "Buddy did not get an exact product through both buy-side and resale verification in this fallback path.")
           : "Buddy couldn't verify a useful answer yet.",
         lines: [],
         items: [],
