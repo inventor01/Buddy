@@ -25,7 +25,7 @@ const EXAMPLES = [
   { label: "Keep watch", text: "Tell me when a PS6 preorder opens at a major retailer" },
   { label: "Compare it", text: "Find three well-rated plumbers in Detroit and compare their prices, ratings, and availability" },
   { label: "Remember it", text: "My mom likes gardening, coffee, and mystery books. Suggest three birthday gifts for her under $75 and remember those preferences" },
-  { label: "Plan it", text: "Plan a simple birthday party for 12 people under $400 and make me a checklist" },
+  { label: "Carry it through", text: "Find 10 Detroit businesses with weak websites, rank the best 3, draft personalized outreach for each, and ask me before sending anything" },
   { label: "Handle weekly", text: "Every Monday morning, give me the five biggest AI and technology stories from the past week with one sentence on why each matters" },
 ];
 
@@ -471,15 +471,15 @@ export default function Start() {
         {step === "compose" && (
           <div>
             <div className="text-center">
-              <h1 className="font-heading text-[34px] font-semibold leading-[1.08] tracking-[-0.02em] text-neutral-900 sm:text-[44px]">
-                Hand off what’s on your mind.
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Hand off the outcome, not the steps</p>
+              <h1 className="mt-2 font-heading text-[34px] font-semibold leading-[1.08] tracking-[-0.02em] text-neutral-900 sm:text-[44px]">
+                Tell Buddy what you need done.
               </h1>
-              <p className="mx-auto mt-3.5 max-w-[500px] text-[15.5px] leading-relaxed text-neutral-500">
-                Write what you need in plain English. Buddy can handle it now, keep an eye on it,
-                or keep doing it for you — then bring the result back when there’s something worth your attention.
+              <p className="mx-auto mt-3.5 max-w-[540px] text-[15.5px] leading-relaxed text-neutral-500">
+                Buddy can research, compare, keep watch, carry one result into the next step, and bring you back only when your judgment or approval is actually needed.
               </p>
-              <p className="mx-auto mt-2 max-w-[500px] text-[13px] leading-relaxed text-neutral-400">
-                No setup language. No dashboards to learn. Just say what you want handled.
+              <p className="mx-auto mt-2 max-w-[520px] text-[13px] leading-relaxed text-neutral-400">
+                No setup maze. No building a helper. Say the outcome in plain English and Buddy works out how to handle it.
               </p>
             </div>
 
@@ -567,6 +567,31 @@ export default function Start() {
                   {e.label}
                 </button>
               ))}
+            </div>
+
+            <div className="mt-8 rounded-[22px] border border-white/80 bg-white/55 p-4 shadow-[0_18px_55px_-42px_rgba(24,24,27,.35)] backdrop-blur-xl sm:p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-neutral-400">What makes Buddy different</p>
+                  <p className="mt-1.5 text-[14px] font-semibold text-neutral-900">It carries the work forward instead of stopping at an answer.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-neutral-600">
+                  {["Find", "Review", "Prepare", "Ask you", "Finish"].map((step, index) => (
+                    <React.Fragment key={step}>
+                      <span className={`rounded-full border px-2.5 py-1 ${step === "Ask you" ? "border-amber-100 bg-amber-50 text-amber-700" : "border-neutral-200 bg-white/80"}`}>{step}</span>
+                      {index < 4 && <ArrowRight className="h-3 w-3 text-neutral-300" />}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-4 grid gap-2 border-t border-neutral-200/60 pt-4 sm:grid-cols-3">
+                {["Uses specific sources when they matter", "Remembers context you choose to save", "Asks before sending or changing anything"].map((line) => (
+                  <div key={line} className="flex items-start gap-2 text-[11.5px] leading-relaxed text-neutral-500">
+                    <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-700"><Check className="h-2.5 w-2.5" /></span>
+                    <span>{line}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
