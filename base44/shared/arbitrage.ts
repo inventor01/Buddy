@@ -1,4 +1,5 @@
 import { sanitizeDiscountOffers, summarizeDiscountOffers } from './discounts.ts';
+import { isExactRetailProductUrl } from './retailEvidence.ts';
 
 export function extractArbitrageProfitTarget(value: unknown) {
   const text = String(value || '').toLowerCase();
@@ -44,7 +45,7 @@ export function normalizeArbitrageLead(raw: any, sanitizeUrl: (value: unknown) =
   const confidence = Math.min(1, Math.max(0, Number(raw.confidence) || 0));
 
   if (!itemName || (!buyUrl && !resaleUrl)) return null;
-  if (buyUrl && isGenericArbitrageEvidenceUrl(buyUrl)) return null;
+  if (buyUrl && !isExactRetailProductUrl(buyUrl, retailer)) return null;
   if (resaleUrl && isGenericArbitrageEvidenceUrl(resaleUrl)) return null;
   const hasBuySide = buyPrice > 0 && !!buyUrl;
   const hasResaleSide = resalePrice > 0 && !!resaleUrl;
@@ -78,8 +79,11 @@ export function normalizeArbitrageLead(raw: any, sanitizeUrl: (value: unknown) =
 export function isGenericArbitrageEvidenceUrl(value: unknown) {
   try {
     const url = new URL(String(value || ''));
-    const path = url.pathname.replace(/\/+$/, '');
-    return /\/(?:current[-_]?flyer|weekly[-_]?ad|weekly[-_]?ads|circular|deals?|sales?|clearance)$/i.test(path);
+    const path = url.pathname.replace(/\/+$/, '') || '/';
+    if (path === '/') return true;
+    if (/\/(?:c|q|s|search|browse|category|categories|collections?|current[-_]?flyer|weekly[-_]?ad|weekly[-_]?ads|circular|deals?|sales?|clearance|shop)(?:\/|$)/i.test(path)) return true;
+    if (/^(?:q|query|search|keyword|category|cat)$/i.test([...url.searchParams.keys()][0] || '')) return true;
+    return false;
   } catch (_) {
     return true;
   }
@@ -108,7 +112,7 @@ export function normalizeArbitrageCandidate(raw: any, sanitizeUrl: (value: unkno
   const roiPercent = netBuyCost > 0 ? Math.round((estimatedProfit / netBuyCost) * 1000) / 10 : 0;
 
   if (!itemName || !retailer || !marketplace || netBuyCost <= 0 || resalePrice <= 0 || estimatedProfit <= 0) return null;
-  if (!buyUrl || !resaleUrl || isGenericArbitrageEvidenceUrl(buyUrl) || isGenericArbitrageEvidenceUrl(resaleUrl)) return null;
+  if (!buyUrl || !resaleUrl || !isExactRetailProductUrl(buyUrl, retailer) || isGenericArbitrageEvidenceUrl(resaleUrl)) return null;
 
   const actionabilityScore = Math.min(100, Math.max(0, Math.round(Number(raw.actionability_score) || 0)));
   const actionTier = ['check_now','promising','low_priority'].includes(String(raw.action_tier || '')) ? String(raw.action_tier) : 'promising';
