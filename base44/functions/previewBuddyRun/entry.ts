@@ -3,7 +3,7 @@ import { FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines, contextLines 
 import { checkUsageLimit } from '../../shared/rateLimit.ts';
 import { isWholesalePropertyRequest, runWholesaleDealFinder } from '../../shared/realEstate.ts';
 import { normalizeTaskSteps, taskStepPromptLines } from '../../shared/taskChain.ts';
-import { suppressOptionalClarification } from '../../shared/clarification.ts';
+import { isBroadArbitrageScan, suppressOptionalClarification } from '../../shared/clarification.ts';
 
 // Runs a visitor's typed note once, with no account and nothing saved —
 // the "watch it run" step for people who haven't signed in. Anonymous by
@@ -123,12 +123,16 @@ export default async function(req) {
       });
     }
 
-    const items = toFindingItems(findings?.findings);
+    let items = toFindingItems(findings?.findings);
+    const broadArbitrage = isBroadArbitrageScan(`${note} ${what}`);
+    if (broadArbitrage) items = items.filter((item) => item?.arbitrage);
     const lines = toLines(items);
     if (!items.length) {
       return Response.json({
         state: 'empty',
-        message: "Buddy couldn't verify a useful answer yet.",
+        message: broadArbitrage
+          ? "No specific arbitrage opportunity cleared Buddy’s evidence and profit checks today."
+          : "Buddy couldn't verify a useful answer yet.",
         lines: [],
         items: [],
       });
