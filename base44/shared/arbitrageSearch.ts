@@ -211,14 +211,31 @@ function toFinding(match: any, target: number) {
 
   if (itemName && retailer && netBuy > 0 && resalePrice > 0 && profit > 0 && !genericBuy && !genericResale && marketplace) {
     const units = target > 0 ? Math.max(1, Math.ceil(target / profit)) : 0;
+    const roi = netBuy > 0 ? (profit / netBuy) * 100 : 0;
+    const matchConfidence = Math.min(1, Math.max(0, Number(match?.match_confidence) || 0.65));
+    const unitScore = units > 0 ? (units <= 25 ? 15 : units <= 50 ? 12 : units <= 100 ? 8 : units <= 200 ? 4 : 0) : 6;
+    const profitScore = Math.min(35, (profit / 60) * 35);
+    const roiScore = Math.min(25, (roi / 80) * 25);
+    const evidenceScore = matchConfidence * 20;
+    const priorityText = `${category} ${brand} ${itemName}`.toLowerCase();
+    const priorityBonus = /lego|collectible|video game|console|electronics?|power tool|tool|vacuum|appliance|kitchen|beauty device/.test(priorityText) ? 5 : 0;
+    const actionabilityScore = Math.round(Math.min(100, profitScore + roiScore + evidenceScore + unitScore + priorityBonus));
+    const actionTier = actionabilityScore >= 70 && profit >= 20 && roi >= 25 && matchConfidence >= 0.7 ? 'check_now' : actionabilityScore >= 50 ? 'promising' : 'low_priority';
     return {
-      text: `${itemName}: est. $${profit.toFixed(2)} profit/unit${units ? ` · ${units} units would equal ~$${target.toLocaleString()}` : ''}`,
+      text: `${itemName}: est. $${profit.toFixed(2)} profit/unit · ${actionabilityScore}/100 actionability${units ? ` · ${units} units ≈ $${target.toLocaleString()}` : ''}`,
       source_name: retailer,
       url: buyUrl,
       arbitrage: {
         item_name: itemName,
         retailer,
         marketplace,
+        category,
+        brand,
+        actionability_score: actionabilityScore,
+        action_tier: actionTier,
+        units_to_target: units,
+        match_confidence: matchConfidence,
+        demand_note: cleanText(match?.demand_note, 220),
         buy_price: buyPrice,
         discount_amount: discountAmount,
         discount_description: cleanText(match?.discount_description, 180),
@@ -247,6 +264,8 @@ function toFinding(match: any, target: number) {
         item_name: itemName,
         retailer,
         marketplace,
+        category,
+        brand,
         identifier,
         buy_price: hasBuySide ? buyPrice : 0,
         resale_price: hasResaleSide ? resalePrice : 0,
@@ -272,6 +291,8 @@ export async function runRetailArbitragePipeline({ base44, buddy, personalFacts 
     .map((lead: any) => ({
       item_name: lead.item_name,
       retailer: lead.retailer,
+      category: lead.category || '',
+      brand: lead.brand || '',
       identifier: lead.identifier,
       variant: '',
       buy_price: lead.buy_price,
@@ -282,9 +303,10 @@ export async function runRetailArbitragePipeline({ base44, buddy, personalFacts 
       evidence_note: 'Carried forward from a recent unresolved Buddy lead.',
     }));
 
-  const discoveredSettled = await Promise.allSettled(
-    retailers.map((retailer) => discoverAtRetailer(base44, retailer, request, personalFacts.slice(0, 8)))
+  const discoveryJobs = retailers.flatMap((retailer) =>
+    DISCOVERY_FOCUSES.map((focus) => discoverAtRetailer(base44, retailer, request, personalFacts.slice(0, 8), focus))
   );
+  const discoveredSettled = await Promise.allSettled(discoveryJobs);
   const discovered = discoveredSettled.flatMap((r) => r.status === 'fulfilled' ? r.value : []);
   const candidates = dedupeCandidates([...priorAsCandidates, ...discovered]);
   if (!candidates.length) return { findings: [], should_notify: false, verification_summary: 'No exact priced product pages were discovered in this pass.' };
@@ -297,6 +319,9 @@ export async function runRetailArbitragePipeline({ base44, buddy, personalFacts 
   const findings = matches.map((m) => toFinding(m, target)).filter(Boolean);
   const verified = findings.filter((f: any) => f.arbitrage)
     .sort((a: any, b: any) => {
+      const sa = Number(a.arbitrage?.actionability_score || 0);
+      const sb = Number(b.arbitrage?.actionability_score || 0);
+      if (sb !== sa) return sb - sa;
       const pa = Number(a.arbitrage?.resale_price || 0) - Number(a.arbitrage?.net_buy_cost || 0) - Number(a.arbitrage?.estimated_fees || 0);
       const pb = Number(b.arbitrage?.resale_price || 0) - Number(b.arbitrage?.net_buy_cost || 0) - Number(b.arbitrage?.estimated_fees || 0);
       return pb - pa;
@@ -307,6 +332,6 @@ export async function runRetailArbitragePipeline({ base44, buddy, personalFacts 
   return {
     findings: [...verified.slice(0, 8), ...leads.slice(0, Math.max(0, 12 - Math.min(8, verified.length)))],
     should_notify: verified.length > 0,
-    verification_summary: `Searched ${retailers.length} retailer source groups, preserved ${candidates.length} exact priced candidates, and cross-matched ${matches.length} candidates against resale evidence.`,
+    verification_summary: `Ran ${retailers.length * DISCOVERY_FOCUSES.length} target-aware discovery passes across ${retailers.length} retailers, preserved ${candidates.length} exact priced candidates, and cross-matched ${matches.length} candidates against resale evidence.`,
   };
 }
