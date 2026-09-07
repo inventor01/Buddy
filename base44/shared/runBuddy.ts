@@ -309,7 +309,9 @@ async function sendSms(to, body) {
 
 async function runGenericWebFindings({ client, buddy, imageUrl, timeZone, personalFacts, delegationLines, linkedLines = [], taskLines = [] }) {
   const requestText = `${buddy.note || ''} ${buddy.what_line || ''}`;
-  const arbitrageTarget = isBroadArbitrageScan(requestText) ? extractArbitrageProfitTarget(requestText) : 0;
+  const broadArbitrage = isBroadArbitrageScan(requestText);
+  const arbitrageTarget = broadArbitrage ? extractArbitrageProfitTarget(requestText) : 0;
+  const priorArbitrageLeads = broadArbitrage && Array.isArray(buddy?.arbitrage_leads) ? buddy.arbitrage_leads.slice(0, 12) : [];
   return await client.asServiceRole.integrations.Core.InvokeLLM({
     model: "gemini_3_flash",
     add_context_from_internet: true,
@@ -337,8 +339,9 @@ async function runGenericWebFindings({ client, buddy, imageUrl, timeZone, person
         : []),
       "Handle the request for today. Use current web information when the request needs it; do not force a web search for a personal reminder or simple planning task.",
       arbitrageTarget > 0 ? `This person has a $${arbitrageTarget.toLocaleString()} aggregate profit target. Treat it as the combined weekly goal across multiple opportunities unless they explicitly say each/per item/per deal. Do not require one opportunity to make the full target. Return useful positive-spread opportunities even when today's verified total is below the target.` : "",
-      isBroadArbitrageScan(requestText) ? "If the user did not name retailers or resale marketplaces, default to broad current U.S. retail/online sourcing and Amazon/eBay resale evidence. Prefer opportunities that can plausibly be acted on this week. Do not ask for a category, store, or marketplace merely to narrow the scan." : "",
-      isBroadArbitrageScan(requestText) ? "Return up to 12 strongest verified arbitrage opportunities so Buddy can build toward the aggregate target." : "Return up to 5 useful, concrete findings. Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
+      priorArbitrageLeads.length ? `First try to finish verification on these unresolved leads from the prior run before starting over. Keep exact variants/identifiers straight and drop stale mismatches: ${JSON.stringify(priorArbitrageLeads).slice(0, 7000)}` : "",
+      broadArbitrage ? "If the user did not name retailers or resale marketplaces, default to broad current U.S. retail/online sourcing and Amazon/eBay resale evidence. Prefer opportunities that can plausibly be acted on this week. Do not ask for a category, store, or marketplace merely to narrow the scan." : "",
+      broadArbitrage ? "Build a broad candidate pool first, then return up to 12 strongest results. Verified opportunities should clear both evidence sides; exact one-sided candidates should be returned as arbitrage_lead so Buddy can continue verifying them on the next run." : "Return up to 5 useful, concrete findings. Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
       ...FINDINGS_RULES
     ].join("\n"),
     response_json_schema: FINDINGS_SCHEMA
@@ -476,9 +479,13 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
 
   const today = nowInZone(timeZone).date;
   const finishing = buddy.run_mode === "once";
+  const unresolvedArbitrageLeads = broadArbitrage
+    ? items.filter((item) => item?.arbitrage_lead).slice(0, 12).map((item) => ({ ...item.arbitrage_lead, last_seen_at: new Date().toISOString() }))
+    : undefined;
   await entityClient.entities.Buddy.update(buddy.id, {
     last_result: lines,
     last_run_date: today,
+    ...(broadArbitrage ? { arbitrage_leads: unresolvedArbitrageLeads, arbitrage_leads_updated_at: new Date().toISOString() } : {}),
     ...(finishing ? { status: "done" } : {})
   });
 
