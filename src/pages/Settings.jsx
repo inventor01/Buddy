@@ -309,7 +309,7 @@ export default function Settings() {
             to="/notes"
             className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-neutral-600 transition-colors hover:text-neutral-900"
           >
-            <ArrowLeft className="h-4 w-4" /> Back to your notes
+            <ArrowLeft className="h-4 w-4" /> Back to Buddy
           </Link>
           <span className="font-semibold tracking-tight text-neutral-900">Settings</span>
         </header>
@@ -318,7 +318,7 @@ export default function Settings() {
           Your preferences
         </h1>
         <p className="mt-2 text-[15px] text-neutral-500">
-          How your notes should reach you, and how things should read.
+          What Buddy should remember, how it should reach you, and how far it should go.
         </p>
 
         <div className="mt-8 space-y-4">
@@ -457,7 +457,7 @@ export default function Settings() {
               <div>
                 <h3 className="font-medium text-neutral-900">Email me the answers</h3>
                 <p className="mt-0.5 text-sm text-neutral-500">
-                  When a note finds something, email{me ? ` ${me.email}` : " you"} the result.
+                  When Buddy finds something worth showing you, email{me ? ` ${me.email}` : " you"} the result.
                 </p>
               </div>
             </div>
@@ -632,7 +632,7 @@ export default function Settings() {
               <div>
                 <h3 className="font-medium text-neutral-900">Your clock</h3>
                 <p className="mt-0.5 text-sm text-neutral-500">
-                  A note set for the morning runs on your time, not ours.
+                  A handoff set for the morning runs on your time, not ours.
                 </p>
               </div>
             </div>
