@@ -328,15 +328,20 @@ export function toFinding(match: any, target: number) {
   const identifier = cleanText(match?.identifier, 100);
   const category = cleanText(match?.category, 80);
   const brand = cleanText(match?.brand, 80);
+  const originalPrice = Math.max(0, Number(match?.original_price) || 0);
   const buyPrice = Number(match?.buy_price) || 0;
-  const discountAmount = Math.max(0, Number(match?.discount_amount) || 0);
+  const verifiedDiscounts = sanitizeDiscountOffers(match?.discounts, buyPrice);
+  const discount = summarizeDiscountOffers(verifiedDiscounts);
+  const discountAmount = discount.total;
   const netBuy = Math.max(0, buyPrice - discountAmount);
   const buyUrl = cleanUrl(match?.buy_url);
   const marketplace = cleanText(match?.marketplace, 60);
   const resalePrice = Number(match?.resale_price) || 0;
   const estimatedFees = Math.max(0, Number(match?.estimated_fees) || 0);
   const resaleUrl = cleanUrl(match?.resale_url);
+  const profitBeforeExtraDiscounts = Math.round((resalePrice - buyPrice - estimatedFees) * 100) / 100;
   const profit = Math.round((resalePrice - netBuy - estimatedFees) * 100) / 100;
+  const couponDependent = profit > 0 && profitBeforeExtraDiscounts <= 0 && discountAmount > 0;
   const genericBuy = !buyUrl || isGenericEvidenceUrl(buyUrl);
   const genericResale = !resaleUrl || isGenericEvidenceUrl(resaleUrl);
 
@@ -367,9 +372,14 @@ export function toFinding(match: any, target: number) {
         units_to_target: units,
         match_confidence: matchConfidence,
         demand_note: cleanText(match?.demand_note, 220),
+        original_price: originalPrice,
         buy_price: buyPrice,
+        price_status: cleanText(match?.price_status, 30),
         discount_amount: discountAmount,
-        discount_description: cleanText(match?.discount_description, 180),
+        discount_description: discount.description,
+        discounts: verifiedDiscounts,
+        coupon_dependent: couponDependent,
+        profit_without_extra_discounts: profitBeforeExtraDiscounts,
         net_buy_cost: netBuy,
         resale_price: resalePrice,
         estimated_fees: estimatedFees,
@@ -380,6 +390,8 @@ export function toFinding(match: any, target: number) {
         caveat: [
           cleanText(match?.caveat, 220),
           cleanText(match?.availability_note, 160),
+          couponDependent ? 'This spread is only positive if the verified extra discount still applies at checkout.' : '',
+          discountAmount > 0 ? `Verified extra savings used in math: $${discountAmount.toFixed(2)}.` : '',
           units ? `${units} units is only target math; inventory quantity and sell-through are not verified.` : '',
         ].filter(Boolean).join(' '),
       },
@@ -400,7 +412,13 @@ export function toFinding(match: any, target: number) {
         category,
         brand,
         identifier,
+        original_price: hasBuySide ? originalPrice : 0,
         buy_price: hasBuySide ? buyPrice : 0,
+        price_status: hasBuySide ? cleanText(match?.price_status, 30) : '',
+        discount_amount: hasBuySide ? discountAmount : 0,
+        discount_description: hasBuySide ? discount.description : '',
+        discounts: hasBuySide ? verifiedDiscounts : [],
+        net_buy_cost: hasBuySide ? netBuy : 0,
         resale_price: hasResaleSide ? resalePrice : 0,
         buy_url: hasBuySide ? buyUrl : '',
         resale_url: hasResaleSide ? resaleUrl : '',
