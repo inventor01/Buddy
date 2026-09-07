@@ -159,7 +159,7 @@ export const FINDINGS_SCHEMA = {
               discounts: {
                 type: "array",
                 items: { type: "object", properties: {
-                  kind: { type: "string" }, description: { type: "string" }, effective_amount: { type: "number" }, source_url: { type: "string" }, code: { type: "string" }, eligibility: { type: "string" }, stackable_with_current_price: { type: "boolean" }, applies_to_exact_item: { type: "boolean" }, expires_at: { type: "string" }
+                  kind: { type: "string" }, description: { type: "string" }, effective_amount: { type: "number" }, source_url: { type: "string" }, code: { type: "string" }, eligibility: { type: "string" }, stackable_with_current_price: { type: "boolean" }, stackable_with_other_offers: { type: "boolean" }, applies_to_exact_item: { type: "boolean" }, expires_at: { type: "string" }
                 } }
               },
               coupon_dependent: { type: "boolean" },
@@ -189,7 +189,7 @@ export const FINDINGS_SCHEMA = {
               discounts: {
                 type: "array",
                 items: { type: "object", properties: {
-                  kind: { type: "string" }, description: { type: "string" }, effective_amount: { type: "number" }, source_url: { type: "string" }, code: { type: "string" }, eligibility: { type: "string" }, stackable_with_current_price: { type: "boolean" }, applies_to_exact_item: { type: "boolean" }, expires_at: { type: "string" }
+                  kind: { type: "string" }, description: { type: "string" }, effective_amount: { type: "number" }, source_url: { type: "string" }, code: { type: "string" }, eligibility: { type: "string" }, stackable_with_current_price: { type: "boolean" }, stackable_with_other_offers: { type: "boolean" }, applies_to_exact_item: { type: "boolean" }, expires_at: { type: "string" }
                 } }
               },
               net_buy_cost: { type: "number" },
