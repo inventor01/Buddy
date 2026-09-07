@@ -1,3 +1,5 @@
+import { sanitizeDiscountOffers, summarizeDiscountOffers } from './discounts.ts';
+
 export function extractArbitrageProfitTarget(value: unknown) {
   const text = String(value || '').toLowerCase();
   const moneyNearGoal = text.match(/(?:profit|make|earn|goal|target|minimum|min|at least|for)\D{0,18}\$?\s*(\d+(?:\.\d+)?)\s*([km])?\b/i)
@@ -29,7 +31,11 @@ export function normalizeArbitrageLead(raw: any, sanitizeUrl: (value: unknown) =
   const category = String(raw.category || '').trim().slice(0, 80);
   const brand = String(raw.brand || '').trim().slice(0, 80);
   const identifier = String(raw.identifier || '').trim().slice(0, 100);
+  const originalPrice = Math.max(0, Number(raw.original_price) || 0);
   const buyPrice = Math.max(0, Number(raw.buy_price) || 0);
+  const verifiedDiscounts = sanitizeDiscountOffers(raw.discounts, buyPrice);
+  const discount = summarizeDiscountOffers(verifiedDiscounts);
+  const netBuyCost = Math.max(0, buyPrice - discount.total);
   const resalePrice = Math.max(0, Number(raw.resale_price) || 0);
   const buyUrl = sanitizeUrl(raw.buy_url);
   const resaleUrl = sanitizeUrl(raw.resale_url);
@@ -53,7 +59,13 @@ export function normalizeArbitrageLead(raw: any, sanitizeUrl: (value: unknown) =
     category,
     brand,
     identifier,
+    original_price: Math.max(buyPrice, originalPrice),
     buy_price: Math.round(buyPrice * 100) / 100,
+    price_status: String(raw.price_status || '').trim().slice(0, 30),
+    discount_amount: discount.total,
+    discount_description: discount.description,
+    discounts: verifiedDiscounts,
+    net_buy_cost: Math.round(netBuyCost * 100) / 100,
     resale_price: Math.round(resalePrice * 100) / 100,
     buy_url: buyUrl,
     resale_url: resaleUrl,
@@ -80,15 +92,19 @@ export function normalizeArbitrageCandidate(raw: any, sanitizeUrl: (value: unkno
   const marketplace = String(raw.marketplace || '').trim().slice(0, 60);
   const category = String(raw.category || '').trim().slice(0, 80);
   const brand = String(raw.brand || '').trim().slice(0, 80);
+  const originalPrice = Math.max(0, Number(raw.original_price) || 0);
   const buyPrice = Number(raw.buy_price) || 0;
-  const discountAmount = Math.max(0, Number(raw.discount_amount) || 0);
-  const statedNet = Number(raw.net_buy_cost) || 0;
-  const netBuyCost = buyPrice > 0 ? Math.max(0, buyPrice - discountAmount) : statedNet;
+  const verifiedDiscounts = sanitizeDiscountOffers(raw.discounts, buyPrice);
+  const discount = summarizeDiscountOffers(verifiedDiscounts);
+  const discountAmount = discount.total;
+  const netBuyCost = buyPrice > 0 ? Math.max(0, buyPrice - discountAmount) : 0;
   const resalePrice = Number(raw.resale_price) || 0;
   const estimatedFees = Math.max(0, Number(raw.estimated_fees) || 0);
   const buyUrl = sanitizeUrl(raw.buy_url);
   const resaleUrl = sanitizeUrl(raw.resale_url);
+  const profitWithoutExtraDiscounts = Math.round((resalePrice - buyPrice - estimatedFees) * 100) / 100;
   const estimatedProfit = Math.round((resalePrice - netBuyCost - estimatedFees) * 100) / 100;
+  const couponDependent = estimatedProfit > 0 && profitWithoutExtraDiscounts <= 0 && discountAmount > 0;
   const roiPercent = netBuyCost > 0 ? Math.round((estimatedProfit / netBuyCost) * 1000) / 10 : 0;
 
   if (!itemName || !retailer || !marketplace || netBuyCost <= 0 || resalePrice <= 0 || estimatedProfit <= 0) return null;
@@ -110,9 +126,14 @@ export function normalizeArbitrageCandidate(raw: any, sanitizeUrl: (value: unkno
     units_to_target: unitsToTarget,
     match_confidence: matchConfidence,
     demand_note: String(raw.demand_note || '').trim().slice(0, 220),
+    original_price: Math.max(buyPrice, originalPrice),
     buy_price: Math.round(buyPrice * 100) / 100,
+    price_status: String(raw.price_status || '').trim().slice(0, 30),
     discount_amount: Math.round(discountAmount * 100) / 100,
-    discount_description: String(raw.discount_description || '').trim().slice(0, 180),
+    discount_description: discount.description,
+    discounts: verifiedDiscounts,
+    coupon_dependent: couponDependent,
+    profit_without_extra_discounts: profitWithoutExtraDiscounts,
     net_buy_cost: Math.round(netBuyCost * 100) / 100,
     resale_price: Math.round(resalePrice * 100) / 100,
     estimated_fees: Math.round(estimatedFees * 100) / 100,
