@@ -6,15 +6,22 @@ function normalized(value: unknown) {
   return String(value || '').toLowerCase();
 }
 
-export function isBroadArbitrageScan(value: unknown) {
+export function isArbitrageRequest(value: unknown) {
   const text = normalized(value);
   const arbitrageIntent = /\b(arbitrage|arbritage|arbitage|resell(?:ing)?|resale|flip(?:ping)?|buy low|price spread|profit opportunities?)\b/.test(text);
   const discoveryIntent = /\b(find|search|scan|look for|hunt|identify|opportunit|deals?|profitable|margin)\b/.test(text);
-  const marketplaceIntent = /\b(amazon|ebay|marketplace|resale market|secondary market)\b/.test(text);
+  return arbitrageIntent && discoveryIntent;
+}
+
+export function isBroadArbitrageScan(value: unknown) {
+  const text = normalized(value);
+  if (!isArbitrageRequest(text)) return false;
   const retailerMatches = text.match(/\b(target|ollie'?s|kroger'?s|meijer'?s|tj\s*maxx|walmart|costco|sam'?s club|walgreens|cvs|home depot|lowe'?s|best buy|marshalls|ross|aldi)\b/g) || [];
-  const broadLanguage = /\b(any|all|across|between|whatever|best opportunities?|top opportunities?|stores?|products?)\b/.test(text) || retailerMatches.length >= 2;
+  const broadLanguage = /\b(any|all|across|between|whatever|best opportunities?|top opportunities?|stores?|products?|this week|weekly|everyday|daily)\b/.test(text) || retailerMatches.length >= 2;
   const explicitlyNarrowed = /\b(only|specifically|just)\s+(?:in|for)?\s*(electronics?|toys?|beauty|cosmetics|grocery|groceries|clothing|apparel|shoes?|tools?|home goods?|video games?|collectibles?|books?)\b/.test(text);
-  return arbitrageIntent && discoveryIntent && marketplaceIntent && broadLanguage && !explicitlyNarrowed;
+  // If the user asks for arbitrage discovery without naming a category, treat that
+  // as intentionally broad even when they did not spell out Amazon/eBay/stores.
+  return !explicitlyNarrowed && (broadLanguage || !/\b(electronics?|toys?|beauty|cosmetics|grocery|groceries|clothing|apparel|shoes?|tools?|home goods?|video games?|collectibles?|books?)\b/.test(text));
 }
 
 export function isOptionalProductScopeQuestion(value: unknown) {
