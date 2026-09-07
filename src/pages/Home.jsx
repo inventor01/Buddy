@@ -520,12 +520,12 @@ export default function Home() {
             onClick={() => setRailOpen(true)}
             className="glass mb-5 inline-flex items-center gap-2 rounded-full px-3 py-2 text-[12.5px] font-medium text-neutral-700 lg:hidden"
           >
-            <Menu className="h-4 w-4" /> Your notes
+            <Menu className="h-4 w-4" /> Your things
           </button>
 
           {buddies === null ? (
             <p className="flex items-center gap-2 text-[13px] text-neutral-400">
-              <Loader2 className="h-4 w-4 animate-spin" /> Opening your notes…
+              <Loader2 className="h-4 w-4 animate-spin" /> Opening your things…
             </p>
           ) : view === "book" ? (
             <BookPage buddies={buddies} />
