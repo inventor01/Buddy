@@ -465,8 +465,37 @@ export async function runRetailArbitragePipeline({ base44, buddy, personalFacts 
   );
   const discoveredSettled = await Promise.allSettled(discoveryJobs);
   const discovered = discoveredSettled.flatMap((r) => r.status === 'fulfilled' ? r.value : []);
-  const candidates = dedupeCandidates([...priorAsCandidates, ...discovered]);
-  if (!candidates.length) return { findings: [], should_notify: false, verification_summary: 'No exact priced product pages were discovered in this pass.' };
+  let candidates = dedupeCandidates([...priorAsCandidates, ...discovered]);
+
+  // Rescue pass: if every normal discovery pass came back empty, retry each
+  // named retailer once with a simpler exact-product objective rather than
+  // ending the whole handoff immediately. This is bounded and only runs on zero.
+  let rescuePasses = 0;
+  if (!candidates.length) {
+    const rescueFocus = 'RESCUE EXACT-PRODUCT PASS: find any currently priced, shippable, branded product with a direct detail page and a stable SKU/UPC/model that can be cross-checked on Amazon or eBay. Favor clearance/sale items, but exact evidence matters more than discount size.';
+    const rescueSettled = await Promise.allSettled(
+      retailers.map((retailer) => discoverAtRetailer(base44, retailer, request, personalFacts.slice(0, 8), rescueFocus))
+    );
+    rescuePasses = retailers.length;
+    const rescued = rescueSettled.flatMap((r) => r.status === 'fulfilled' ? r.value : []);
+    candidates = dedupeCandidates([...priorAsCandidates, ...rescued]);
+  }
+  if (!candidates.length) return {
+    findings: [],
+    should_notify: false,
+    verification_summary: `Buddy ran ${retailers.length * DISCOVERY_FOCUSES.length + rescuePasses} retailer discovery passes across ${retailers.length} retailers but no exact priced product detail page survived the evidence filter. This is a source-access/discovery limitation for this pass, not proof that no arbitrage exists.`,
+    search_stats: {
+      retailers: retailers.length,
+      discovery_passes: retailers.length * DISCOVERY_FOCUSES.length + rescuePasses,
+      exact_candidates: 0,
+      discount_batches: 0,
+      match_batches_total: 0,
+      match_batches_completed: 0,
+      match_batches_failed: 0,
+      verified: 0,
+      leads: 0,
+    },
+  };
 
   // Dedicated coupon/discount pass: discovery finds products; this pass looks
   // specifically for extra savings before resale matching. If a batch fails,
