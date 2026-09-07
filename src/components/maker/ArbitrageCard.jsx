@@ -78,7 +78,7 @@ export default function ArbitrageCard({ item }) {
           Check buy side <ExternalLink className="h-3 w-3" />
         </a>
         <a href={a.resale_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-3.5 py-2 text-[11.5px] font-semibold text-neutral-700">
-          Check resale side <ExternalLink className="h-3 w-3" />
+          Open exact resale comp <ExternalLink className="h-3 w-3" />
         </a>
       </div>
     </div>
