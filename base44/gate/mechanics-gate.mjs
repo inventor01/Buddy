@@ -136,11 +136,11 @@ add('once handoff completes', async () => {
   const today = stateMachine.schedulerRunVerdict({
     buddy: after, localDate: '2026-09-07', localHour: 10, scheduledHour: 9, rightDay: true,
   });
-  assert(!today.ok && today.reason === 'already_ran_today', 'must not run twice in one local day');
-  const tomorrow = stateMachine.schedulerRunVerdict({
-    buddy: after, localDate: '2026-09-08', localHour: 10, scheduledHour: 9, rightDay: true,
+  assert(!today.ok && today.reason === 'inactive', 'a done handoff must never run again — even the same day');
+  const stillActive = stateMachine.schedulerRunVerdict({
+    buddy: { ...after, status: 'active' }, localDate: '2026-09-07', localHour: 10, scheduledHour: 9, rightDay: true,
   });
-  assert(!tomorrow.ok && tomorrow.reason === 'inactive', 'a done handoff must never be picked up again');
+  assert(!stillActive.ok && stillActive.reason === 'already_ran_today', 'an active handoff must not run twice in one local day');
 });
 
 // 2. Required clarification stays; it is never guessed away.
