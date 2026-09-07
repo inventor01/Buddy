@@ -287,7 +287,7 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
             onClick={() => setEditing(true)}
             className="text-[12px] font-medium text-neutral-500 transition-colors hover:text-neutral-900"
           >
-            Edit the note
+            Edit request
           </button>
         </div>
       )}
