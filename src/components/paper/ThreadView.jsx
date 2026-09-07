@@ -179,8 +179,7 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
             </div>
           )}
           <div className="mt-4 flex flex-wrap gap-3 text-[11px] text-neutral-400">
-            {receipt.completed_at && <span>{fmtAt(receipt.completed_at)}</span>}
-            {Number(receipt.estimated_time_saved_minutes) > 0 && <span>~{receipt.estimated_time_saved_minutes} min back</span>}
+            {receipt.completed_at && <span>Completed {fmtAt(receipt.completed_at)}</span>}
           </div>
         </div>
       )}
