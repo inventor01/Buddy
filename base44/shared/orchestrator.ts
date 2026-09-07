@@ -48,6 +48,14 @@ const SYNTH_SCHEMA = {
               buy_url: { type: 'string' }, resale_url: { type: 'string' }, caveat: { type: 'string' },
             },
           },
+          arbitrage_lead: {
+            type: 'object',
+            properties: {
+              item_name: { type: 'string' }, retailer: { type: 'string' }, marketplace: { type: 'string' }, identifier: { type: 'string' },
+              buy_price: { type: 'number' }, resale_price: { type: 'number' }, buy_url: { type: 'string' }, resale_url: { type: 'string' },
+              missing_evidence: { type: 'string' }, reason: { type: 'string' }, confidence: { type: 'number' },
+            },
+          },
         },
         required: ['text'],
       },
@@ -116,13 +124,13 @@ export async function planOrchestration(base44: any, buddy: any, personalFacts: 
         {
           id: 'retail-scan',
           kind: 'web_research',
-          instruction: `Search broadly for current retail/online sourcing candidates for this request. Preserve any named stores; if none are named, scan major U.S. retailers and clearance/discount sources. Find specific products with exact buy pages, current prices, and only verifiable coupons/discounts. Aim for many candidates rather than requiring one item to satisfy the ${targetText}. Do not return generic flyers/homepages as candidates.`,
+          instruction: `Build a broad candidate pool of roughly 25-40 current retail/online sourcing candidates for this request before filtering. Preserve any named stores; if none are named, scan major U.S. retailers and clearance/discount sources. Find SPECIFIC products with exact buy pages, current prices, and only verifiable coupons/discounts. Preserve UPC/SKU/model/size/count/variant whenever available. Aim for many candidates rather than requiring one item to satisfy the ${targetText}. Generic flyers/homepages may help discover product names but must never be treated as evidence or final candidates.`, 
           depends_on: [],
         },
         {
           id: 'resale-check',
           kind: 'web_research',
-          instruction: 'For the specific products from the retail scan, cross-match exact model/SKU/UPC/name against Amazon and/or eBay. Find current resale-price evidence and exact resale URLs. Reject mismatched variants and generic marketplace homepages. Keep useful positive-spread candidates even if the combined batch is below the weekly target.',
+          instruction: 'Take the strongest roughly 15 specific products from the retail scan and cross-match exact model/SKU/UPC/name, size/count, color, and variant against Amazon and/or eBay. Find current resale-price evidence and exact resale URLs. Reject mismatched variants and generic marketplace homepages. If only one side can be verified for an exact item, preserve it as a one-sided lead for another verification pass instead of discarding it.',
           depends_on: ['retail-scan'],
         },
         {
@@ -366,7 +374,7 @@ async function synthesize(base44: any, goal: string, results: any[]) {
       `User goal: ${goal}`,
       'Below are specialist outputs. Produce the final answer using ONLY claims supported by those outputs. Resolve contradictions conservatively. Never invent missing prices, dates, URLs, or actions.',
       'For every finding, use the most specific source URL actually present in the evidence. Prefer the exact article, product, listing, provider, event, route/search, or booking page. Do not replace a direct source with a site homepage or generic landing page. If only a homepage is available, leave the URL empty.',
-      isBroadArbitrageScan(goal) ? `For this retail-arbitrage request, return ONLY specific item opportunities that have evidence for both sides. Every opportunity must include arbitrage with exact item_name, retailer, marketplace, buy_price, verified discount_amount/description when applicable, net_buy_cost, resale_price, estimated_fees, exact retailer buy_url, exact Amazon/eBay resale_url, and a caveat. ${extractArbitrageProfitTarget(goal) > 0 ? `The $${extractArbitrageProfitTarget(goal).toLocaleString()} figure is the combined weekly target, NOT a minimum profit requirement for each item. Keep all useful positive-spread items even if the current batch totals less than the target.` : ''} Do not return flyer pages, generic deals pages, homepages, category pages, or a sentence saying verification failed as a finding. If no item has both direct evidence URLs and a positive supported spread, return findings: [] and should_notify=false.` : '',
+      isBroadArbitrageScan(goal) ? `For this retail-arbitrage request, return specific item results only. VERIFIED opportunities must include arbitrage with exact item_name, retailer, marketplace, buy_price, verified discount_amount/description when applicable, net_buy_cost, resale_price, estimated_fees, exact retailer buy_url, exact Amazon/eBay resale_url, and a caveat. ${extractArbitrageProfitTarget(goal) > 0 ? `The $${extractArbitrageProfitTarget(goal).toLocaleString()} figure is the combined weekly target, NOT a minimum profit requirement for each item. Keep all useful positive-spread items even if the current batch totals less than the target.` : ''} If a specific item has a direct non-generic URL+price on exactly one side but the other side still needs proof, return arbitrage_lead with the exact item, identifier when available, the verified side, what evidence is missing, why it is promising, and confidence. Leads are NOT profit and must not count toward the target. Never use flyer pages, generic deals pages, homepages, category pages, or marketplace homepages as final evidence.` : '',
       'If a consequential action still needs approval, say so rather than implying it happened.',
       JSON.stringify(evidence).slice(0, 28000),
     ].join('\n'),
