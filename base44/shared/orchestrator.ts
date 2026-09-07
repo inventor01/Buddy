@@ -2,6 +2,7 @@ import { secrets } from 'base44:runtime';
 import { isWholesalePropertyRequest, runWholesaleDealFinder } from './realEstate.ts';
 import { markProviderVerified, providerCapability, rankProviders, recordProviderAttempt } from './providerPerformance.ts';
 import { taskStepsToOrchestration } from './taskChain.ts';
+import { isBroadArbitrageScan } from './clarification.ts';
 
 const PLAN_SCHEMA = {
   type: 'object',
@@ -104,6 +105,7 @@ export async function planOrchestration(base44: any, buddy: any, personalFacts: 
       delegationLines.length ? delegationLines.join(' ') : '',
       linkedContextLines.length ? linkedContextLines.join('\n') : '',
       'Use at most 5 steps. Prefer authoritative APIs/data for domain facts, browser_fetch for a specific URL, web_research for current public research, calculation for deterministic math, and verify as the final step.',
+      isBroadArbitrageScan(request) ? 'This is intentionally a broad retail-arbitrage scan. Do not narrow it to one product category. Research across the named stores, compare against the named resale marketplaces, incorporate only verifiable coupons/discounts, calculate potential spreads with labeled assumptions, rank the best opportunities, then verify the strongest claims.' : '',
       'Do not create a connected_action step that sends, books, pays, posts, deletes, or commits without approval. Such a step may only prepare or identify the required approval.',
     ].filter(Boolean).join('\n'),
     response_json_schema: PLAN_SCHEMA,
