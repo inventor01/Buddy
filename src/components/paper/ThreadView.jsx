@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import moment from "moment";
-import { ArrowRight, Loader2, Search } from "lucide-react";
+import { ArrowRight, Loader2, RefreshCcw, Search } from "lucide-react";
 import StickyNote from "./StickyNote";
 import LinkedText from "@/components/maker/LinkedText";
 import ProductCard from "@/components/maker/ProductCard";
@@ -31,6 +31,7 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
   const canRunSearch = buddy.kind === "web" && buddy.capability === "web" && !approvalBlockingRun;
   const searchLike = /\b(find|search|compare|check|research|look for|price|deal|flight|availability|watch)\b/i.test(`${buddy.note || ""} ${buddy.what_line || ""}`);
   const rerunLabel = searchLike ? "Run this search now" : "Run this again now";
+  const RerunIcon = searchLike ? Search : RefreshCcw;
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -300,7 +301,7 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
             disabled={busy}
             className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-[12.5px] font-semibold text-neutral-800 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50 disabled:opacity-40"
           >
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RerunIcon className="h-3.5 w-3.5" />}
             {busy ? "Running now…" : rerunLabel}
           </button>
           <p className="mt-1.5 text-[10.5px] text-neutral-400">Runs this handoff again and adds the fresh result to this chat.</p>
@@ -331,7 +332,7 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
           return (
             <div key={i} className={`mt-3 flex flex-col ${it ? "items-start" : "items-end"}`}>
               <span className="font-mono text-[9.5px] tracking-[0.14em] text-neutral-400">
-                {it ? "THE NOTE" : "YOU"} · {fmtAt(m.at)}
+                {it ? "BUDDY" : "YOU"} · {fmtAt(m.at)}
               </span>
               {it && Array.isArray(m.items) && m.items.length ? (
                 <div className="glass mt-1 max-w-[86%] space-y-2 rounded-2xl rounded-tl-md p-2.5">
