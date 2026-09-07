@@ -71,18 +71,6 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
           </p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          {canRunSearch && (
-            <button
-              type="button"
-              onClick={() => onRunSearch?.(buddy)}
-              disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3.5 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-              title="Run this search again with current information"
-            >
-              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-              {busy ? "Searching…" : "Run search"}
-            </button>
-          )}
           {done ? (
             <span className="rounded-full border border-emerald-100 bg-emerald-50/80 px-3.5 py-1.5 text-[12px] font-medium text-emerald-700">
               Done
