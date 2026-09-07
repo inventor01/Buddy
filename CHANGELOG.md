@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-09-06 — Arbitrage evidence + profit quality gate
+
+### Root cause
+- Retail-arbitrage runs used the generic findings contract, so a sentence such as “could not be verified” linked to a store flyer could still render like a useful result.
+- Generic flyer/deals pages were valid URLs but were not strong enough evidence for a specific buy/resale spread.
+- Arbitrage math and `why_fit` could be model-authored, which allowed weak personalization and unverified calculations to look authoritative.
+
+### Permanent fix
+- Added a dedicated structured arbitrage result contract: item, retailer, marketplace, store price, verified discount, net buy cost, resale price, estimated fees, direct buy URL, direct resale evidence URL, and caveat.
+- Added a pure server-side arbitrage gate that rejects flyer/deals/clearance hubs, missing evidence URLs, missing prices, and non-positive spreads.
+- Buddy independently recomputes net buy cost, estimated profit, and ROI from the supported inputs rather than trusting model arithmetic.
+- Broad arbitrage runs now discard every generic finding that does not pass the structured evidence gate.
+- If nothing passes, Buddy returns a neutral “no specific opportunity cleared the evidence and profit checks today” state instead of presenting a failure sentence as a recommendation.
+- Arbitrage `why_fit` is suppressed so matching the user’s requested stores/ZIP is not mislabeled as personalization.
+- Added an ArbitrageCard showing buy cost, resale price, fees, estimated profit/ROI, verified discount, and separate direct links for store evidence and resale evidence.
+- Updated preview, orchestration, saved-message schema, and chat rendering to preserve the structured arbitrage result end-to-end.
+
+### QA
+- Exact Ollie’s `/pages/current-flyer` pattern is rejected as generic evidence.
+- A flyer-backed fake opportunity is rejected even when it contains positive-looking numbers.
+- A properly structured Target → eBay example with direct evidence survives.
+- Net buy cost, profit, and ROI are independently recomputed and verified by unit test.
+- Negative-spread candidates are rejected.
+- Production build, ESLint, affected backend/shared bundles, Buddy schema parsing, and `git diff --check` pass.
+
+
 ## 2026-09-06 — Stop repeated optional clarification loops
 
 ### Root cause
