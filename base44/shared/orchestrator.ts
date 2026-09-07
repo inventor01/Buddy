@@ -44,7 +44,9 @@ const SYNTH_SCHEMA = {
             properties: {
               item_name: { type: 'string' }, retailer: { type: 'string' }, marketplace: { type: 'string' }, category: { type: 'string' }, brand: { type: 'string' },
               actionability_score: { type: 'number' }, action_tier: { type: 'string' }, units_to_target: { type: 'number' }, match_confidence: { type: 'number' }, demand_note: { type: 'string' },
-              buy_price: { type: 'number' }, discount_amount: { type: 'number' }, discount_description: { type: 'string' },
+              original_price: { type: 'number' }, buy_price: { type: 'number' }, price_status: { type: 'string' }, discount_amount: { type: 'number' }, discount_description: { type: 'string' },
+              discounts: { type: 'array', items: { type: 'object', properties: { kind: { type: 'string' }, description: { type: 'string' }, effective_amount: { type: 'number' }, source_url: { type: 'string' }, code: { type: 'string' }, eligibility: { type: 'string' }, stackable_with_current_price: { type: 'boolean' }, stackable_with_other_offers: { type: 'boolean' }, applies_to_exact_item: { type: 'boolean' }, expires_at: { type: 'string' } } } },
+              coupon_dependent: { type: 'boolean' }, profit_without_extra_discounts: { type: 'number' },
               net_buy_cost: { type: 'number' }, resale_price: { type: 'number' }, estimated_fees: { type: 'number' },
               buy_url: { type: 'string' }, resale_url: { type: 'string' }, caveat: { type: 'string' },
             },
@@ -53,7 +55,9 @@ const SYNTH_SCHEMA = {
             type: 'object',
             properties: {
               item_name: { type: 'string' }, retailer: { type: 'string' }, marketplace: { type: 'string' }, category: { type: 'string' }, brand: { type: 'string' }, identifier: { type: 'string' },
-              buy_price: { type: 'number' }, resale_price: { type: 'number' }, buy_url: { type: 'string' }, resale_url: { type: 'string' },
+              original_price: { type: 'number' }, buy_price: { type: 'number' }, price_status: { type: 'string' }, discount_amount: { type: 'number' }, discount_description: { type: 'string' },
+              discounts: { type: 'array', items: { type: 'object', properties: { kind: { type: 'string' }, description: { type: 'string' }, effective_amount: { type: 'number' }, source_url: { type: 'string' }, code: { type: 'string' }, eligibility: { type: 'string' }, stackable_with_current_price: { type: 'boolean' }, stackable_with_other_offers: { type: 'boolean' }, applies_to_exact_item: { type: 'boolean' }, expires_at: { type: 'string' } } } },
+              net_buy_cost: { type: 'number' }, resale_price: { type: 'number' }, buy_url: { type: 'string' }, resale_url: { type: 'string' },
               missing_evidence: { type: 'string' }, reason: { type: 'string' }, confidence: { type: 'number' },
             },
           },
