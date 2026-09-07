@@ -13,7 +13,7 @@ import { runOrchestratedBuddy, shouldOrchestrateRequest } from "./orchestrator.t
 import { loadLinkedBuddies, linkedBuddyPromptLines } from "./linkedBuddies.ts";
 import { taskStepPromptLines } from "./taskChain.ts";
 import { isBroadArbitrageScan, suppressOptionalClarification } from "./clarification.ts";
-import { normalizeArbitrageCandidate } from "./arbitrage.ts";
+import { arbitragePortfolioSummary, extractArbitrageProfitTarget, normalizeArbitrageCandidate } from "./arbitrage.ts";
 
 // The clock where the person actually is. A note set for 9 in the morning
 // should run at their 9, and "already ran today" means their today — so both
@@ -186,8 +186,9 @@ export function sanitizeResultUrl(value) {
 
 // Turns whatever the model returned into bounded finding objects:
 // { text, url, source }. Anything that isn't a real, useful destination is dropped.
-export function toFindingItems(raw) {
+export function toFindingItems(raw, limit = 5) {
   const list = Array.isArray(raw) ? raw : [];
+  const maxItems = Math.max(1, Math.min(12, Number(limit) || 5));
   const items = [];
   for (const f of list) {
     const text = (typeof f === "string" ? f : f?.text || "").trim().slice(0, 160);
@@ -251,7 +252,7 @@ export function toFindingItems(raw) {
     const finalSource = source || arbitrage?.retailer || '';
     const finalWhyFit = arbitrage ? '' : why_fit;
     items.push({ text, url: finalUrl, source: finalSource, why_fit: finalWhyFit, deal, product, arbitrage });
-    if (items.length >= 5) break;
+    if (items.length >= maxItems) break;
   }
   return items;
 }
@@ -286,6 +287,8 @@ async function sendSms(to, body) {
 }
 
 async function runGenericWebFindings({ client, buddy, imageUrl, timeZone, personalFacts, delegationLines, linkedLines = [], taskLines = [] }) {
+  const requestText = `${buddy.note || ''} ${buddy.what_line || ''}`;
+  const arbitrageTarget = isBroadArbitrageScan(requestText) ? extractArbitrageProfitTarget(requestText) : 0;
   return await client.asServiceRole.integrations.Core.InvokeLLM({
     model: "gemini_3_flash",
     add_context_from_internet: true,
@@ -312,7 +315,9 @@ async function runGenericWebFindings({ client, buddy, imageUrl, timeZone, person
           ]
         : []),
       "Handle the request for today. Use current web information when the request needs it; do not force a web search for a personal reminder or simple planning task.",
-      "Return up to 5 useful, concrete findings. Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
+      arbitrageTarget > 0 ? `This person has a $${arbitrageTarget.toLocaleString()} aggregate profit target. Treat it as the combined weekly goal across multiple opportunities unless they explicitly say each/per item/per deal. Do not require one opportunity to make the full target. Return useful positive-spread opportunities even when today's verified total is below the target.` : "",
+      isBroadArbitrageScan(requestText) ? "If the user did not name retailers or resale marketplaces, default to broad current U.S. retail/online sourcing and Amazon/eBay resale evidence. Prefer opportunities that can plausibly be acted on this week. Do not ask for a category, store, or marketplace merely to narrow the scan." : "",
+      isBroadArbitrageScan(requestText) ? "Return up to 12 strongest verified arbitrage opportunities so Buddy can build toward the aggregate target." : "Return up to 5 useful, concrete findings. Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
       ...FINDINGS_RULES
     ].join("\n"),
     response_json_schema: FINDINGS_SCHEMA
