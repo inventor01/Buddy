@@ -558,14 +558,14 @@ export default function Settings() {
                   <button
                     key={key}
                     type="button"
-                    disabled={!ability?.ready || connecting === key}
+                    disabled={!ability?.ready || ability?.connected || connecting === key}
                     onClick={() => connectAbility(ability)}
                     className="rounded-xl border border-white/70 bg-white/60 p-3 text-left transition-colors hover:bg-white disabled:cursor-default disabled:opacity-60"
                   >
                     <p className="text-sm font-medium text-neutral-900">{label}</p>
                     <p className="mt-1 text-xs leading-snug text-neutral-500">{desc}</p>
                     <p className="mt-2 text-[11px] font-medium text-neutral-500">
-                      {connecting === key ? "Opening…" : ability?.ready ? "Connect" : "Almost ready"}
+                      {connecting === key ? "Opening…" : ability?.connected ? "Connected" : ability?.ready ? "Connect" : "Almost ready"}
                     </p>
                   </button>
                 );
