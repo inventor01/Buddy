@@ -40,9 +40,22 @@ const CANDIDATE_SCHEMA = {
           brand: { type: 'string' },
           identifier: { type: 'string' },
           variant: { type: 'string' },
+          original_price: { type: 'number' },
           buy_price: { type: 'number' },
+          price_status: { type: 'string' },
           discount_amount: { type: 'number' },
           discount_description: { type: 'string' },
+          discounts: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                kind: { type: 'string' }, description: { type: 'string' }, effective_amount: { type: 'number' },
+                source_url: { type: 'string' }, code: { type: 'string' }, eligibility: { type: 'string' },
+                stackable_with_current_price: { type: 'boolean' }, applies_to_exact_item: { type: 'boolean' }, expires_at: { type: 'string' }
+              }
+            }
+          },
           buy_url: { type: 'string' },
           availability_note: { type: 'string' },
           evidence_note: { type: 'string' },
@@ -67,9 +80,22 @@ const MATCH_SCHEMA = {
           category: { type: 'string' },
           brand: { type: 'string' },
           identifier: { type: 'string' },
+          original_price: { type: 'number' },
           buy_price: { type: 'number' },
+          price_status: { type: 'string' },
           discount_amount: { type: 'number' },
           discount_description: { type: 'string' },
+          discounts: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                kind: { type: 'string' }, description: { type: 'string' }, effective_amount: { type: 'number' },
+                source_url: { type: 'string' }, code: { type: 'string' }, eligibility: { type: 'string' },
+                stackable_with_current_price: { type: 'boolean' }, applies_to_exact_item: { type: 'boolean' }, expires_at: { type: 'string' }
+              }
+            }
+          },
           buy_url: { type: 'string' },
           marketplace: { type: 'string' },
           resale_price: { type: 'number' },
