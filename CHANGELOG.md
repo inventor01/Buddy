@@ -32,9 +32,12 @@
 - The protected product thesis is the interaction model: no agent builder, trigger/action editor, skill/model selection, or workflow assembly for ordinary users; one outcome becomes a managed, evidence-aware handoff.
 
 ### QA / release notes
-- Mid-pass production build, ESLint, schema parsing, backend bundles, and trust/navigation regression checks passed.
-- Final gate rerun required after the last branding/auth/handoff-contract edits.
-- Base44 connector catalog reported Gmail, Google Calendar, and Google Tasks as not connected at the app level during this pass; code can be release-gated, but live connected-action E2E should not be claimed until OAuth configuration is connected and exercised.
+- Final production build and ESLint pass.
+- Buddy, BuddyJob, BuddyReceipt, BuddyEscalation, PhoneIdentity, and DelegationPolicy schemas parse successfully.
+- Backend bundles pass for planning, creation, run-now, connected actions, scheduled runs, preview, connection state, shared runner, orchestration, linked-chat resolution, task chains, and receipts.
+- Browser/PWA assets, workspace routes, auth-return behavior, handoff-contract UI, server-owned trust records, delete confirmation, and consumer-language regression checks pass.
+- `git diff --check` passes.
+- Base44 connector catalog reported Gmail, Google Calendar, and Google Tasks as not connected at the app level during this pass; code is release-gated, but live connected-action E2E should not be claimed until OAuth configuration is connected and exercised.
 
 ## 2026-09-06 — Response error debugging
 
