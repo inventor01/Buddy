@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-09-06 — Stop repeated optional clarification loops
+
+### Root cause
+- Buddy treated broad discovery as incomplete input. A request to scan named retailers and resale marketplaces for arbitrage could be interpreted as requiring a product category, even though “scan broadly and rank the best opportunities” is itself a complete instruction.
+- The same optional question could be generated independently by the initial planner and later by the findings/research runner, so suppressing only one layer would not permanently stop the loop.
+- Existing recurring handoffs could remain stuck because `runDueBuddies` skipped every record with `open_question`, including stale optional category questions.
+- Common misspellings such as `arbritage` were not guaranteed to hit a deterministic arbitrage rule.
+
+### Permanent fix
+- Added shared clarification rules that recognize broad retail-arbitrage/resale discovery, including common arbitrage misspellings.
+- Product-category/specific-item questions are now suppressed only when the original request is intentionally broad and already names the source/resale ecosystem.
+- Initial planning explicitly treats broad discovery as valid and preserves all named stores/marketplaces.
+- Findings and preview paths use the same suppression rule, preventing a later model call from reintroducing the question.
+- Orchestration now plans broad arbitrage as research across the named stores → resale comparison → verified coupon/discount math → ranking → verification rather than narrowing to one category.
+- Existing saved handoffs automatically clear stale optional scope questions on manual or scheduled execution, while genuinely required questions remain blocking.
+- Retail-arbitrage findings are instructed to include only verifiable coupons/discounts, use direct source links, and label unknown fees/shipping/tax rather than inventing them.
+
+### QA
+- Exact user request with `arbritage` is recognized as broad arbitrage.
+- Five category/item question variants are suppressed.
+- Required flight-origin clarification remains intact.
+- Production build and ESLint pass.
+- Backend/shared bundles pass for planner, preview, run-now, scheduler, shared runner, orchestrator, and clarification rules.
+- `git diff --check` passes.
+
+
 ## 2026-09-06 — Consumer-grade trust + Buddy category differentiation
 
 ### Root causes found
