@@ -130,6 +130,53 @@ function isGenericEvidenceUrl(value: string) {
   } catch (_) { return true; }
 }
 
+function sanitizeDiscounts(raw: any, buyPrice: number) {
+  const now = Date.now();
+  const accepted: any[] = [];
+  const rejectedTerms = /personalized|targeted|account[- ]specific|select customers?|first[- ]time|new customers?|employee|credit card|cardholder|future reward|store cash|rebate|unknown/i;
+  for (const d of Array.isArray(raw) ? raw.slice(0, 10) : []) {
+    const amount = Math.max(0, Number(d?.effective_amount) || 0);
+    const sourceUrl = cleanUrl(d?.source_url);
+    const eligibility = cleanText(d?.eligibility, 140);
+    const description = cleanText(d?.description, 180);
+    const expiresAt = cleanText(d?.expires_at, 40);
+    const expiryMs = expiresAt ? Date.parse(expiresAt) : NaN;
+    if (!amount || amount > buyPrice || !sourceUrl || isGenericEvidenceUrl(sourceUrl)) continue;
+    if (d?.applies_to_exact_item !== true || d?.stackable_with_current_price !== true) continue;
+    if (rejectedTerms.test(`${eligibility} ${description}`)) continue;
+    if (Number.isFinite(expiryMs) && expiryMs < now) continue;
+    accepted.push({
+      kind: cleanText(d?.kind, 50),
+      description,
+      effective_amount: Math.round(amount * 100) / 100,
+      source_url: sourceUrl,
+      code: cleanText(d?.code, 50),
+      eligibility,
+      stackable_with_current_price: true,
+      applies_to_exact_item: true,
+      expires_at: expiresAt,
+    });
+  }
+  let remaining = Math.max(0, buyPrice);
+  const bounded: any[] = [];
+  for (const d of accepted) {
+    const applied = Math.min(remaining, d.effective_amount);
+    if (applied <= 0) continue;
+    bounded.push({ ...d, effective_amount: Math.round(applied * 100) / 100 });
+    remaining -= applied;
+  }
+  return bounded;
+}
+
+function discountSummary(discounts: any[]) {
+  const total = Math.round((Array.isArray(discounts) ? discounts : []).reduce((sum, d) => sum + Math.max(0, Number(d?.effective_amount) || 0), 0) * 100) / 100;
+  const description = (Array.isArray(discounts) ? discounts : []).map((d) => {
+    const label = d.code ? `${d.description || d.kind} (${d.code})` : (d.description || d.kind);
+    return label ? `${label}: -$${Number(d.effective_amount || 0).toFixed(2)}` : '';
+  }).filter(Boolean).join(' + ').slice(0, 360);
+  return { total, description };
+}
+
 export function namedArbitrageRetailers(text: unknown) {
   const lower = String(text || '').toLowerCase();
   const found: string[] = [];
