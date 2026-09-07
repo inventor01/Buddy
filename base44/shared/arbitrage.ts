@@ -18,6 +18,44 @@ export function arbitragePortfolioSummary(items: any[], target = 0) {
   return { verified_potential: verifiedPotential, target: goal, gap, count: opportunities.length };
 }
 
+export function normalizeArbitrageLead(raw: any, sanitizeUrl: (value: unknown) => string) {
+  if (!raw || typeof raw !== 'object') return null;
+  const itemName = String(raw.item_name || '').trim().slice(0, 120);
+  const retailer = String(raw.retailer || '').trim().slice(0, 60);
+  const marketplace = String(raw.marketplace || '').trim().slice(0, 60);
+  const identifier = String(raw.identifier || '').trim().slice(0, 100);
+  const buyPrice = Math.max(0, Number(raw.buy_price) || 0);
+  const resalePrice = Math.max(0, Number(raw.resale_price) || 0);
+  const buyUrl = sanitizeUrl(raw.buy_url);
+  const resaleUrl = sanitizeUrl(raw.resale_url);
+  const missingEvidence = String(raw.missing_evidence || '').trim().slice(0, 180);
+  const reason = String(raw.reason || '').trim().slice(0, 240);
+  const confidence = Math.min(1, Math.max(0, Number(raw.confidence) || 0));
+
+  if (!itemName || (!buyUrl && !resaleUrl)) return null;
+  if (buyUrl && isGenericArbitrageEvidenceUrl(buyUrl)) return null;
+  if (resaleUrl && isGenericArbitrageEvidenceUrl(resaleUrl)) return null;
+  const hasBuySide = buyPrice > 0 && !!buyUrl;
+  const hasResaleSide = resalePrice > 0 && !!resaleUrl;
+  if (!hasBuySide && !hasResaleSide) return null;
+  // If both sides are present, this should graduate through the verified gate instead.
+  if (hasBuySide && hasResaleSide) return null;
+
+  return {
+    item_name: itemName,
+    retailer,
+    marketplace,
+    identifier,
+    buy_price: Math.round(buyPrice * 100) / 100,
+    resale_price: Math.round(resalePrice * 100) / 100,
+    buy_url: buyUrl,
+    resale_url: resaleUrl,
+    missing_evidence: missingEvidence || (hasBuySide ? 'Exact resale evidence still needs verification.' : 'Exact buy-side price evidence still needs verification.'),
+    reason,
+    confidence,
+  };
+}
+
 export function isGenericArbitrageEvidenceUrl(value: unknown) {
   try {
     const url = new URL(String(value || ''));
