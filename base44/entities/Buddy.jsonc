@@ -418,6 +418,53 @@
                       "type": "string"
                     }
                   }
+                },
+                "arbitrage": {
+                  "type": "object",
+                  "properties": {
+                    "item_name": {
+                      "type": "string"
+                    },
+                    "retailer": {
+                      "type": "string"
+                    },
+                    "marketplace": {
+                      "type": "string"
+                    },
+                    "buy_price": {
+                      "type": "number"
+                    },
+                    "discount_amount": {
+                      "type": "number"
+                    },
+                    "discount_description": {
+                      "type": "string"
+                    },
+                    "net_buy_cost": {
+                      "type": "number"
+                    },
+                    "resale_price": {
+                      "type": "number"
+                    },
+                    "estimated_fees": {
+                      "type": "number"
+                    },
+                    "estimated_profit": {
+                      "type": "number"
+                    },
+                    "roi_percent": {
+                      "type": "number"
+                    },
+                    "buy_url": {
+                      "type": "string"
+                    },
+                    "resale_url": {
+                      "type": "string"
+                    },
+                    "caveat": {
+                      "type": "string"
+                    }
+                  }
                 }
               }
             }
