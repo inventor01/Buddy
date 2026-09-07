@@ -51,7 +51,8 @@
       }
     },
     "estimated_time_saved_minutes": {
-      "type": "number"
+      "type": "number",
+      "description": "Legacy field retained for compatibility. Buddy does not display or claim estimated time savings unless a future measured source populates it."
     }
   },
   "required": [
@@ -62,13 +63,17 @@
   ],
   "rls": {
     "create": {
-      "data.owner_id": "{{user.id}}"
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "read": {
       "data.owner_id": "{{user.id}}"
     },
     "update": {
-      "data.owner_id": "{{user.id}}"
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "delete": {
       "data.owner_id": "{{user.id}}"
