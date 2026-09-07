@@ -118,17 +118,19 @@ function chooseRetailers(text: string) {
   return (named.length ? named : DEFAULT_RETAILERS).slice(0, 6);
 }
 
-async function discoverAtRetailer(base44: any, retailer: string, request: string, locationFacts: string[]) {
+async function discoverAtRetailer(base44: any, retailer: string, request: string, locationFacts: string[], focus: string) {
   const response = await base44.asServiceRole.integrations.Core.InvokeLLM({
     model: 'gemini_3_flash',
     add_context_from_internet: true,
     prompt: [
-      `Find up to 7 CURRENT specific arbitrage sourcing candidates at ${retailer}.`,
+      `Find up to 8 CURRENT specific arbitrage sourcing candidates at ${retailer}.`,
       `Overall request: ${request}`,
+      `Discovery focus for this pass: ${focus}`,
       locationFacts.length ? `Relevant location/context: ${locationFacts.join(' | ')}` : '',
       'Use exact product/detail pages as evidence. Do not use the retailer homepage, generic search page, flyer, clearance hub, or category page as a candidate URL.',
-      'Prefer unusually discounted, clearance, coupon-eligible, or low-priced branded products that commonly have measurable resale demand: electronics/accessories, toys/collectibles, tools, small appliances, beauty, home goods, shoes/apparel, games, and other shippable products.',
-      'Preserve exact UPC, SKU, model number, size/count, color, edition, or variant whenever visible. Variant matching matters more than candidate quantity.',
+      'For a large weekly profit target, prioritize meaningful per-unit economics. Prefer items that plausibly could produce at least about $20 profit per unit after marketplace fees or have enough price spread to justify verification. This is only a discovery heuristic, not a claimed profit fact.',
+      'Do not waste the candidate budget on ordinary groceries, low-dollar consumables, or tiny discounts unless the evidence shows an exceptional resale case.',
+      'Return category and brand when visible. Preserve exact UPC, SKU, model number, size/count, color, edition, or variant whenever visible. Variant matching matters more than candidate quantity.',
       'buy_price must be the current visible price on the exact page. Include a discount only when the page/source actually supports it. Never invent local inventory.',
       'If you cannot find a direct product/detail page with a current price, omit that candidate.',
     ].filter(Boolean).join('\n'),
@@ -153,6 +155,8 @@ function dedupeCandidates(raw: any[]) {
     out.push({
       item_name: itemName,
       retailer,
+      category: cleanText(c?.category, 80),
+      brand: cleanText(c?.brand, 80),
       identifier,
       variant: cleanText(c?.variant, 120),
       buy_price: Math.round(buyPrice * 100) / 100,
@@ -179,6 +183,7 @@ async function crossMatchBatch(base44: any, candidates: any[], request: string) 
       'For each candidate, search using identifier first (UPC/SKU/model) and then exact product+variant. Do not match a different size, count, color, edition, condition, bundle, or model.',
       'Prefer a direct Amazon product page, direct eBay listing/product page, or a highly specific eBay result page that clearly supports the quoted resale price. Never use Amazon/eBay homepages.',
       'resale_price must be supported by the returned resale_url. estimated_fees may be a conservative estimate; label uncertainty in caveat. Do not fabricate sold-through, stock quantity, or sales velocity.',
+      'If visible evidence of resale demand exists (sold count, recent sold listing, review count, or active-listing depth), summarize only that visible evidence in demand_note. Otherwise leave demand_note empty.',
       'If you cannot verify resale evidence for the exact item, keep the retail side and set missing_evidence rather than inventing a match.',
     ].join('\n'),
     response_json_schema: MATCH_SCHEMA,
@@ -190,6 +195,8 @@ function toFinding(match: any, target: number) {
   const itemName = cleanText(match?.item_name, 120);
   const retailer = cleanText(match?.retailer, 60);
   const identifier = cleanText(match?.identifier, 100);
+  const category = cleanText(match?.category, 80);
+  const brand = cleanText(match?.brand, 80);
   const buyPrice = Number(match?.buy_price) || 0;
   const discountAmount = Math.max(0, Number(match?.discount_amount) || 0);
   const netBuy = Math.max(0, buyPrice - discountAmount);
