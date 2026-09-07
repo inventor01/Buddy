@@ -41,6 +41,7 @@ export default function Settings() {
   const [savingWholesale, setSavingWholesale] = useState(false);
   const [intelligenceStatus, setIntelligenceStatus] = useState(null);
   const [intelligenceBusy, setIntelligenceBusy] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     base44
@@ -405,6 +406,19 @@ export default function Settings() {
           </div>
 
           <div className="glass rounded-2xl p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-medium text-neutral-900">Advanced options</h3>
+                <p className="mt-0.5 text-sm leading-relaxed text-neutral-500">Specialized controls stay out of the way until you need them.</p>
+              </div>
+              <button type="button" onClick={() => setShowAdvanced((value) => !value)} className="shrink-0 rounded-full border border-white/80 bg-white/70 px-3 py-1.5 text-[11.5px] font-medium text-neutral-600 hover:bg-white hover:text-neutral-900">
+                {showAdvanced ? "Hide" : "Show"}
+              </button>
+            </div>
+          </div>
+
+          {showAdvanced && (
+          <div className="glass rounded-2xl p-5">
             <div className="flex items-start gap-3">
               <House className="mt-0.5 h-5 w-5 text-neutral-400" />
               <div className="flex-1">
@@ -434,6 +448,7 @@ export default function Settings() {
               </div>
             </div>
           </div>
+          )}
 
           {/* email notifications */}
           <div className="glass flex items-center justify-between gap-4 rounded-2xl p-5">
@@ -558,6 +573,7 @@ export default function Settings() {
             </div>
           </div>
 
+          {me?.role === "admin" && (
           <div className="glass rounded-2xl p-5">
             <div className="flex items-start gap-3">
               <ShieldCheck className="mt-0.5 h-5 w-5 text-neutral-400" />
@@ -579,6 +595,7 @@ export default function Settings() {
               </div>
             </div>
           </div>
+          )}
 
           {me?.role === "admin" && (
             <div className="glass rounded-2xl p-5">
@@ -605,8 +622,8 @@ export default function Settings() {
             </div>
           )}
 
-          {/* ad accounts — each person pastes their own token */}
-          <AdsCard />
+          {/* Specialized account controls stay collapsed for the mainstream experience. */}
+          {showAdvanced && <AdsCard />}
 
           {/* the clock notes run on */}
           <div className="glass flex items-center justify-between gap-4 rounded-2xl p-5">
