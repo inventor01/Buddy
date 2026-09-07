@@ -52,7 +52,7 @@ export default function ThankYou() {
               Write as many notes as you like.
             </p>
             <Link
-              to="/"
+              to="/notes"
               className="mt-6 inline-block rounded-full bg-neutral-900 px-6 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-90"
             >
               Back to your notes
@@ -68,7 +68,7 @@ export default function ThankYou() {
               Your Pro turns on automatically — head back to your notes and it will be there.
             </p>
             <Link
-              to="/"
+              to="/notes"
               className="mt-6 inline-block rounded-full bg-neutral-900 px-6 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-90"
             >
               Back to your notes
