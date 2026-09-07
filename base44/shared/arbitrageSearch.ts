@@ -312,8 +312,8 @@ async function crossMatchBatch(base44: any, candidates: any[], request: string) 
       original_price: Math.max(Number(candidate.original_price) || 0, Number(matched.original_price) || 0, Number(matched.buy_price) || 0, Number(candidate.buy_price) || 0),
       price_status: matched.price_status || candidate.price_status || '',
       discounts: Array.isArray(matched.discounts) && matched.discounts.length ? matched.discounts : (candidate.discounts || []),
-      buy_url: matched.buy_url || candidate.buy_url,
-      buy_price: Number(matched.buy_price) > 0 ? matched.buy_price : candidate.buy_price,
+      buy_url: isExactRetailProductUrl(matched.buy_url, candidate.retailer) ? matched.buy_url : candidate.buy_url,
+      buy_price: Number(matched.buy_price) > 0 && isExactRetailProductUrl(matched.buy_url, candidate.retailer) ? matched.buy_price : candidate.buy_price,
     };
     return {
       ...candidate,
@@ -348,7 +348,7 @@ export function toFinding(match: any, target: number) {
   const profitBeforeExtraDiscounts = Math.round((resalePrice - buyPrice - estimatedFees) * 100) / 100;
   const profit = Math.round((resalePrice - netBuy - estimatedFees) * 100) / 100;
   const couponDependent = profit > 0 && profitBeforeExtraDiscounts <= 0 && discountAmount > 0;
-  const genericBuy = !buyUrl || isGenericEvidenceUrl(buyUrl);
+  const genericBuy = !buyUrl || !isExactRetailProductUrl(buyUrl, retailer);
   const genericResale = !resaleUrl || isGenericEvidenceUrl(resaleUrl);
 
   if (itemName && retailer && netBuy > 0 && resalePrice > 0 && profit > 0 && !genericBuy && !genericResale && marketplace) {
