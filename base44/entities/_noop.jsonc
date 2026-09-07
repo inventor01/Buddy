@@ -1,0 +1,29 @@
+{
+  "name": "_noop",
+  "type": "object",
+  "properties": {},
+  "required": [],
+  "description": "Unused temporary internal schema; no application code references this entity.",
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
