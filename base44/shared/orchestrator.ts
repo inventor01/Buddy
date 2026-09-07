@@ -117,36 +117,46 @@ export async function planOrchestration(base44: any, buddy: any, personalFacts: 
   if (isBroadArbitrageScan(request)) {
     const target = extractArbitrageProfitTarget(request);
     const targetText = target > 0 ? `$${target.toLocaleString()} aggregate weekly profit target` : 'best positive-spread opportunities';
-    return {
-      complexity: 5,
-      should_orchestrate: true,
-      steps: [
-        {
-          id: 'retail-scan',
-          kind: 'web_research',
-          instruction: `Build a broad candidate pool of roughly 25-40 current retail/online sourcing candidates for this request before filtering. Preserve any named stores; if none are named, scan major U.S. retailers and clearance/discount sources. Find SPECIFIC products with exact buy pages, current prices, and only verifiable coupons/discounts. Preserve UPC/SKU/model/size/count/variant whenever available. Aim for many candidates rather than requiring one item to satisfy the ${targetText}. Generic flyers/homepages may help discover product names but must never be treated as evidence or final candidates.`, 
-          depends_on: [],
-        },
-        {
-          id: 'resale-check',
-          kind: 'web_research',
-          instruction: 'Take the strongest roughly 15 specific products from the retail scan and cross-match exact model/SKU/UPC/name, size/count, color, and variant against Amazon and/or eBay. Find current resale-price evidence and exact resale URLs. Reject mismatched variants and generic marketplace homepages. If only one side can be verified for an exact item, preserve it as a one-sided lead for another verification pass instead of discarding it.',
-          depends_on: ['retail-scan'],
-        },
-        {
-          id: 'profit-math',
-          kind: 'calculation',
-          instruction: `For every cross-matched candidate, compute net buy cost from verified price minus verified discount, then estimated one-unit profit after stated/estimated marketplace fees and ROI. Treat the ${targetText} as a portfolio goal across multiple opportunities, not a per-item filter. Rank positive spreads by estimated profit, ROI, evidence quality, and actionability this week.`,
-          depends_on: ['retail-scan', 'resale-check'],
-        },
-        {
-          id: 'verify',
-          kind: 'verify',
-          instruction: 'Verify that every final arbitrage opportunity has a specific item, direct buy evidence, direct resale evidence, positive recomputed spread, and clearly labeled assumptions. Never claim inventory quantity, sell-through, or guaranteed profit without evidence.',
-          depends_on: ['profit-math'],
-        },
-      ],
-    };
+    const updatedAt = Date.parse(String(buddy?.arbitrage_leads_updated_at || ''));
+    const priorLeads = Number.isFinite(updatedAt) && Date.now() - updatedAt <= 7 * 24 * 60 * 60 * 1000 && Array.isArray(buddy?.arbitrage_leads)
+      ? buddy.arbitrage_leads.slice(0, 12)
+      : [];
+    const steps: any[] = [];
+    if (priorLeads.length) {
+      steps.push({
+        id: 'lead-reverify',
+        kind: 'web_research',
+        instruction: `Before starting over, try to finish verification on these unresolved leads from recent runs. Search specifically for each missing side using the exact item identifier/variant and preserve direct evidence URLs. Drop stale or mismatched leads. Prior leads: ${JSON.stringify(priorLeads).slice(0, 7000)}`,
+        depends_on: [],
+      });
+    }
+    steps.push(
+      {
+        id: 'retail-scan',
+        kind: 'web_research',
+        instruction: `Build a broad candidate pool of roughly 25-40 current retail/online sourcing candidates for this request before filtering. Preserve any named stores; if none are named, scan major U.S. retailers and clearance/discount sources. Find SPECIFIC products with exact buy pages, current prices, and only verifiable coupons/discounts. Preserve UPC/SKU/model/size/count/variant whenever available. Aim for many candidates rather than requiring one item to satisfy the ${targetText}. Generic flyers/homepages may help discover product names but must never be treated as evidence or final candidates.`,
+        depends_on: [],
+      },
+      {
+        id: 'resale-check',
+        kind: 'web_research',
+        instruction: 'Take the strongest roughly 15 specific products from the retail scan plus any recent leads that gained new evidence, and cross-match exact model/SKU/UPC/name, size/count, color, and variant against Amazon and/or eBay. Find current resale-price evidence and exact resale URLs. Reject mismatched variants and generic marketplace homepages. If only one side can be verified for an exact item, preserve it as a one-sided lead for another verification pass instead of discarding it.',
+        depends_on: priorLeads.length ? ['lead-reverify', 'retail-scan'] : ['retail-scan'],
+      },
+      {
+        id: 'profit-math',
+        kind: 'calculation',
+        instruction: `For every cross-matched candidate, compute net buy cost from verified price minus verified discount, then estimated one-unit profit after stated/estimated marketplace fees and ROI. Treat the ${targetText} as a portfolio goal across multiple opportunities, not a per-item filter. Rank positive spreads by estimated profit, ROI, evidence quality, and actionability this week.`,
+        depends_on: ['resale-check'],
+      },
+      {
+        id: 'verify',
+        kind: 'verify',
+        instruction: 'Verify that every final arbitrage opportunity has a specific item, direct buy evidence, direct resale evidence, positive recomputed spread, and clearly labeled assumptions. Keep specific one-sided leads separate from verified opportunities. Never claim inventory quantity, sell-through, or guaranteed profit without evidence.',
+        depends_on: ['profit-math'],
+      },
+    );
+    return { complexity: 5, should_orchestrate: true, steps };
   }
   const plan = await base44.asServiceRole.integrations.Core.InvokeLLM({
     model: 'gemini_3_flash',
