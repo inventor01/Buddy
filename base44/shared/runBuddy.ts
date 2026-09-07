@@ -13,7 +13,7 @@ import { runOrchestratedBuddy, shouldOrchestrateRequest } from "./orchestrator.t
 import { loadLinkedBuddies, linkedBuddyPromptLines } from "./linkedBuddies.ts";
 import { taskStepPromptLines } from "./taskChain.ts";
 import { isBroadArbitrageScan, suppressOptionalClarification } from "./clarification.ts";
-import { arbitragePortfolioSummary, extractArbitrageProfitTarget, normalizeArbitrageCandidate } from "./arbitrage.ts";
+import { arbitragePortfolioSummary, extractArbitrageProfitTarget, normalizeArbitrageCandidate, normalizeArbitrageLead } from "./arbitrage.ts";
 
 // The clock where the person actually is. A note set for 9 in the morning
 // should run at their 9, and "already ran today" means their today — so both
@@ -150,6 +150,22 @@ export const FINDINGS_SCHEMA = {
               resale_url: { type: "string" },
               caveat: { type: "string" }
             }
+          },
+          arbitrage_lead: {
+            type: "object",
+            properties: {
+              item_name: { type: "string" },
+              retailer: { type: "string" },
+              marketplace: { type: "string" },
+              identifier: { type: "string" },
+              buy_price: { type: "number" },
+              resale_price: { type: "number" },
+              buy_url: { type: "string" },
+              resale_url: { type: "string" },
+              missing_evidence: { type: "string" },
+              reason: { type: "string" },
+              confidence: { type: "number" }
+            }
           }
         },
         required: ["text"]
@@ -248,10 +264,12 @@ export function toFindingItems(raw, limit = 5) {
     }
     const a = f && typeof f === "object" ? f.arbitrage : null;
     const arbitrage = normalizeArbitrageCandidate(a, sanitizeResultUrl);
-    const finalUrl = arbitrage?.buy_url || url;
-    const finalSource = source || arbitrage?.retailer || '';
-    const finalWhyFit = arbitrage ? '' : why_fit;
-    items.push({ text, url: finalUrl, source: finalSource, why_fit: finalWhyFit, deal, product, arbitrage });
+    const leadRaw = f && typeof f === "object" ? f.arbitrage_lead : null;
+    const arbitrage_lead = arbitrage ? null : normalizeArbitrageLead(leadRaw, sanitizeResultUrl);
+    const finalUrl = arbitrage?.buy_url || arbitrage_lead?.buy_url || arbitrage_lead?.resale_url || url;
+    const finalSource = source || arbitrage?.retailer || arbitrage_lead?.retailer || arbitrage_lead?.marketplace || '';
+    const finalWhyFit = (arbitrage || arbitrage_lead) ? '' : why_fit;
+    items.push({ text, url: finalUrl, source: finalSource, why_fit: finalWhyFit, deal, product, arbitrage, arbitrage_lead });
     if (items.length >= maxItems) break;
   }
   return items;
@@ -431,15 +449,17 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
   const arbitrageTarget = broadArbitrage ? extractArbitrageProfitTarget(requestText) : 0;
   let items = toFindingItems(findings?.findings, broadArbitrage ? 12 : 5);
   if (broadArbitrage) {
-    items = items.filter((item) => item?.arbitrage);
-    shouldNotify = shouldNotify && items.length > 0;
+    items = items.filter((item) => item?.arbitrage || item?.arbitrage_lead);
+    const verifiedCount = items.filter((item) => item?.arbitrage).length;
+    shouldNotify = shouldNotify && verifiedCount > 0;
   }
   let lines;
   if (items.length && broadArbitrage) {
     const portfolio = arbitragePortfolioSummary(items, arbitrageTarget);
+    const leadCount = items.filter((item) => item?.arbitrage_lead).length;
     const progress = arbitrageTarget > 0
-      ? `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities toward your $${arbitrageTarget.toLocaleString()} weekly target. Gap: $${portfolio.gap.toLocaleString()}. This is opportunity math, not guaranteed profit or confirmed inventory quantity.`
-      : `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities. This is opportunity math, not guaranteed profit or confirmed inventory quantity.`;
+      ? `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities toward your $${arbitrageTarget.toLocaleString()} weekly target. Gap: $${portfolio.gap.toLocaleString()}.${leadCount ? ` Buddy also kept ${leadCount} promising lead${leadCount === 1 ? '' : 's'} that still need one side verified; they are not counted toward the target yet.` : ''} This is opportunity math, not guaranteed profit or confirmed inventory quantity.`
+      : `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities.${leadCount ? ` Buddy also kept ${leadCount} promising lead${leadCount === 1 ? '' : 's'} that still need one side verified.` : ''} This is opportunity math, not guaranteed profit or confirmed inventory quantity.`;
     lines = [progress, ...toLines(items)];
   } else if (items.length) {
     lines = toLines(items);
