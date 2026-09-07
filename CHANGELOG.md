@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-09-07 — Remove arbitrage dead-end empty state
+
+### Root cause
+- Saved arbitrage runs silently caught failures from the dedicated retailer/coupon/resale pipeline and fell back to the generic web engine. That could produce the old “No specific arbitrage opportunity cleared...” message even when the specialized arbitrage pipeline had actually failed.
+- If an Amazon/eBay cross-match batch failed, the exact retailer products already discovered in that batch were dropped because only fulfilled match batches were converted into findings.
+- If all normal retailer-discovery passes returned zero exact product pages, the pipeline immediately ended instead of trying a simpler exact-product rescue query.
+- The old empty-state copy hid which stage failed and made a source-access or pipeline problem look like proof that no arbitrage existed.
+
+### Permanent fix
+- Removed generic-web fallback for broad arbitrage. A dedicated arbitrage failure is now surfaced transparently and is never disguised as equivalent generic research.
+- Failed Amazon/eBay match batches now preserve every exact retailer product as a one-sided retryable lead, including its direct buy page, verified current price, coupons/discounts, identifier, and missing resale-evidence reason.
+- Added a bounded rescue discovery pass per named retailer when all normal high-value/deep-discount discovery passes return zero exact products.
+- Added structured `search_stats`/verification reporting for retailer count, discovery passes, exact candidates, discount batches, resale-match batches completed/failed, verified deals, and preserved leads.
+- Replaced the old opaque “No specific arbitrage opportunity cleared Buddy’s evidence and profit checks” copy everywhere. Empty runs now distinguish source-access/discovery limitations from actual verified zero-opportunity results.
+- Preview runs now return a transparent arbitrage-pipeline error instead of silently masking a failure.
+
+### QA
+- Production build, ESLint, Buddy schema, arbitrage search/shared runner/run-now/scheduler/preview bundles, and `git diff --check` pass.
+- Exact stale empty-state sentence is absent from the source tree.
+- Simulated total Amazon/eBay match outage preserves exact Target/Meijer products as one-sided leads and reports failed match batches.
+- Simulated zero normal discovery triggers the rescue pass and preserves a rescued exact Dyson product as a lead even when resale matching then fails.
+- Leads remain excluded from verified-profit totals until resale evidence clears.
+
+
 ## 2026-09-06 — Coupon-aware arbitrage net-cost engine
 
 ### Root cause
