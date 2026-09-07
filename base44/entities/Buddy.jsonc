@@ -239,6 +239,55 @@
       "type": "string",
       "description": "A question it asked that's still waiting on the user's answer"
     },
+    "arbitrage_leads": {
+      "type": "array",
+      "description": "Recent one-sided arbitrage candidates Buddy should try to finish verifying on the next run before starting over.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_name": {
+            "type": "string"
+          },
+          "retailer": {
+            "type": "string"
+          },
+          "marketplace": {
+            "type": "string"
+          },
+          "identifier": {
+            "type": "string"
+          },
+          "buy_price": {
+            "type": "number"
+          },
+          "resale_price": {
+            "type": "number"
+          },
+          "buy_url": {
+            "type": "string"
+          },
+          "resale_url": {
+            "type": "string"
+          },
+          "missing_evidence": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "last_seen_at": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "arbitrage_leads_updated_at": {
+      "type": "string",
+      "description": "ISO timestamp for the most recent unresolved arbitrage lead refresh."
+    },
     "schedule_time": {
       "type": "string",
       "description": "The time it runs, e.g. 9:00 AM"
