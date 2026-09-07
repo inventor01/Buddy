@@ -427,17 +427,29 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
   }
 
   let shouldNotify = findings?.should_notify !== false;
-  let items = toFindingItems(findings?.findings);
   const broadArbitrage = isBroadArbitrageScan(requestText);
+  const arbitrageTarget = broadArbitrage ? extractArbitrageProfitTarget(requestText) : 0;
+  let items = toFindingItems(findings?.findings, broadArbitrage ? 12 : 5);
   if (broadArbitrage) {
     items = items.filter((item) => item?.arbitrage);
     shouldNotify = shouldNotify && items.length > 0;
   }
-  const lines = items.length
-    ? toLines(items)
-    : [broadArbitrage
-        ? "No specific arbitrage opportunity cleared Buddy’s evidence and profit checks today."
-        : (shouldNotify ? "Nothing useful turned up this time." : "Nothing changed — still keeping an eye on it.")];
+  let lines;
+  if (items.length && broadArbitrage) {
+    const portfolio = arbitragePortfolioSummary(items, arbitrageTarget);
+    const progress = arbitrageTarget > 0
+      ? `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities toward your $${arbitrageTarget.toLocaleString()} weekly target. Gap: $${portfolio.gap.toLocaleString()}. This is opportunity math, not guaranteed profit or confirmed inventory quantity.`
+      : `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities. This is opportunity math, not guaranteed profit or confirmed inventory quantity.`;
+    lines = [progress, ...toLines(items)];
+  } else if (items.length) {
+    lines = toLines(items);
+  } else {
+    lines = [broadArbitrage
+      ? (arbitrageTarget > 0
+          ? `No specific arbitrage opportunity cleared Buddy’s evidence and profit checks on this run. Your $${arbitrageTarget.toLocaleString()} weekly target stays in place; Buddy should keep scanning broadly on the next scheduled run.`
+          : "No specific arbitrage opportunity cleared Buddy’s evidence and profit checks today.")
+      : (shouldNotify ? "Nothing useful turned up this time." : "Nothing changed — still keeping an eye on it.")];
+  }
 
   const today = nowInZone(timeZone).date;
   const finishing = buddy.run_mode === "once";
