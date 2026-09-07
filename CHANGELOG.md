@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-09-06 — Target-aware actionable arbitrage ranking
+
+### Root cause
+- The dedicated arbitrage pipeline still gave every retailer one generic discovery pass, so low-dollar groceries and commodity clearance could consume the same search budget as LEGO, tools, electronics, appliances, or other categories that can realistically contribute to a $5K weekly target.
+- Increasing discovery depth created a second problem: the fixed global candidate cap could let the first retailers monopolize the resale-matching pool, leaving later named retailers effectively unsearched.
+- A resale-matching model could omit a difficult SKU entirely, causing an exact retail product to disappear rather than surviving as a one-sided lead.
+- Every positive spread was ranked mostly by raw profit and could trigger a notification, even when the economics required hundreds of units or the spread was too small to be actionable.
+
+### Permanent fix
+- Added two target-aware discovery passes per retailer: a high-value exact-SKU pass and a deep-discount branded-goods pass.
+- Explicitly prioritizes LEGO/sealed collectibles, gaming, electronics, tools/power tools, vacuums/small appliances, premium kitchen appliances, and branded beauty devices while deprioritizing ordinary groceries, low-dollar consumables, tiny discounts, bulky furniture, and generic apparel unless exceptional evidence exists.
+- Candidate discovery now records category/brand and scores products before resale matching using identifier quality, branded/high-value category fit, current price, and supported discount depth.
+- Candidate selection is balanced per retailer (up to six strongest each) before global ranking, preventing Target/Ollie's or any first-listed source from crowding Meijer/TJ Maxx/etc. out of the match budget.
+- Increased the bounded resale cross-match pool to cover the balanced candidate set.
+- Every exact retail candidate deterministically exits the resale pass as either a returned match or an explicit one-sided lead; model omission can no longer silently delete the product.
+- Added deterministic verified-deal actionability scoring based on estimated profit per unit, ROI, match confidence, units-to-target math, and priority-category fit.
+- Verified results are classified as `check_now`, `promising`, or `low_priority`; strong candidates rank first and low-priority positive spreads no longer trigger alerts by themselves.
+- Result summaries now show an action queue count for CHECK NOW / promising / low priority.
+- Verified cards display actionability score, target-unit math, demand evidence when genuinely visible, brand/category, and tier-specific next actions.
+- Profit and ROI are attached at the dedicated pipeline layer as well as recomputed at the shared normalization boundary, so internal and UI consumers see a self-consistent deal object.
+
+### QA
+- Exact Target/Ollie's/Kroger/Meijer/TJ Maxx + `5k` prompt retains all five retailers and parses the target to $5,000.
+- High-value LEGO candidate scores materially above a low-dollar grocery candidate.
+- Strong $55/unit example classifies CHECK NOW with 88/100 actionability.
+- $3/unit grocery spread remains visible but correctly classifies LOW PRIORITY.
+- One-sided Dyson exact-product example survives as a lead.
+- Portfolio summary counts tiers correctly and preserves deterministic profit/gap math.
+- Production build, ESLint, Buddy schema parsing, arbitrage/search/shared runner/run-now/scheduler/preview bundles and `git diff --check` pass.
+
+
 ## 2026-09-06 — Actionable arbitrage retailer fan-out
 
 ### Root cause
