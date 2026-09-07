@@ -38,6 +38,14 @@ export default function ArbitrageLeadCard({ item }) {
       </div>
 
       {a.reason && <p className="mt-3 text-[11.5px] leading-relaxed text-neutral-600">{a.reason}</p>}
+      <div className="mt-3 rounded-xl border border-amber-100 bg-white/70 px-3.5 py-3">
+        <p className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-amber-700">Next verification</p>
+        <p className="mt-1 text-[11.5px] leading-relaxed text-neutral-700">
+          {a.buy_url
+            ? "Use the exact model/SKU above to confirm the matching Amazon or eBay price. Buddy will retry this lead on the next run."
+            : "Find the exact retailer product/variant and current buy price. Buddy will retry this lead on the next run."}
+        </p>
+      </div>
       <p className="mt-2 text-[10.5px] leading-relaxed text-neutral-400">Not counted toward your profit target until both sides and the spread are verified.</p>
 
       {knownUrl && (
