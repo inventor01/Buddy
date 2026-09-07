@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-09-07 — Exact resale-comp product-page evidence
+
+### Root cause
+- Buddy enforced exact retailer product pages on the buy side, but the resale side could still accept a marketplace search/results URL as evidence for a quoted comp.
+- The resale matcher explicitly allowed a highly specific eBay result page, which is not the same as the exact item/listing page whose price is being used.
+- A generic marketplace label such as `Amazon/eBay` could also confuse host-specific URL validation.
+
+### Permanent fix
+- Added a shared exact resale-comp URL gate. Amazon comps must resolve to an exact `/dp/ASIN`, `/gp/product/ASIN`, or mobile `/gp/aw/d/ASIN` product page. eBay comps must resolve to an exact `/itm/` item/listing page.
+- Amazon/eBay search pages, completed-listing search results, result grids, category pages, and marketplace homepages are discovery-only and can never certify a verified resale price.
+- Added a dedicated resale-comp resolution pass. When a model finds a price from a marketplace search page, Buddy uses the exact SKU/UPC/model/variant to try again for the exact Amazon product page or eBay item page.
+- If the exact comp page cannot be resolved, the resale price is removed from profit math and the item remains a Promising Lead with the buy side preserved.
+- Final arbitrage normalization independently enforces the exact resale URL requirement so a generic marketplace URL cannot bypass the search pipeline.
+- URL host is authoritative; a generic `Amazon/eBay` label no longer causes an exact eBay URL to be evaluated as Amazon evidence.
+- Verified cards now label the resale button `Open exact resale comp`.
+
+### QA
+- Amazon search URL rejected; exact Amazon ASIN page accepted.
+- eBay search/completed-results URL rejected; exact eBay `/itm/` page accepted.
+- Exact eBay item page still passes when the marketplace label is `Amazon/eBay`.
+- A valid Target product page paired with an eBay search-results comp cannot graduate to a verified opportunity; it cleanly downgrades to a one-sided lead with no resale URL or profit counted.
+- Production build, ESLint, resale-evidence/arbitrage/arbitrage-search bundles, and `git diff --check` pass.
+
+
 ## 2026-09-07 — Exact retailer product-page evidence gate
 
 ### Root cause
