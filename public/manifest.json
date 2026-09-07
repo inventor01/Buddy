@@ -2,7 +2,7 @@
   "name": "Buddy — Hand it off",
   "short_name": "Buddy",
   "description": "Tell Buddy what you need done. It carries the work forward and brings you back when your judgment or approval is needed.",
-  "start_url": "/",
+  "start_url": "/notes",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f7f7f5",
