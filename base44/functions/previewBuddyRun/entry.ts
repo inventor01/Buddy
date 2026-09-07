@@ -6,6 +6,7 @@ import { normalizeTaskSteps, taskStepPromptLines } from '../../shared/taskChain.
 import { isBroadArbitrageScan, suppressOptionalClarification } from '../../shared/clarification.ts';
 import { arbitragePortfolioSummary, extractArbitrageProfitTarget } from '../../shared/arbitrage.ts';
 import { runRetailArbitragePipeline } from '../../shared/arbitrageSearch.ts';
+import { buildResponseIntelligence, responseIntelligenceLines } from '../../shared/responseIntelligence.ts';
 
 // Runs a visitor's typed note once, with no account and nothing saved —
 // the "watch it run" step for people who haven't signed in. Anonymous by
@@ -121,7 +122,9 @@ export default async function(req) {
       const summary = target > 0
         ? `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities toward your $${target.toLocaleString()} weekly target. Gap: $${portfolio.gap.toLocaleString()}. Action queue: ${portfolio.check_now} CHECK NOW, ${portfolio.promising} promising, ${portfolio.low_priority} low priority.${leadCount ? ` ${leadCount} more exact product lead${leadCount === 1 ? '' : 's'} still need one side verified.` : ''}`
         : `This run found ${portfolio.count} verified opportunities: ${portfolio.check_now} CHECK NOW, ${portfolio.promising} promising, ${portfolio.low_priority} low priority${leadCount ? `, plus ${leadCount} exact product lead${leadCount === 1 ? '' : 's'} still being verified` : ''}.`;
-      return Response.json({ state: 'answer', lines: [summary, ...toLines(items)], items, message: summary });
+      const intelligence = await buildResponseIntelligence({ base44, request: `${note} ${what}`, items, verificationSummary: pipeline?.verification_summary || '', personalFacts: context });
+      const smartLines = responseIntelligenceLines(intelligence);
+      return Response.json({ state: 'answer', lines: [summary, ...smartLines, ...toLines(items)], items, message: smartLines[0] || summary });
     }
 
     const findings = await base44.asServiceRole.integrations.Core.InvokeLLM({
@@ -188,7 +191,9 @@ export default async function(req) {
       return Response.json({ state: 'answer', lines: [summary, ...toLines(items)], items, message: summary });
     }
 
-    return Response.json({ state: 'answer', lines: toLines(items), items });
+    const intelligence = await buildResponseIntelligence({ base44, request: `${note} ${what}`, items, personalFacts: context });
+    const smartLines = responseIntelligenceLines(intelligence);
+    return Response.json({ state: 'answer', lines: [...smartLines, ...toLines(items)], items, message: smartLines[0] || undefined });
   } catch (error) {
     const message = String(error?.message || error || 'Buddy could not finish this preview.');
     return Response.json({ error: message, code: 'PREVIEW_FAILED' }, { status: 500 });
