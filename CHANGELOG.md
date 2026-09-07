@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-09-06 — Coupon-aware arbitrage net-cost engine
+
+### Root cause
+- Arbitrage already had a single `discount_amount`, but it did not reliably distinguish a store markdown already reflected in the visible price from an additional coupon. That created a risk of double-counting sale/clearance savings.
+- Coupon discovery was mixed into general product research rather than given its own verification pass, so digital coupons, loyalty offers, public promo codes, manufacturer coupons, and clip-to-account offers could be missed.
+- Multiple offers could be combined without proving they stack with each other, and weak offers such as targeted coupons, future store cash, first-time-only promos, credit-card discounts, uncertain rebates, or expired offers could distort profit math.
+
+### Permanent fix
+- Added a shared server-side discount validator and ledger used by both discovery and final normalization.
+- `buy_price` now explicitly means the CURRENT regular/sale/clearance price; `original_price`/`price_status` record the visible markdown separately so a sale is never subtracted twice.
+- Added structured discount offers with kind, description, effective dollar amount, source URL, code, eligibility, current-price stacking, multi-offer stacking, exact-item applicability, and expiration.
+- Added a dedicated coupon/discount enrichment pass before Amazon/eBay resale matching.
+- The engine actively searches item-level digital coupons, free loyalty/member offers, public promo codes, manufacturer coupons, and clip-to-account savings.
+- Net buy cost only subtracts offers that have source evidence, apply to the exact item, are valid/not expired, have acceptable eligibility, and explicitly stack with the current price.
+- Personalized/targeted/account-specific, future reward/store cash, uncertain rebate, credit-card, employee, first-time-only, and unknown-eligibility offers are excluded from profit math.
+- The single strongest verified offer is used by default. Multiple offers are combined only when all included offers explicitly say they stack with other offers.
+- Added `profit_without_extra_discounts` and `coupon_dependent` so Buddy can show when a spread is only profitable because the coupon still applies.
+- Verified and lead cards now show store markdowns separately from extra savings, list coupon/source/code/eligibility details, show net buy cost, and warn users to recheck coupon-dependent deals at checkout.
+- Carried verified coupon details forward with unresolved leads so daily reruns do not forget a valid buy-side discount.
+
+### QA
+- Production build and ESLint pass.
+- Buddy schema parses with the expanded discount ledger.
+- Discount, arbitrage, arbitrage-search, runner, and orchestration bundles pass.
+- Valid exact-item coupon is applied; expired, targeted, future-reward, and generic coupon-hub offers are rejected.
+- Non-stackable offers are not combined; explicitly stackable offers combine correctly.
+- A visible `$80 → $50` sale with a bogus `$30` discount field remains a `$50` net buy cost (no double-count).
+- A coupon-dependent example correctly computes `$50 current price - $10 verified coupon = $40 net`, `$10` estimated profit, and flags the spread as coupon-dependent.
+- `git diff --check` passes.
+
 ## 2026-09-06 — Target-aware actionable arbitrage ranking
 
 ### Root cause
