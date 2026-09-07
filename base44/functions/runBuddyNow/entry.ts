@@ -11,6 +11,7 @@ import { recordEscalationOnce, resolveEscalation } from '../../shared/escalation
 import { loadVerifiedPhone } from '../../shared/phone.ts';
 import { resolveBuddyMentions, loadLinkedBuddies, linkedBuddyPromptLines } from '../../shared/linkedBuddies.ts';
 import { taskStepPromptLines } from '../../shared/taskChain.ts';
+import { suppressOptionalClarification } from '../../shared/clarification.ts';
 
 const BUDDY_FOLLOWUP_MAX = 8000;
 const ACTION_QUERY_MAX = 2000;
@@ -334,6 +335,17 @@ export default async function (req) {
     failureBuddy = buddy;
     if (!buddy || buddy.owner_id !== user.id) {
       return Response.json({ error: 'That Buddy is not yours.' }, { status: 403 });
+    }
+
+    // Older handoffs may already contain an optional narrowing question from
+    // before the broad-discovery rule existed. Clear only questions that are
+    // provably optional for this exact request; genuinely required details stay.
+    if (buddy.open_question) {
+      const stillRequired = suppressOptionalClarification(`${buddy.note || ''} ${buddy.what_line || ''}`, buddy.open_question);
+      if (!stillRequired) {
+        await base44.entities.Buddy.update(buddyId, { open_question: '' });
+        buddy.open_question = '';
+      }
     }
 
     const profile = await loadProfile(base44, user.id);
