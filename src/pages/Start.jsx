@@ -426,6 +426,12 @@ export default function Start() {
   const card = "glass rounded-[24px] p-6 sm:p-8";
   const kicker = "text-[10.5px] font-semibold uppercase tracking-[0.2em] text-neutral-400";
   const h2 = "font-heading text-[26px] font-semibold tracking-tight text-neutral-900 sm:text-[30px]";
+  const planHasApproval = !!lines?.approvalRequired || (Array.isArray(lines?.taskSteps) && lines.taskSteps.some((task) => task?.approval_required));
+  const planUserPart = lines?.question
+    ? "Give Buddy the one detail below."
+    : planHasApproval
+      ? "Come back only when Buddy has something ready for your approval."
+      : "Nothing else right now — Buddy can take it from here.";
 
   return (
     <div className="page-glow min-h-screen">
@@ -601,8 +607,19 @@ export default function Start() {
             <p className={kicker}>What you said</p>
             <p className="mt-1.5 font-heading text-[19px] leading-snug text-neutral-900">{note}</p>
 
+            <div className="mt-6 grid gap-2 sm:grid-cols-2">
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/55 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Buddy owns</p>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-neutral-700">{lines.what}</p>
+              </div>
+              <div className="rounded-2xl border border-amber-100 bg-amber-50/45 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">You’re needed for</p>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-neutral-700">{planUserPart}</p>
+              </div>
+            </div>
+
             <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
-              <p className={kicker}>Here’s how it’ll handle it</p>
+              <p className={kicker}>Here’s how Buddy will handle it</p>
               <p className="text-[11.5px] text-neutral-400">Drag to arrange · tap the pencil to reword</p>
             </div>
             <div className="mt-3">
