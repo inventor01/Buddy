@@ -173,6 +173,39 @@ async function discoverAtRetailer(base44: any, retailer: string, request: string
   return (Array.isArray(response?.candidates) ? response.candidates : []).map((c: any) => ({ ...c, retailer }));
 }
 
+async function resolveExactRetailPages(base44: any, rawCandidates: any[], request: string) {
+  const needsResolution = (Array.isArray(rawCandidates) ? rawCandidates : [])
+    .filter((c: any) => {
+      const item = cleanText(c?.item_name, 120);
+      const retailer = cleanText(c?.retailer, 60);
+      const price = Number(c?.buy_price) || 0;
+      const url = cleanUrl(c?.buy_url);
+      return item && retailer && price > 0 && (!url || !isExactRetailProductUrl(url, retailer));
+    })
+    .slice(0, 24);
+  if (!needsResolution.length) return [];
+
+  const batches: any[][] = [];
+  for (let i = 0; i < needsResolution.length; i += 8) batches.push(needsResolution.slice(i, i + 8));
+  const settled = await Promise.allSettled(batches.map(async (batch) => {
+    const response = await base44.asServiceRole.integrations.Core.InvokeLLM({
+      model: 'gemini_3_flash',
+      add_context_from_internet: true,
+      prompt: [
+        'Resolve these retail-arbitrage discovery candidates to the EXACT retailer product-detail page.',
+        `Overall request: ${request}`,
+        `Candidates: ${JSON.stringify(batch).slice(0, 12000)}`,
+        'Search by retailer + exact item name + UPC/SKU/model first. Return a candidate only when buy_url is the exact product/detail page for that exact variant and the current buy_price is supported by that page.',
+        'Do NOT return retailer homepages, search results, category pages, clearance hubs, flyers, collection pages, or query pages. If an exact product page cannot be found, omit the candidate instead of preserving the generic URL.',
+        'Preserve exact identifier/variant/category/brand and any valid current markdown/coupon details when supported.',
+      ].join('\n'),
+      response_json_schema: CANDIDATE_SCHEMA,
+    });
+    return Array.isArray(response?.candidates) ? response.candidates : [];
+  }));
+  return settled.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
+}
+
 export function candidateDiscoveryScore(c: any) {
   const buyPrice = Math.max(0, Number(c?.buy_price) || 0);
   const verifiedDiscounts = sanitizeDiscountOffers(c?.discounts, buyPrice);
@@ -468,7 +501,8 @@ export async function runRetailArbitragePipeline({ base44, buddy, personalFacts 
   );
   const discoveredSettled = await Promise.allSettled(discoveryJobs);
   const discovered = discoveredSettled.flatMap((r) => r.status === 'fulfilled' ? r.value : []);
-  let candidates = dedupeCandidates([...priorAsCandidates, ...discovered]);
+  const resolvedGenericCandidates = await resolveExactRetailPages(base44, discovered, request);
+  let candidates = dedupeCandidates([...priorAsCandidates, ...discovered, ...resolvedGenericCandidates]);
 
   // Rescue pass: if every normal discovery pass came back empty, retry each
   // named retailer once with a simpler exact-product objective rather than
