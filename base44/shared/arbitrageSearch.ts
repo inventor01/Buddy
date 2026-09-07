@@ -53,7 +53,7 @@ const CANDIDATE_SCHEMA = {
               properties: {
                 kind: { type: 'string' }, description: { type: 'string' }, effective_amount: { type: 'number' },
                 source_url: { type: 'string' }, code: { type: 'string' }, eligibility: { type: 'string' },
-                stackable_with_current_price: { type: 'boolean' }, applies_to_exact_item: { type: 'boolean' }, expires_at: { type: 'string' }
+                stackable_with_current_price: { type: 'boolean' }, stackable_with_other_offers: { type: 'boolean' }, applies_to_exact_item: { type: 'boolean' }, expires_at: { type: 'string' }
               }
             }
           },
@@ -93,7 +93,7 @@ const MATCH_SCHEMA = {
               properties: {
                 kind: { type: 'string' }, description: { type: 'string' }, effective_amount: { type: 'number' },
                 source_url: { type: 'string' }, code: { type: 'string' }, eligibility: { type: 'string' },
-                stackable_with_current_price: { type: 'boolean' }, applies_to_exact_item: { type: 'boolean' }, expires_at: { type: 'string' }
+                stackable_with_current_price: { type: 'boolean' }, stackable_with_other_offers: { type: 'boolean' }, applies_to_exact_item: { type: 'boolean' }, expires_at: { type: 'string' }
               }
             }
           },
@@ -160,7 +160,7 @@ async function discoverAtRetailer(base44: any, retailer: string, request: string
       'Return category and brand when visible. Preserve exact UPC, SKU, model number, size/count, color, edition, or variant whenever visible. Variant matching matters more than candidate quantity.',
       'PRICE RULE: buy_price is the CURRENT visible regular/sale/clearance price on the exact page BEFORE any additional coupon. If the page says was $79.99, now $49.99, set original_price=79.99, buy_price=49.99, price_status="sale". Do NOT also count the $30 markdown as discount_amount; that would double-count the sale.',
       'Actively look for EXTRA savings that can stack on top of buy_price: item-specific digital coupons, retailer loyalty/member offers, public promo codes, manufacturer coupons, clip-to-account offers, and other current discounts.',
-      'Put each extra offer in discounts with kind, description, effective_amount, exact source_url, code if any, eligibility, whether it stacks with the current price, whether it applies to this exact item, and expiration if visible.',
+      'Put each extra offer in discounts with kind, description, effective_amount, exact source_url, code if any, eligibility, whether it stacks with the current price, whether it explicitly stacks with other coupon/offer discounts, whether it applies to this exact item, and expiration if visible.',
       'Do not count rewards earned for a future purchase, store cash earned later, rebates with uncertain redemption, targeted/personalized offers, credit-card offers, employee discounts, or unknown-eligibility offers as immediate savings.',
       'Never assume two offers stack. If stacking is unclear, mark stackable_with_current_price=false. Never invent coupon eligibility or local inventory.',
       'If you cannot find a direct product/detail page with a current price, omit that candidate.',
@@ -250,7 +250,7 @@ async function enrichDiscountBatch(base44: any, candidates: any[], request: stri
       JSON.stringify(candidates).slice(0, 18000),
       'Preserve each exact product/retailer/identifier and its current buy_price. buy_price already includes any visible regular-to-sale/clearance markdown.',
       'Actively check retailer digital coupons, free loyalty/member offers, clip-to-account coupons, public promo codes, manufacturer coupons, and item-specific promotions that can reduce the current buy_price now.',
-      'Return every candidate, even if no coupon exists. For every extra offer, include discounts entries with kind, description, effective_amount, exact source_url, code, eligibility, stackable_with_current_price, applies_to_exact_item, and expires_at.',
+      'Return every candidate, even if no coupon exists. For every extra offer, include discounts entries with kind, description, effective_amount, exact source_url, code, eligibility, stackable_with_current_price, stackable_with_other_offers, applies_to_exact_item, and expires_at.',
       'Only return effective_amount when the source makes the dollar impact on the exact item calculable. Do not count future rewards/store cash, uncertain rebates, credit-card offers, employee discounts, first-time-only discounts, personalized/targeted offers, or unknown eligibility.',
       'Do not assume stacking. A sale markdown already included in buy_price is NOT an extra coupon. Never count it twice.',
     ].join('\n'),
