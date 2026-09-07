@@ -31,6 +31,7 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
   const canRunSearch = buddy.kind === "web" && buddy.capability === "web" && !approvalBlockingRun;
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [edited, setEdited] = useState(buddy.note);
   const personalFacts = relevantProfileFacts(profile, `${buddy.note || ""} ${buddy.what_line || ""}`);
   const linkedBuddies = (Array.isArray(buddy.linked_buddy_ids) ? buddy.linked_buddy_ids : [])
@@ -84,13 +85,32 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
               {active ? "Pause" : "Resume"}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => onTakeDown(buddy)}
-            className="rounded-full border border-white/70 bg-white/60 px-3.5 py-1.5 text-[12px] font-medium text-neutral-500 backdrop-blur-xl transition-colors hover:bg-white/85 hover:text-neutral-800"
-          >
-            Take down
-          </button>
+          {confirmDelete ? (
+            <>
+              <button
+                type="button"
+                onClick={() => { setConfirmDelete(false); onTakeDown(buddy); }}
+                className="rounded-full border border-rose-200 bg-rose-50 px-3.5 py-1.5 text-[12px] font-semibold text-rose-700 transition-colors hover:bg-rose-100"
+              >
+                Delete it
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                className="rounded-full border border-white/70 bg-white/60 px-3.5 py-1.5 text-[12px] font-medium text-neutral-500 transition-colors hover:bg-white/85 hover:text-neutral-800"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="rounded-full border border-white/70 bg-white/60 px-3.5 py-1.5 text-[12px] font-medium text-neutral-500 backdrop-blur-xl transition-colors hover:bg-white/85 hover:text-neutral-800"
+            >
+              Take down
+            </button>
+          )}
         </div>
       </div>
 
