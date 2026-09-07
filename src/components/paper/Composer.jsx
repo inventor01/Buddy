@@ -5,14 +5,14 @@ import { Image } from "@/components/ui/image";
 
 // The composer — one question, one plain sentence, and the note goes off
 // to do the thing. Suggestion pills fill the input; they don't submit.
-// A photo can ride along too — the note hunts for that exact thing daily.
+// A photo can ride along too and becomes visual context for the handoff.
 const BUDDY_REQUEST_MAX = 8000;
 
 const SUGGESTIONS = [
   "Find me the best nonstop flight to Miami next month under $300",
   "Tell me when a PS6 preorder opens at a major retailer",
   "Compare three well-rated plumbers near me",
-  "Plan a birthday dinner for 8 people under $250",
+  "Find 10 good prospects, rank the best 3, and draft outreach for my review",
 ];
 
 export default function Composer({ onPin, busy, buddies = [] }) {
@@ -109,7 +109,7 @@ export default function Composer({ onPin, busy, buddies = [] }) {
               <Image src={image} className="h-full w-full" fittingType="fill" />
             </div>
             <span className="text-[12px] leading-snug text-neutral-500">
-              Photo attached — it'll hunt for this thing every day
+              Photo attached — Buddy will use this exact image as context
             </span>
             <button
               type="button"
