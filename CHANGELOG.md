@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-09-06 — Actionable arbitrage retailer fan-out
+
+### Root cause
+- Even after adding strict evidence gates and carry-forward leads, arbitrage still depended on one broad research context to discover retailer products and prove Amazon/eBay resale evidence. Exact product discovery and exact resale matching are different search problems, so the verifier could legitimately end with zero actionable items.
+- A broad candidate pool described inside one specialist output could be truncated before later stages saw enough exact SKUs/models.
+- The user-facing result did not clearly tell the person what to do next when a deal or one-sided lead was found.
+
+### Permanent fix
+- Added a dedicated `runRetailArbitragePipeline` instead of routing broad arbitrage through the generic research engine first.
+- The pipeline detects named retailers such as Target, Ollie's, Kroger, Meijer, TJ Maxx, Walmart, Best Buy, Home Depot, Lowe's and others; when none are named it uses a bounded default set of verifiable major U.S. retailers.
+- Runs retailer-specific discovery in parallel. Each pass must return exact product/detail pages with current prices and preserves UPC/SKU/model/variant details when available.
+- Deduplicates the candidate pool before a separate Amazon/eBay cross-match pass. Resale matching is identifier/variant-first and rejects mismatched variants and marketplace homepages.
+- Carries recent unresolved buy-side leads back into the dedicated pipeline so the next run tries to finish yesterday's strongest candidates before starting from zero.
+- Verified deals still require both evidence sides and positive server-recomputed spread. One-sided exact product evidence remains a lead and never counts toward the weekly target.
+- Verified cards now include a clear `What to do now` sequence and direct `Check buy side` / `Check resale side` actions.
+- Lead cards now include `Next verification` instructions and explicitly say the lead is not counted toward the target.
+- Preview runs use the same dedicated arbitrage pipeline instead of a weaker generic one-shot search.
+- Normal non-arbitrage Buddy requests retain their existing lightweight path; the multi-pass fan-out is arbitrage-specific.
+
+### QA
+- Exact prompt with Target, Ollie's, Kroger, Meijer, TJ Maxx and `5k` detects every retailer and parses the target to $5,000.
+- Specific one-sided product pages survive as leads while the Ollie's generic current-flyer URL remains rejected.
+- Production build, ESLint, Buddy schema parsing, dedicated arbitrage pipeline bundle, run-now, scheduled-run, preview, shared runner, orchestration bundles and `git diff --check` pass.
+- Static gate confirms broad arbitrage routes through `runRetailArbitragePipeline` and both action-oriented UI states are present.
+
+
 ## 2026-09-06 — Arbitrage discovery pipeline + carry-forward leads
 
 ### Root cause
