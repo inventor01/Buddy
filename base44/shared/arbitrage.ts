@@ -1,5 +1,6 @@
 import { sanitizeDiscountOffers, summarizeDiscountOffers } from './discounts.ts';
 import { isExactRetailProductUrl } from './retailEvidence.ts';
+import { isExactResaleCompUrl } from './resaleEvidence.ts';
 
 export function extractArbitrageProfitTarget(value: unknown) {
   const text = String(value || '').toLowerCase();
@@ -46,7 +47,7 @@ export function normalizeArbitrageLead(raw: any, sanitizeUrl: (value: unknown) =
 
   if (!itemName || (!buyUrl && !resaleUrl)) return null;
   if (buyUrl && !isExactRetailProductUrl(buyUrl, retailer)) return null;
-  if (resaleUrl && isGenericArbitrageEvidenceUrl(resaleUrl)) return null;
+  if (resaleUrl && !isExactResaleCompUrl(resaleUrl, marketplace)) return null;
   const hasBuySide = buyPrice > 0 && !!buyUrl;
   const hasResaleSide = resalePrice > 0 && !!resaleUrl;
   if (!hasBuySide && !hasResaleSide) return null;
@@ -112,7 +113,7 @@ export function normalizeArbitrageCandidate(raw: any, sanitizeUrl: (value: unkno
   const roiPercent = netBuyCost > 0 ? Math.round((estimatedProfit / netBuyCost) * 1000) / 10 : 0;
 
   if (!itemName || !retailer || !marketplace || netBuyCost <= 0 || resalePrice <= 0 || estimatedProfit <= 0) return null;
-  if (!buyUrl || !resaleUrl || !isExactRetailProductUrl(buyUrl, retailer) || isGenericArbitrageEvidenceUrl(resaleUrl)) return null;
+  if (!buyUrl || !resaleUrl || !isExactRetailProductUrl(buyUrl, retailer) || !isExactResaleCompUrl(resaleUrl, marketplace)) return null;
 
   const actionabilityScore = Math.min(100, Math.max(0, Math.round(Number(raw.actionability_score) || 0)));
   const actionTier = ['check_now','promising','low_priority'].includes(String(raw.action_tier || '')) ? String(raw.action_tier) : 'promising';
