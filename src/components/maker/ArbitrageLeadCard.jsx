@@ -20,6 +20,7 @@ export default function ArbitrageLeadCard({ item }) {
             {[a.retailer, a.marketplace].filter(Boolean).join(" → ") || "Arbitrage candidate"}
             {a.identifier ? ` · ${a.identifier}` : ""}
           </p>
+          {(a.brand || a.category) && <p className="mt-1 text-[10.5px] text-neutral-400">{[a.brand, a.category].filter(Boolean).join(" · ")}</p>}
         </div>
         <span className="inline-flex items-center gap-1 rounded-full bg-amber-100/70 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
           <SearchCheck className="h-3.5 w-3.5" /> {Math.round(Number(a.confidence || 0) * 100)}% lead confidence
