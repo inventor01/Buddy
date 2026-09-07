@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import moment from "moment";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, Search } from "lucide-react";
 import StickyNote from "./StickyNote";
 import LinkedText from "@/components/maker/LinkedText";
 import ProductCard from "@/components/maker/ProductCard";
@@ -23,10 +23,12 @@ const STEP_LABELS = {
   verify: "Verified the result",
 };
 
-export default function ThreadView({ buddy, buddies = [], profile, receipt, job, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, onContinueChain, onOpenBuddy, busy }) {
+export default function ThreadView({ buddy, buddies = [], profile, receipt, job, onPause, onTakeDown, onEditNote, onSend, onApprove, onReject, onContinueChain, onRunSearch, onOpenBuddy, busy }) {
   const done = buddy.status === "done";
   const active = buddy.status === "active";
   const waitingForResponse = buddy.chain_state?.phase === "waiting_response" && buddy.action_type === "email_read";
+  const approvalBlockingRun = ["pending", "needs_connection", "executing"].includes(String(buddy.approval_status || ""));
+  const canRunSearch = buddy.kind === "web" && buddy.capability === "web" && !approvalBlockingRun;
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState(false);
   const [edited, setEdited] = useState(buddy.note);
@@ -68,7 +70,19 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
             {buddy.when_line ? ` · ${buddy.when_line}` : ""}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          {canRunSearch && (
+            <button
+              type="button"
+              onClick={() => onRunSearch?.(buddy)}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3.5 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              title="Run this search again with current information"
+            >
+              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+              {busy ? "Searching…" : "Run search"}
+            </button>
+          )}
           {done ? (
             <span className="rounded-full border border-emerald-100 bg-emerald-50/80 px-3.5 py-1.5 text-[12px] font-medium text-emerald-700">
               Done
@@ -266,6 +280,21 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
           >
             Edit the note
           </button>
+        </div>
+      )}
+
+      {canRunSearch && (
+        <div className="mt-5 rounded-2xl border border-neutral-100 bg-white/50 px-4 py-3 text-center">
+          <button
+            type="button"
+            onClick={() => onRunSearch?.(buddy)}
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-[12.5px] font-semibold text-neutral-800 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50 disabled:opacity-40"
+          >
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+            {busy ? "Searching now…" : "Run this search now"}
+          </button>
+          <p className="mt-1.5 text-[10.5px] text-neutral-400">Uses the latest available information and adds the new result to this chat.</p>
         </div>
       )}
 
