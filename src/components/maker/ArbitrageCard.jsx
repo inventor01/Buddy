@@ -40,12 +40,19 @@ export default function ArbitrageCard({ item }) {
         {a.caveat && <p className="text-neutral-400">{a.caveat}</p>}
       </div>
 
+      <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/55 px-3.5 py-3">
+        <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-emerald-700">What to do now</p>
+        <p className="mt-1 text-[11.5px] leading-relaxed text-neutral-700">
+          Open the store page, verify the exact variant and available quantity, then recheck the resale page before checkout. Only act if the live spread still clears your costs.
+        </p>
+      </div>
+
       <div className="mt-4 flex flex-wrap gap-2">
         <a href={a.buy_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full bg-neutral-950 px-3.5 py-2 text-[11.5px] font-semibold text-white">
-          Store product <ExternalLink className="h-3 w-3" />
+          Check buy side <ExternalLink className="h-3 w-3" />
         </a>
         <a href={a.resale_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-3.5 py-2 text-[11.5px] font-semibold text-neutral-700">
-          Resale evidence <ExternalLink className="h-3 w-3" />
+          Check resale side <ExternalLink className="h-3 w-3" />
         </a>
       </div>
     </div>
