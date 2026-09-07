@@ -89,6 +89,7 @@ export default function FoundIt({ result, runMode = "once", onContinue, onRestar
   const needsConnection = state === "needs_connection";
   const approval = state === "approval";
   const empty = state === "empty" || (!items.length && !result?.text);
+  const onlyArbitrageLeads = items.length > 0 && items.every((item) => item?.arbitrage_lead && !item?.arbitrage);
 
   const meta = useMemo(() => {
     if (isError) return {
@@ -119,6 +120,13 @@ export default function FoundIt({ result, runMode = "once", onContinue, onRestar
       body: result?.message || result?.text || "Buddy prepared the next step for you to review.",
       tone: "blue",
     };
+    if (onlyArbitrageLeads) return {
+      icon: Search,
+      eyebrow: "Promising leads found",
+      title: "Buddy found items worth a second look.",
+      body: "One side of each spread is verified. Buddy is keeping them separate from real opportunities until the missing evidence clears.",
+      tone: "amber",
+    };
     if (empty) return {
       icon: Search,
       eyebrow: runMode === "watch" || runMode === "repeat" ? "Nothing cleared the bar this run" : "No solid answer yet",
@@ -141,7 +149,7 @@ export default function FoundIt({ result, runMode = "once", onContinue, onRestar
         : "The useful part is up top. Sources are there when you want to double-check anything.",
       tone: "emerald",
     };
-  }, [approval, empty, isError, items.length, needsConnection, needsDetail, result, runMode]);
+  }, [approval, empty, isError, items.length, needsConnection, needsDetail, onlyArbitrageLeads, result, runMode]);
 
   useEffect(() => { buzz(isError ? [20, 30, 20] : 18); }, [isError]);
 
