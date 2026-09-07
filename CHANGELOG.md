@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-09-07 — Concurrency, state correctness, and the deterministic mechanics gate
+
+### Root cause
+- `runDueBuddies` decided due/eligibility with a long compound condition, while `runBuddyNow` had none — a handoff could run twice in one day or run concurrently with a manual "Run now".
+- The free limit and duplicate-create checks lived only in `createBuddyRecord`'s inline logic with no single source of truth, and a double-submitted create could produce two handoffs.
+- `executeConnectedAction` validated inside each action's try block — a malformed payload set `executing` and let the 400s outside the catch strand the handoff.
+- `runBuddy` pinned messages read at run start, so a user reply mid-run was silently overwritten, and arbitrage job status derived by step precedence without consulting failure.
+- Approving an already-approved request produced a misleading 400, and the scheduler could grab user-presence states.
+
+### Permanent fix
+- New `base44/gate/mechanics-gate.mjs`: a deterministic, gate-tested, no-network test harness with an in-memory entity store, which loads the real server decisions (no stubs or mirrors) via in-process TypeScript transpilation and runs 15 scenarios covering the concurrency, state, and safety invariants of every card below.
+- `base44/shared/stateMachine.ts`: the single source of truth for due-job checks, job status, approval checks, duplicate-create detection, free-handoff limits, lock freshness, and notification verdicts — shared by the gate and all call sites.
+- `base44/shared/runLock.ts` + integration in `runDueBuddies` and `runBuddyNow`: server-owned, idempotent run locks with a TTL, released in a `finally` block, so a crashed worker self-heals and a handoff can never execute twice concurrently.
+- `createBuddyRecord`: idempotent creates via a client token minted once per plan intent — a replayed submit returns the original record.
+- `executeConnectedAction`: pre-claim payload validation, a unique execution token (double-click executes once), status-restoring catch, cleared tokens, and unified verdicts for all approval transitions.
+- `runBuddy.ts`: re-reads the thread before pinning so mid-run replies are never lost; notification and completion rules now delegate to the state machine.
+- App frontend (`Home.jsx`, `Start.jsx`) mints and passes the create token on every plan-intent path, including double-click guards.
+- `npm run typecheck`, `npm run build`, `npm run lint` → all exit 0; the mechanics gate passes 15/15 scenarios; a smoke test of `create-checkout`/`runBuddyNow`/`executeConnectedAction` returns the expected validation responses.
+
 ## 2026-09-07 — Production-readiness repair: typecheck failures (97 errors) fixed
 
 ### Root cause
