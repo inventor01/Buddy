@@ -509,7 +509,7 @@ export default function Start() {
                     <Image src={image} className="h-full w-full" fittingType="fill" />
                   </div>
                   <span className="text-[12px] leading-snug text-neutral-500">
-                    Photo attached — it'll hunt for this thing every day
+                    Photo attached — Buddy will use this exact image as context
                   </span>
                   <button
                     type="button"
