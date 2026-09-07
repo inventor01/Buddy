@@ -29,6 +29,8 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
   const waitingForResponse = buddy.chain_state?.phase === "waiting_response" && buddy.action_type === "email_read";
   const approvalBlockingRun = ["pending", "needs_connection", "executing"].includes(String(buddy.approval_status || ""));
   const canRunSearch = buddy.kind === "web" && buddy.capability === "web" && !approvalBlockingRun;
+  const searchLike = /\b(find|search|compare|check|research|look for|price|deal|flight|availability|watch)\b/i.test(`${buddy.note || ""} ${buddy.what_line || ""}`);
+  const rerunLabel = searchLike ? "Run this search now" : "Run this again now";
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -299,9 +301,9 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
             className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-[12.5px] font-semibold text-neutral-800 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50 disabled:opacity-40"
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-            {busy ? "Searching now…" : "Run this search now"}
+            {busy ? "Running now…" : rerunLabel}
           </button>
-          <p className="mt-1.5 text-[10.5px] text-neutral-400">Uses the latest available information and adds the new result to this chat.</p>
+          <p className="mt-1.5 text-[10.5px] text-neutral-400">Runs this handoff again and adds the fresh result to this chat.</p>
         </div>
       )}
 
