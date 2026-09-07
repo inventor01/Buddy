@@ -106,6 +106,40 @@ export async function planOrchestration(base44: any, buddy: any, personalFacts: 
       ],
     };
   }
+  if (isBroadArbitrageScan(request)) {
+    const target = extractArbitrageProfitTarget(request);
+    const targetText = target > 0 ? `$${target.toLocaleString()} aggregate weekly profit target` : 'best positive-spread opportunities';
+    return {
+      complexity: 5,
+      should_orchestrate: true,
+      steps: [
+        {
+          id: 'retail-scan',
+          kind: 'web_research',
+          instruction: `Search broadly for current retail/online sourcing candidates for this request. Preserve any named stores; if none are named, scan major U.S. retailers and clearance/discount sources. Find specific products with exact buy pages, current prices, and only verifiable coupons/discounts. Aim for many candidates rather than requiring one item to satisfy the ${targetText}. Do not return generic flyers/homepages as candidates.`,
+          depends_on: [],
+        },
+        {
+          id: 'resale-check',
+          kind: 'web_research',
+          instruction: 'For the specific products from the retail scan, cross-match exact model/SKU/UPC/name against Amazon and/or eBay. Find current resale-price evidence and exact resale URLs. Reject mismatched variants and generic marketplace homepages. Keep useful positive-spread candidates even if the combined batch is below the weekly target.',
+          depends_on: ['retail-scan'],
+        },
+        {
+          id: 'profit-math',
+          kind: 'calculation',
+          instruction: `For every cross-matched candidate, compute net buy cost from verified price minus verified discount, then estimated one-unit profit after stated/estimated marketplace fees and ROI. Treat the ${targetText} as a portfolio goal across multiple opportunities, not a per-item filter. Rank positive spreads by estimated profit, ROI, evidence quality, and actionability this week.`,
+          depends_on: ['retail-scan', 'resale-check'],
+        },
+        {
+          id: 'verify',
+          kind: 'verify',
+          instruction: 'Verify that every final arbitrage opportunity has a specific item, direct buy evidence, direct resale evidence, positive recomputed spread, and clearly labeled assumptions. Never claim inventory quantity, sell-through, or guaranteed profit without evidence.',
+          depends_on: ['profit-math'],
+        },
+      ],
+    };
+  }
   const plan = await base44.asServiceRole.integrations.Core.InvokeLLM({
     model: 'gemini_3_flash',
     prompt: [
