@@ -3,6 +3,7 @@ import { FINDINGS_RULES, FINDINGS_SCHEMA, toFindingItems, toLines, contextLines 
 import { checkUsageLimit } from '../../shared/rateLimit.ts';
 import { isWholesalePropertyRequest, runWholesaleDealFinder } from '../../shared/realEstate.ts';
 import { normalizeTaskSteps, taskStepPromptLines } from '../../shared/taskChain.ts';
+import { suppressOptionalClarification } from '../../shared/clarification.ts';
 
 // Runs a visitor's typed note once, with no account and nothing saved —
 // the "watch it run" step for people who haven't signed in. Anonymous by
@@ -111,6 +112,7 @@ export default async function(req) {
     });
 
     let needsContext = typeof findings?.needs_context === 'string' ? findings.needs_context.trim().slice(0, 200) : '';
+    needsContext = suppressOptionalClarification(`${note} ${what}`, needsContext);
     if (simplePlanningRequest && /\b(date|when|whose|who'?s)\b/i.test(needsContext)) needsContext = '';
     if (needsContext) {
       return Response.json({
