@@ -73,8 +73,8 @@ export default function AdsCard() {
         <div className="flex-1">
           <h3 className="font-medium text-neutral-900">Ad accounts</h3>
           <p className="mt-0.5 text-sm text-neutral-500">
-            Connect your Facebook & Instagram ads and Pages — notes can watch spend, follow your
-            rules, make new ads, and post to your Page for you.
+            Connect your Facebook & Instagram ads and Pages — Buddy can watch spend, follow your
+            rules, prepare changes, and post to your Page when you approve it.
           </p>
 
           {accounts ? (
