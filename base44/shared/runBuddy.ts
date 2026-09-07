@@ -91,7 +91,7 @@ export const FINDINGS_RULES = [
   "If today has nothing genuinely useful, say so plainly — never invent codes or prices.",
   "Only when a detail from the user would genuinely change the answer, set needs_context to ONE short friendly question asking for exactly that detail and return findings: []. Examples: a flight search without a departure city/airport; a local-service search without a location; a birthday reminder without the person/date; an account-specific request without the account. Never ask for information already present in the request.",
   "Open-ended discovery is allowed. For broad retail-arbitrage/resale scans that already name the source stores and resale marketplaces, do NOT ask for a product category or specific items. Treat the broad scope as intentional, scan across verifiable products, and return the strongest opportunities you can support.",
-  "For retail arbitrage, calculate the buy side from verifiable current store price minus only coupons/discounts/loyalty offers whose eligibility you can confirm. Compare with verifiable Amazon/eBay resale pricing. When fees, shipping, tax, condition, or sell-through are unknown, label them as unknown or estimated instead of inventing them. Prefer findings that show enough numbers to understand the potential spread and direct links to the exact source product/listing pages.",
+  "For retail arbitrage, actively search for EXTRA item-level savings after finding the current product price: digital coupons, public promo codes, free loyalty/member offers, manufacturer coupons, clip-to-account offers, and other verifiable discounts. The current buy_price already includes any visible sale/clearance markdown; NEVER subtract that markdown again as a coupon. Only subtract an additional offer when it has source evidence, applies to the exact item, is not expired/targeted/personalized, and is explicitly stackable with the current price. Future rewards/store cash, uncertain rebates, credit-card offers, employee discounts, first-time-only offers, and unknown eligibility must not reduce net buy cost. Compare the resulting verified net cost with verifiable Amazon/eBay resale pricing. When fees, shipping, tax, condition, or sell-through are unknown, label them as unknown or estimated instead of inventing them.",
   "CRITICAL for retail arbitrage: each VERIFIED opportunity MUST include an arbitrage object with item_name, retailer, marketplace, buy_price, discount_amount, discount_description, net_buy_cost, resale_price, estimated_fees, buy_url, resale_url, and caveat. buy_url must be the exact retailer product/deal page and resale_url must be the exact Amazon/eBay product/listing/search evidence page used for the resale price. A store flyer, deals hub, homepage, category page, or generic marketplace homepage is not enough evidence for a verified opportunity.",
   "Do not throw away a strong candidate merely because one side still needs verification. When you have a SPECIFIC item plus a direct non-generic URL and price on exactly one side, return arbitrage_lead instead of arbitrage. Include item_name, retailer, marketplace, identifier when available (UPC/SKU/model), the verified side's price+URL, missing_evidence, reason, and confidence. Never put a generic flyer/deals page in arbitrage_lead. Leads are research candidates only and must not be counted as profit yet.",
   "For arbitrage discovery, work identifier-first: preserve UPC, SKU, model number, size/count, color/variant, or another exact identifier whenever available so the resale cross-match does not compare a different variant. Search broadly enough to create a candidate pool before filtering; do not stop after the first few pages.",
@@ -151,9 +151,19 @@ export const FINDINGS_SCHEMA = {
               units_to_target: { type: "number" },
               match_confidence: { type: "number" },
               demand_note: { type: "string" },
+              original_price: { type: "number" },
               buy_price: { type: "number" },
+              price_status: { type: "string" },
               discount_amount: { type: "number" },
               discount_description: { type: "string" },
+              discounts: {
+                type: "array",
+                items: { type: "object", properties: {
+                  kind: { type: "string" }, description: { type: "string" }, effective_amount: { type: "number" }, source_url: { type: "string" }, code: { type: "string" }, eligibility: { type: "string" }, stackable_with_current_price: { type: "boolean" }, applies_to_exact_item: { type: "boolean" }, expires_at: { type: "string" }
+                } }
+              },
+              coupon_dependent: { type: "boolean" },
+              profit_without_extra_discounts: { type: "number" },
               net_buy_cost: { type: "number" },
               resale_price: { type: "number" },
               estimated_fees: { type: "number" },
@@ -171,7 +181,18 @@ export const FINDINGS_SCHEMA = {
               category: { type: "string" },
               brand: { type: "string" },
               identifier: { type: "string" },
+              original_price: { type: "number" },
               buy_price: { type: "number" },
+              price_status: { type: "string" },
+              discount_amount: { type: "number" },
+              discount_description: { type: "string" },
+              discounts: {
+                type: "array",
+                items: { type: "object", properties: {
+                  kind: { type: "string" }, description: { type: "string" }, effective_amount: { type: "number" }, source_url: { type: "string" }, code: { type: "string" }, eligibility: { type: "string" }, stackable_with_current_price: { type: "boolean" }, applies_to_exact_item: { type: "boolean" }, expires_at: { type: "string" }
+                } }
+              },
+              net_buy_cost: { type: "number" },
               resale_price: { type: "number" },
               buy_url: { type: "string" },
               resale_url: { type: "string" },
