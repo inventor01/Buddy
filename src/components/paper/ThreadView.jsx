@@ -6,6 +6,7 @@ import LinkedText from "@/components/maker/LinkedText";
 import ProductCard from "@/components/maker/ProductCard";
 import FindingRow from "@/components/maker/FindingRow";
 import DealCard from "@/components/maker/DealCard";
+import ArbitrageCard from "@/components/maker/ArbitrageCard";
 import { relevantProfileFacts } from "@/lib/personalization";
 
 // The note's thread — what you wrote, pinned at the top, then everything
@@ -337,7 +338,9 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
               {it && Array.isArray(m.items) && m.items.length ? (
                 <div className="glass mt-1 max-w-[86%] space-y-2 rounded-2xl rounded-tl-md p-2.5">
                   {m.items.map((f, j) =>
-                    f.deal ? (
+                    f.arbitrage ? (
+                      <ArbitrageCard key={j} item={f} />
+                    ) : f.deal ? (
                       <DealCard key={j} item={f} />
                     ) : f.product ? (
                       <ProductCard key={j} item={f} />
