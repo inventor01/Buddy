@@ -49,13 +49,13 @@ export default function ThankYou() {
           <>
             <p className="font-mono text-[10px] tracking-[0.18em] text-emerald-600">PRO IS ON</p>
             <p className="mt-3 font-heading text-[28px] font-semibold leading-tight tracking-tight text-neutral-900">
-              Write as many notes as you like.
+              Hand off as many things as you like.
             </p>
             <Link
               to="/notes"
               className="mt-6 inline-block rounded-full bg-neutral-900 px-6 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-90"
             >
-              Back to your notes
+              Back to Buddy
             </Link>
           </>
         )}
@@ -65,13 +65,13 @@ export default function ThankYou() {
               It's taking a moment.
             </p>
             <p className="mt-2 text-[13px] text-neutral-500">
-              Your Pro turns on automatically — head back to your notes and it will be there.
+              Pro turns on automatically — head back to Buddy and it will be there.
             </p>
             <Link
               to="/notes"
               className="mt-6 inline-block rounded-full bg-neutral-900 px-6 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-90"
             >
-              Back to your notes
+              Back to Buddy
             </Link>
           </>
         )}
