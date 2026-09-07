@@ -306,6 +306,9 @@ async function crossMatchBatch(base44: any, candidates: any[], request: string) 
       category: matched.category || candidate.category || '',
       brand: matched.brand || candidate.brand || '',
       identifier: matched.identifier || candidate.identifier || '',
+      original_price: Math.max(Number(candidate.original_price) || 0, Number(matched.original_price) || 0, Number(matched.buy_price) || 0, Number(candidate.buy_price) || 0),
+      price_status: matched.price_status || candidate.price_status || '',
+      discounts: Array.isArray(matched.discounts) && matched.discounts.length ? matched.discounts : (candidate.discounts || []),
       buy_url: matched.buy_url || candidate.buy_url,
       buy_price: Number(matched.buy_price) > 0 ? matched.buy_price : candidate.buy_price,
     };
