@@ -14,7 +14,7 @@ export default function BookPage({ buddies }) {
         entries.push({ at: b.last_run_date || b.updated_date, title: b.name, text: b.last_result.join(" ") });
       }
     }
-    entries.sort((a, b) => new Date(a.at) - new Date(b.at));
+    entries.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
     const byWeek = new Map();
     for (const e of entries) {
       const start = moment(e.at).startOf("isoWeek");

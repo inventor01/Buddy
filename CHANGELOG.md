@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-09-07 — Production-readiness repair: typecheck failures (97 errors) fixed
+
+### Root cause
+- `npm run build` and `npm run lint` passed, but `npm run typecheck` (tsc over the checkJs jsconfig) failed with 97 errors: reusable JSX components built with `React.forwardRef` (Image, ResponsiveImage, ImageWrapper, Button, Input, Label, Switch, InputOTP family) inferred their props as `{}`, so every downstream caller's props were rejected; several plain function components (AuthLayout, StickyNote) left optional props untyped, marking them required for callers.
+- Browser Web Speech Recognition globals (`window.SpeechRecognition` / `window.webkitSpeechRecognition`) had no declarations in the Composer.
+- `import.meta.env` lacked Vite typings (`"types": []` in jsconfig excluded `vite/client`), so app-params failed on every Vite env read.
+- A few local values needed narrowing: `Date − Date` arithmetic in BookPage, a fetch headers record in OAuthConsent, a custom `upgradeRequired` Error field in Home, and a `{}`-typed specialists record in Settings.
+
+### Permanent fix
+- Added accurate JSDoc prop declarations to every reusable UI component (image, button, input, label, switch, input-otp, StickyNote, AuthLayout), typed against `React.ComponentPropsWithoutRef<"…">`, Radix's `SwitchProps`, and `input-otp`'s `OTPInputProps`, so all downstream callers type-check against the real component contracts.
+- Declared the Web Speech Recognition constructor shape locally in the Composer (no broad `any` window casts) and typed the speech window accessor.
+- Loaded Vite's client typings via `"types": ["vite/client"]` in jsconfig — `import.meta.env` is now properly typed everywhere. checkJs and all compiler settings untouched.
+- Small behavior-identical narrowings: `Date.getTime()` subtraction in BookPage's sort, a `Record<string, string>` assertion for fetch headers in OAuthConsent, an `Error & { upgradeRequired?: boolean }` type in Home, and `Record<string, boolean>` + tuple-typed specialists in Settings.
+- No `@ts-ignore`/`@ts-nocheck`, no disabled checks, no runtime or UI changes.
+
+### QA
+- `npm run typecheck` → exit 0 (0 errors, down from 97).
+- `npm run build` → exit 0.
+- `npm run lint` → exit 0.
+
 ## 2026-09-07 — Response intelligence + bounded self-repair
 
 ### Root cause

@@ -2,6 +2,9 @@ import React from "react";
 
 // A small glass card for the original note. Tilt is optional — the new
 // theme keeps it flat and clean unless a fixed rotation is asked for.
+/**
+ * @param {{ id?: string, caption?: string, children: React.ReactNode, paper?: string, className?: string, fixedRotation?: number }} props
+ */
 export default function StickyNote({ id, caption, children, paper, className = "", fixedRotation }) {
   const tilt = fixedRotation !== undefined ? fixedRotation : 0;
   return (

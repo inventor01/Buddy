@@ -77,7 +77,7 @@ export default function Home() {
     } catch (e) {
       if (e?.response?.data?.upgrade_required) {
         setPaymentOpen(true);
-        const err = new Error(e?.response?.data?.error || "Your three free handoffs are used. Upgrade to keep handing things off.");
+        const err = /** @type {Error & { upgradeRequired?: boolean }} */ (new Error(e?.response?.data?.error || "Your three free handoffs are used. Upgrade to keep handing things off."));
         err.upgradeRequired = true;
         throw err;
       }

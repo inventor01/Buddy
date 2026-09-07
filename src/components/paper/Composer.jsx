@@ -15,13 +15,23 @@ const SUGGESTIONS = [
   "Find 10 good prospects, rank the best 3, and draft outreach for my review",
 ];
 
+// Web Speech Recognition is not part of the standard DOM typings — some
+// browsers expose it under a webkit-prefixed name instead.
+/**
+ * @typedef {new () => { lang?: string, onresult?: (event: any) => void, start: () => void }} SpeechRecognitionCtor
+ */
+const speechWindow =
+  typeof window !== "undefined"
+    ? /** @type {typeof window & { SpeechRecognition?: SpeechRecognitionCtor, webkitSpeechRecognition?: SpeechRecognitionCtor }} */ (window)
+    : {};
+
 export default function Composer({ onPin, busy, buddies = [] }) {
   const [note, setNote] = useState("");
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
   const canListen =
-    typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    typeof window !== "undefined" && !!(speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition);
   const mentionMatch = note.match(/(?:^|\s)@([^\s\[]*)$/);
   const mentionQuery = mentionMatch ? String(mentionMatch[1] || "").toLowerCase() : null;
   const mentionChoices = mentionQuery === null
@@ -35,7 +45,7 @@ export default function Composer({ onPin, busy, buddies = [] }) {
   };
 
   const listen = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SR = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
     try {
       const rec = new SR();
       rec.lang = "en-US";
