@@ -8,7 +8,7 @@ import PlanBoard from "./PlanBoard";
 
 const CATS = ["when", "what", "tells"];
 
-export default function PlanPanel({ note, lines, question, linkedBuddyNames = [], taskSteps = [], answer, onAnswer, onChange, onRun, onCancel, busy }) {
+export default function PlanPanel({ note, lines, question, approvalRequired = false, linkedBuddyNames = [], taskSteps = [], answer, onAnswer, onChange, onRun, onCancel, busy }) {
   const [order, setOrder] = useState(CATS);
   const [editing, setEditing] = useState(null);
 
@@ -21,6 +21,12 @@ export default function PlanPanel({ note, lines, question, linkedBuddyNames = []
     });
 
   const kicker = "text-[10.5px] font-semibold uppercase tracking-[0.2em] text-neutral-400";
+  const hasApprovalStep = approvalRequired || taskSteps.some((step) => step?.approval_required);
+  const yourPart = question
+    ? "Give Buddy the one detail below."
+    : hasApprovalStep
+      ? "Come back only when Buddy has something ready for your approval."
+      : "Nothing else right now — Buddy can take it from here.";
 
   return (
     <div className="mx-auto max-w-[640px]">
@@ -28,8 +34,19 @@ export default function PlanPanel({ note, lines, question, linkedBuddyNames = []
         <p className={kicker}>What you said</p>
         <p className="mt-1.5 font-heading text-[19px] leading-snug text-neutral-900">{note}</p>
 
+        <div className="mt-6 grid gap-2 sm:grid-cols-2">
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/55 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Buddy owns</p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-neutral-700">{lines.what}</p>
+          </div>
+          <div className="rounded-2xl border border-amber-100 bg-amber-50/45 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">You’re needed for</p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-neutral-700">{yourPart}</p>
+          </div>
+        </div>
+
         <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
-          <p className={kicker}>Here's the plan</p>
+          <p className={kicker}>How Buddy will handle it</p>
           <p className="text-[11.5px] text-neutral-400">Drag to arrange · tap the pencil to reword</p>
         </div>
         <div className="mt-3">
