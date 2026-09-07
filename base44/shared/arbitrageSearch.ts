@@ -298,6 +298,8 @@ export function toFinding(match: any, target: number) {
         net_buy_cost: netBuy,
         resale_price: resalePrice,
         estimated_fees: estimatedFees,
+        estimated_profit: profit,
+        roi_percent: Math.round(roi * 10) / 10,
         buy_url: buyUrl,
         resale_url: resaleUrl,
         caveat: [
