@@ -27,7 +27,7 @@ export function isBroadArbitrageScan(value: unknown) {
 export function isOptionalProductScopeQuestion(value: unknown) {
   const q = normalized(value);
   if (!q) return false;
-  return /\b(product category|product categories|category|categories|specific items?|specific products?|which items?|what items?|which products?|what products?|types? of products?|kinds? of products?|focus on)\b/.test(q);
+  return /\b(product category|product categories|category|categories|specific items?|specific products?|which items?|what items?|which products?|what products?|types? of products?|kinds? of products?|which stores?|what stores?|which retailers?|what retailers?|which marketplaces?|what marketplaces?|amazon or ebay|ebay or amazon|focus on)\b/.test(q);
 }
 
 export function suppressOptionalClarification(requestText: unknown, question: unknown) {
