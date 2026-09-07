@@ -6,7 +6,7 @@ const money = (value) => Number(value) > 0 ? `$${Number(value).toFixed(2)}` : "�
 export default function ArbitrageLeadCard({ item }) {
   const a = item?.arbitrage_lead || {};
   const knownSide = a.buy_url ? "Buy side verified" : "Resale side verified";
-  const knownPrice = a.buy_url ? a.buy_price : a.resale_price;
+  const knownPrice = a.buy_url ? (Number(a.net_buy_cost) > 0 ? a.net_buy_cost : a.buy_price) : a.resale_price;
   const knownUrl = a.buy_url || a.resale_url;
   const knownLabel = a.buy_url ? "Store evidence" : "Resale evidence";
 
@@ -39,6 +39,20 @@ export default function ArbitrageLeadCard({ item }) {
       </div>
 
       {a.reason && <p className="mt-3 text-[11.5px] leading-relaxed text-neutral-600">{a.reason}</p>}
+      {a.buy_url && Number(a.original_price) > Number(a.buy_price) && (
+        <p className="mt-2 text-[11.5px] text-neutral-600">Store markdown: <strong>{money(a.original_price)} → {money(a.buy_price)}</strong>{a.price_status ? ` · ${a.price_status}` : ""}</p>
+      )}
+      {a.buy_url && Number(a.discount_amount) > 0 && (
+        <div className="mt-2 space-y-1 text-[11px] text-neutral-600">
+          <p>Verified extra savings on buy side: <strong>-{money(a.discount_amount)}</strong> · net {money(a.net_buy_cost)}</p>
+          {Array.isArray(a.discounts) && a.discounts.map((d, index) => (
+            <p key={`${d.source_url || d.description}-${index}`} className="flex flex-wrap items-center gap-1">
+              <span>{d.description || d.kind || "Verified offer"}{d.code ? ` · code ${d.code}` : ""} · -{money(d.effective_amount)}</span>
+              {d.source_url && <a href={d.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 font-semibold underline underline-offset-2">Offer source <ExternalLink className="h-3 w-3" /></a>}
+            </p>
+          ))}
+        </div>
+      )}
       <div className="mt-3 rounded-xl border border-amber-100 bg-white/70 px-3.5 py-3">
         <p className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-amber-700">Next verification</p>
         <p className="mt-1 text-[11.5px] leading-relaxed text-neutral-700">
