@@ -552,6 +552,7 @@ export default function Home() {
               note={draft.note}
               lines={draft.lines}
               question={draft.plan.question}
+              approvalRequired={draft.plan.approvalRequired === true}
               linkedBuddyNames={draft.plan.linkedBuddyNames || []}
               taskSteps={draft.plan.taskSteps || []}
               answer={draft.answer || ""}
