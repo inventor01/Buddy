@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import ProductCard from "./ProductCard";
 import DealCard from "./DealCard";
+import ArbitrageCard from "./ArbitrageCard";
 
 const buzz = (pattern) => {
   try { navigator.vibrate?.(pattern); } catch (_) {}
@@ -43,6 +44,7 @@ function cleanItems(result, state) {
 }
 
 function ResultRow({ item, index }) {
+  if (item.arbitrage) return <ArbitrageCard item={item} />;
   if (item.deal) return <DealCard item={item} />;
   if (item.product) return <ProductCard item={item} />;
   return (
