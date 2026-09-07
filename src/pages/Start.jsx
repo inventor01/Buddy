@@ -259,7 +259,7 @@ export default function Start() {
         });
         if (rec.data?.schedule_time) scheduleTime = rec.data.schedule_time;
       } catch (_) {
-        /* the LLM's first reading of the schedule still stands */
+        /* the planner's first reading of the schedule still stands */
       }
 
       const createRes = await base44.functions.invoke("createBuddyRecord", {
