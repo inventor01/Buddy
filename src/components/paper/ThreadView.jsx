@@ -7,6 +7,7 @@ import ProductCard from "@/components/maker/ProductCard";
 import FindingRow from "@/components/maker/FindingRow";
 import DealCard from "@/components/maker/DealCard";
 import ArbitrageCard from "@/components/maker/ArbitrageCard";
+import ArbitrageLeadCard from "@/components/maker/ArbitrageLeadCard";
 import { relevantProfileFacts } from "@/lib/personalization";
 
 // The note's thread — what you wrote, pinned at the top, then everything
@@ -340,6 +341,8 @@ export default function ThreadView({ buddy, buddies = [], profile, receipt, job,
                   {m.items.map((f, j) =>
                     f.arbitrage ? (
                       <ArbitrageCard key={j} item={f} />
+                    ) : f.arbitrage_lead ? (
+                      <ArbitrageLeadCard key={j} item={f} />
                     ) : f.deal ? (
                       <DealCard key={j} item={f} />
                     ) : f.product ? (
