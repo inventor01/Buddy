@@ -306,7 +306,6 @@ export default async function(req: Request) {
       changesMade: [change],
       confirmation: summary,
       outcome: 'approved and completed',
-      estimatedTimeSavedMinutes: 8,
     });
     await resolveEscalation(base44, buddy.id, user.id);
 
