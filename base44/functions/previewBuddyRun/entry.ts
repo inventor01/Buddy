@@ -128,7 +128,7 @@ export default async function(req) {
     const broadArbitrage = isBroadArbitrageScan(`${note} ${what}`);
     const arbitrageTarget = broadArbitrage ? extractArbitrageProfitTarget(`${note} ${what}`) : 0;
     let items = toFindingItems(findings?.findings, broadArbitrage ? 12 : 5);
-    if (broadArbitrage) items = items.filter((item) => item?.arbitrage);
+    if (broadArbitrage) items = items.filter((item) => item?.arbitrage || item?.arbitrage_lead);
     if (!items.length) {
       return Response.json({
         state: 'empty',
@@ -143,9 +143,10 @@ export default async function(req) {
     }
     if (broadArbitrage) {
       const portfolio = arbitragePortfolioSummary(items, arbitrageTarget);
+      const leadCount = items.filter((item) => item?.arbitrage_lead).length;
       const summary = arbitrageTarget > 0
-        ? `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities toward your $${arbitrageTarget.toLocaleString()} weekly target. Gap: $${portfolio.gap.toLocaleString()}. This is opportunity math, not guaranteed profit or confirmed inventory quantity.`
-        : `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities.`;
+        ? `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities toward your $${arbitrageTarget.toLocaleString()} weekly target. Gap: $${portfolio.gap.toLocaleString()}.${leadCount ? ` Buddy also kept ${leadCount} promising lead${leadCount === 1 ? '' : 's'} that still need one side verified and are not counted yet.` : ''} This is opportunity math, not guaranteed profit or confirmed inventory quantity.`
+        : `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities.${leadCount ? ` Buddy also kept ${leadCount} promising lead${leadCount === 1 ? '' : 's'} that still need one side verified.` : ''}`;
       return Response.json({ state: 'answer', lines: [summary, ...toLines(items)], items, message: summary });
     }
 
