@@ -6,6 +6,8 @@ export function cleanDiscountUrl(value: unknown) {
     const path = url.pathname.replace(/\/+$/, '') || '/';
     if (path === '/') return '';
     if (/\/(?:home|index(?:\.html?|\.php)?)$/i.test(path)) return '';
+    const genericOfferHub = /\/(?:coupons?|promotions?|offers?|deals?|sales?|clearance|search|shop|category|categories)$/i.test(path);
+    if (genericOfferHub && !url.search && !url.hash) return '';
     return url.toString().slice(0, 800);
   } catch (_) {
     return '';
