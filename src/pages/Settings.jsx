@@ -306,7 +306,7 @@ export default function Settings() {
       <div className="mx-auto max-w-xl px-5 pb-16 sm:px-8">
         <header className="flex items-center justify-between py-6">
           <Link
-            to="/"
+            to="/notes"
             className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-neutral-600 transition-colors hover:text-neutral-900"
           >
             <ArrowLeft className="h-4 w-4" /> Back to your notes
