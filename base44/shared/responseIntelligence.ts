@@ -9,6 +9,17 @@ const RESPONSE_INTELLIGENCE_SCHEMA = {
   required: ['bottom_line','best_next_move','uncertainty','confidence'],
 };
 
+const RESPONSE_REPAIR_SCHEMA = {
+  type: 'object',
+  properties: {
+    quality_score: { type: 'number' },
+    repair_needed: { type: 'boolean' },
+    repair_instruction: { type: 'string' },
+    reason: { type: 'string' },
+  },
+  required: ['quality_score','repair_needed','repair_instruction','reason'],
+};
+
 function clean(value: unknown, max = 280) {
   return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
 }
@@ -103,6 +114,39 @@ export async function buildResponseIntelligence({
     return result;
   } catch (_) {
     return null;
+  }
+}
+
+export async function reviewResponseForRepair({ base44, request, findings, verificationSummary = '' }: any) {
+  if (!Array.isArray(findings) || !findings.length) return { quality_score: 0, repair_needed: false, repair_instruction: '', reason: 'No findings to review.' };
+  try {
+    const response = await base44.asServiceRole.integrations.Core.InvokeLLM({
+      model: 'gemini_3_flash',
+      prompt: [
+        'You are Buddy’s response-quality gate. Judge whether one additional targeted web-research pass could materially improve this answer before it is shown.',
+        `User request: ${clean(request, 1800)}`,
+        verificationSummary ? `Current verification summary: ${clean(verificationSummary, 1000)}` : '',
+        `Current findings: ${JSON.stringify(findings).slice(0, 18000)}`,
+        'Score quality 0-100 based on: directness to the user goal, evidence specificity, completeness of requested constraints, ranking/decision usefulness, actionability, uncertainty calibration, and absence of unsupported claims.',
+        'Set repair_needed=true ONLY when: (1) quality is below 80, (2) there is one concrete missing public-web fact/evidence gap that materially changes the recommendation, and (3) Buddy can search for it without asking the user or taking an outside action.',
+        'Examples of valid repair: missing current price for the top recommendation, missing direct source for an important claim, failure to compare a named competitor, missing current buyer-intent date, or a top-ranked option lacking a decisive fact that the web can verify.',
+        'Do NOT request repair for subjective uncertainty, user preferences that were never provided, account-private data, approvals, actions, or broad “research more” instructions.',
+        'repair_instruction must be one narrow specialist instruction naming exactly what to verify and what evidence to return. Never ask to redo the whole task.',
+        'If the current answer is already decision-useful and evidence-backed, set repair_needed=false even if it is not perfect.',
+      ].filter(Boolean).join('\n'),
+      response_json_schema: RESPONSE_REPAIR_SCHEMA,
+    });
+    const quality = Math.max(0, Math.min(100, Number(response?.quality_score) || 0));
+    const instruction = clean(response?.repair_instruction, 600);
+    const needed = response?.repair_needed === true && quality < 80 && !!instruction;
+    return {
+      quality_score: quality,
+      repair_needed: needed,
+      repair_instruction: needed ? instruction : '',
+      reason: clean(response?.reason, 280),
+    };
+  } catch (_) {
+    return { quality_score: 0, repair_needed: false, repair_instruction: '', reason: 'Quality review unavailable.' };
   }
 }
 
