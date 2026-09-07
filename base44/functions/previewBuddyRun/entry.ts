@@ -105,7 +105,8 @@ export default async function(req) {
             ]
           : []),
         simplePlanningRequest ? "This is a simple planning request. Do not ask for a date, whose event it is, or when it happens unless the user explicitly made that detail essential. Produce the useful plan now with the constraints already given." : "",
-        "Search the web for today and report back the 5 most useful, concrete findings for this job.",
+        isBroadArbitrageScan(`${note} ${what}`) ? `This is a broad arbitrage scan. ${extractArbitrageProfitTarget(`${note} ${what}`) > 0 ? `The $${extractArbitrageProfitTarget(`${note} ${what}`).toLocaleString()} amount is the aggregate weekly profit target across multiple opportunities, not a minimum per item.` : ''} If stores/marketplaces were not named, default to broad current U.S. retail/online sourcing with Amazon/eBay resale evidence. Do not ask for a category, store, or marketplace. Keep valid positive-spread opportunities even when the current batch is below the target.` : "",
+        isBroadArbitrageScan(`${note} ${what}`) ? "Search the web for today and return up to 12 strongest verified arbitrage opportunities." : "Search the web for today and report back the 5 most useful, concrete findings for this job.",
         "Each finding is one short plain sentence (under 120 characters) with specifics — prices, codes, dates, names.",
         ...FINDINGS_RULES
       ].join("\n"),
