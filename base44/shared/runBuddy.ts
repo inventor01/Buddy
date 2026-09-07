@@ -12,7 +12,7 @@ import { isWholesalePropertyRequest, runWholesaleDealFinder } from "./realEstate
 import { runOrchestratedBuddy, shouldOrchestrateRequest } from "./orchestrator.ts";
 import { loadLinkedBuddies, linkedBuddyPromptLines } from "./linkedBuddies.ts";
 import { taskStepPromptLines } from "./taskChain.ts";
-import { suppressOptionalClarification } from "./clarification.ts";
+import { isBroadArbitrageScan, suppressOptionalClarification } from "./clarification.ts";
 
 // The clock where the person actually is. A note set for 9 in the morning
 // should run at their 9, and "already ran today" means their today — so both
@@ -90,6 +90,7 @@ export const FINDINGS_RULES = [
   "Only when a detail from the user would genuinely change the answer, set needs_context to ONE short friendly question asking for exactly that detail and return findings: []. Examples: a flight search without a departure city/airport; a local-service search without a location; a birthday reminder without the person/date; an account-specific request without the account. Never ask for information already present in the request.",
   "Open-ended discovery is allowed. For broad retail-arbitrage/resale scans that already name the source stores and resale marketplaces, do NOT ask for a product category or specific items. Treat the broad scope as intentional, scan across verifiable products, and return the strongest opportunities you can support.",
   "For retail arbitrage, calculate the buy side from verifiable current store price minus only coupons/discounts/loyalty offers whose eligibility you can confirm. Compare with verifiable Amazon/eBay resale pricing. When fees, shipping, tax, condition, or sell-through are unknown, label them as unknown or estimated instead of inventing them. Prefer findings that show enough numbers to understand the potential spread and direct links to the exact source product/listing pages.",
+  "CRITICAL for retail arbitrage: each actual opportunity MUST include an arbitrage object with item_name, retailer, marketplace, buy_price, discount_amount, discount_description, net_buy_cost, resale_price, estimated_fees, buy_url, resale_url, and caveat. buy_url must be the exact retailer product/deal page and resale_url must be the exact Amazon/eBay product/listing/search evidence page used for the resale price. A store flyer, deals hub, homepage, category page, or generic marketplace homepage is not enough evidence for an opportunity. If you cannot verify both sides for a specific item, do not return that item as a finding. If no item clears this evidence bar, return findings: [] and should_notify=false; do not return a 'could not verify' sentence as though it were an opportunity.",
   "When the person asks to compare a small number of options, structure the findings so each option is directly comparable on the requested dimensions. Prefer one finding per option with its own rating/price/availability/source instead of separate generic market-price findings.",
   "For each finding, set why_fit to one short sentence only when a remembered preference or explicit request constraint clearly makes that option a better fit for this person. Examples: '$58 under your budget', 'matches your nonstop preference', 'near your saved home area'. Leave why_fit empty when there is no genuine personalized reason. Never invent a preference.",
   "For current news, breaking developments, technology releases, company announcements, laws, safety claims, or other time-sensitive facts: prefer primary sources first (official company/government/release pages), then Reuters/AP or other major established reporting. Avoid SEO aggregators and low-authority roundup sites when a stronger source is available. Extraordinary claims should be supported by a primary source or a major independent outlet, not just a niche aggregator.",
@@ -130,6 +131,23 @@ export const FINDINGS_SCHEMA = {
               price: { type: "string" },
               stock: { type: "string" },
               url: { type: "string" }
+            }
+          },
+          arbitrage: {
+            type: "object",
+            properties: {
+              item_name: { type: "string" },
+              retailer: { type: "string" },
+              marketplace: { type: "string" },
+              buy_price: { type: "number" },
+              discount_amount: { type: "number" },
+              discount_description: { type: "string" },
+              net_buy_cost: { type: "number" },
+              resale_price: { type: "number" },
+              estimated_fees: { type: "number" },
+              buy_url: { type: "string" },
+              resale_url: { type: "string" },
+              caveat: { type: "string" }
             }
           }
         },
@@ -226,7 +244,43 @@ export function toFindingItems(raw) {
         };
       }
     }
-    items.push({ text, url, source, why_fit, deal, product });
+    let arbitrage = null;
+    const a = f && typeof f === "object" ? f.arbitrage : null;
+    if (a && typeof a === "object") {
+      const itemName = String(a.item_name || '').trim().slice(0, 120);
+      const retailer = String(a.retailer || '').trim().slice(0, 60);
+      const marketplace = String(a.marketplace || '').trim().slice(0, 60);
+      const buyPrice = Number(a.buy_price) || 0;
+      const discountAmount = Math.max(0, Number(a.discount_amount) || 0);
+      const statedNet = Number(a.net_buy_cost) || 0;
+      const netBuyCost = statedNet > 0 ? statedNet : Math.max(0, buyPrice - discountAmount);
+      const resalePrice = Number(a.resale_price) || 0;
+      const estimatedFees = Math.max(0, Number(a.estimated_fees) || 0);
+      const buyUrl = sanitizeResultUrl(a.buy_url);
+      const resaleUrl = sanitizeResultUrl(a.resale_url);
+      const estimatedProfit = Math.round((resalePrice - netBuyCost - estimatedFees) * 100) / 100;
+      const roiPercent = netBuyCost > 0 ? Math.round((estimatedProfit / netBuyCost) * 1000) / 10 : 0;
+      const genericDealPage = (u) => /\/(?:current[-_]?flyer|weekly[-_]?ad|weekly[-_]?ads|circular|deals?|sales?|clearance)\/?(?:[?#].*)?$/i.test(String(u || ''));
+      if (itemName && retailer && marketplace && netBuyCost > 0 && resalePrice > 0 && estimatedProfit > 0 && buyUrl && resaleUrl && !genericDealPage(buyUrl) && !genericDealPage(resaleUrl)) {
+        arbitrage = {
+          item_name: itemName,
+          retailer,
+          marketplace,
+          buy_price: buyPrice,
+          discount_amount: discountAmount,
+          discount_description: String(a.discount_description || '').trim().slice(0, 180),
+          net_buy_cost: Math.round(netBuyCost * 100) / 100,
+          resale_price: Math.round(resalePrice * 100) / 100,
+          estimated_fees: Math.round(estimatedFees * 100) / 100,
+          estimated_profit: estimatedProfit,
+          roi_percent: roiPercent,
+          buy_url: buyUrl,
+          resale_url: resaleUrl,
+          caveat: String(a.caveat || '').trim().slice(0, 300),
+        };
+      }
+    }
+    items.push({ text, url, source, why_fit, deal, product, arbitrage });
     if (items.length >= 5) break;
   }
   return items;
@@ -397,16 +451,18 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
     return { items: [], lines: [question], question: true, deliveredBySms: questionSmsSent };
   }
 
-  const shouldNotify = findings?.should_notify !== false;
-  const items = toFindingItems(findings?.findings);
-  if (items.length === 0) {
-    items.push({
-      text: shouldNotify ? "Nothing useful turned up this time." : "Nothing changed — still keeping an eye on it.",
-      url: "",
-      source: ""
-    });
+  let shouldNotify = findings?.should_notify !== false;
+  let items = toFindingItems(findings?.findings);
+  const broadArbitrage = isBroadArbitrageScan(requestText);
+  if (broadArbitrage) {
+    items = items.filter((item) => item?.arbitrage);
+    shouldNotify = shouldNotify && items.length > 0;
   }
-  const lines = toLines(items);
+  const lines = items.length
+    ? toLines(items)
+    : [broadArbitrage
+        ? "No specific arbitrage opportunity cleared Buddy’s evidence and profit checks today."
+        : (shouldNotify ? "Nothing useful turned up this time." : "Nothing changed — still keeping an eye on it.")];
 
   const today = nowInZone(timeZone).date;
   const finishing = buddy.run_mode === "once";
