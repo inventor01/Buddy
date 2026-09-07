@@ -613,7 +613,6 @@ export default async function (req) {
         personalFacts,
         changesMade: [],
         outcome: 'answered and handled',
-        estimatedTimeSavedMinutes: 10,
       });
     }
 
