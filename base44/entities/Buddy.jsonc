@@ -254,6 +254,12 @@
           "marketplace": {
             "type": "string"
           },
+          "category": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
           "identifier": {
             "type": "string"
           },
@@ -480,6 +486,27 @@
                     "marketplace": {
                       "type": "string"
                     },
+                    "category": {
+                      "type": "string"
+                    },
+                    "brand": {
+                      "type": "string"
+                    },
+                    "actionability_score": {
+                      "type": "number"
+                    },
+                    "action_tier": {
+                      "type": "string"
+                    },
+                    "units_to_target": {
+                      "type": "number"
+                    },
+                    "match_confidence": {
+                      "type": "number"
+                    },
+                    "demand_note": {
+                      "type": "string"
+                    },
                     "buy_price": {
                       "type": "number"
                     },
@@ -525,6 +552,12 @@
                       "type": "string"
                     },
                     "marketplace": {
+                      "type": "string"
+                    },
+                    "category": {
+                      "type": "string"
+                    },
+                    "brand": {
                       "type": "string"
                     },
                     "identifier": {
