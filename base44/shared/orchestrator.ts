@@ -4,6 +4,7 @@ import { markProviderVerified, providerCapability, rankProviders, recordProvider
 import { taskStepsToOrchestration } from './taskChain.ts';
 import { isBroadArbitrageScan } from './clarification.ts';
 import { extractArbitrageProfitTarget } from './arbitrage.ts';
+import { reviewResponseForRepair } from './responseIntelligence.ts';
 
 const PLAN_SCHEMA = {
   type: 'object',
@@ -463,14 +464,75 @@ export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], 
     if (buddy.execution_mode === 'chain' && steps.some((step) => step.kind !== 'verify' && step.status === 'failed')) {
       throw new Error('A required step in this connected handoff could not complete.');
     }
-    const final = await synthesize(base44, goal, results);
+    let final = await synthesize(base44, goal, results);
+
+    // Complex research gets one bounded self-repair chance when the final
+    // answer has a concrete public-web evidence gap that would materially
+    // improve the decision. Simple tasks, connected chains, arbitrage, and
+    // wholesale keep their specialized/lighter paths.
+    let qualityReview: any = null;
+    let repairCompleted = false;
+    const canSelfRepair = plan.complexity >= 4 && buddy.execution_mode !== 'chain' && !isBroadArbitrageScan(goal) && !isWholesalePropertyRequest(goal);
+    if (canSelfRepair && Array.isArray(final?.findings) && final.findings.length) {
+      qualityReview = await reviewResponseForRepair({
+        base44,
+        request: goal,
+        findings: final.findings,
+        verificationSummary: final?.verification_summary || '',
+      });
+      if (qualityReview?.repair_needed && qualityReview?.repair_instruction) {
+        const repairStep: any = {
+          id: 'response-repair',
+          kind: 'web_research',
+          instruction: qualityReview.repair_instruction,
+          depends_on: [],
+          approval_required: false,
+          status: 'running',
+          provider: '',
+          output: '',
+          evidence_urls: [],
+          confidence: 0,
+          error: '',
+        };
+        steps.push(repairStep);
+        await base44.asServiceRole.entities.BuddyJob.update(job.id, { steps, providers_used: uniq(providers), fallback_count: fallbackCount });
+        const repairIndex = steps.length - 1;
+        try {
+          const repair = await executeStep({ base44, buddy, step: repairStep, goal, priorResults: results });
+          results.push({ ...repair, step_id: repairStep.id });
+          providers.push(repair.provider);
+          if (repair.used_fallback) fallbackCount += 1;
+          steps[repairIndex] = {
+            ...repairStep,
+            status: 'completed',
+            provider: repair.provider,
+            output: trim(repair.output, 8000),
+            evidence_urls: (repair.urls || []).slice(0, 12),
+            confidence: repair.confidence || 0,
+            latency_ms: repair.latency_ms || 0,
+            attempted_providers: repair.attempted_providers || [repair.provider],
+          };
+          final = await synthesize(base44, goal, results);
+          repairCompleted = true;
+        } catch (repairError: any) {
+          steps[repairIndex] = { ...repairStep, status: 'failed', error: trim(repairError?.message, 300) };
+        }
+        await base44.asServiceRole.entities.BuddyJob.update(job.id, { steps, providers_used: uniq(providers), fallback_count: fallbackCount });
+      }
+    }
+
+    const qualityNote = qualityReview
+      ? `Decision-quality review ${Math.round(Number(qualityReview.quality_score) || 0)}/100.${repairCompleted ? ' Buddy ran one targeted evidence repair before finalizing.' : ''}`
+      : '';
+    const finalVerificationSummary = trim([final?.verification_summary, qualityNote].filter(Boolean).join(' '), 1200);
+
     const verifiedPairs = uniq(results.map((r: any) => `${r.provider}|||${r.capability || 'general'}`));
     for (const pair of verifiedPairs) {
       const [provider, capability] = String(pair).split('|||');
       await markProviderVerified(base44, provider, capability);
     }
     const verifyIndex = steps.findIndex((s) => s.kind === 'verify');
-    if (verifyIndex >= 0) steps[verifyIndex] = { ...steps[verifyIndex], provider: 'buddy-verifier', status: 'completed', output: trim(final?.verification_summary || 'Verified specialist outputs.', 1000), evidence_urls: uniq(results.flatMap((r) => r.urls || [])).slice(0, 12), confidence: 0.9, error: '' };
+    if (verifyIndex >= 0) steps[verifyIndex] = { ...steps[verifyIndex], provider: 'buddy-verifier', status: 'completed', output: trim(finalVerificationSummary || 'Verified specialist outputs.', 1000), evidence_urls: uniq(results.flatMap((r) => r.urls || [])).slice(0, 12), confidence: 0.9, error: '' };
     const waitingForApproval = steps.some((step) => step.status === 'waiting_approval');
     await base44.asServiceRole.entities.BuddyJob.update(job.id, {
       status: waitingForApproval ? 'needs_approval' : 'completed',
@@ -478,11 +540,11 @@ export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], 
       steps,
       providers_used: uniq([...providers, 'buddy-verifier']),
       fallback_count: fallbackCount,
-      verification_summary: trim(final?.verification_summary, 1200),
+      verification_summary: finalVerificationSummary,
       final_summary: trim((final?.findings || []).map((f: any) => f?.text).filter(Boolean).join('\n'), 5000),
       final_items_json: JSON.stringify(final?.findings || []).slice(0, 30000),
     });
-    return { ...final, job_id: job.id, orchestration: { steps: steps.length, providers: uniq(providers).length, fallbacks: fallbackCount } };
+    return { ...final, verification_summary: finalVerificationSummary, job_id: job.id, orchestration: { steps: steps.length, providers: uniq(providers).length, fallbacks: fallbackCount, response_repaired: repairCompleted } };
   } catch (error: any) {
     await base44.asServiceRole.entities.BuddyJob.update(job.id, { status: 'failed', completed_at: new Date().toISOString(), steps, providers_used: uniq(providers), fallback_count: fallbackCount, verification_summary: trim(error?.message, 1000) });
     throw error;
