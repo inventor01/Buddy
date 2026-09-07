@@ -43,7 +43,7 @@ export default function BookPage({ buddies }) {
       >
         {groups.length === 0 && (
           <p className="py-3 text-[12px] text-neutral-400">
-            When your notes do things, it all gets written down here.
+            When Buddy handles things, the useful history gets written down here.
           </p>
         )}
         {groups.map((g) => (
