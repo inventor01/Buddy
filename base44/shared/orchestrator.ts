@@ -213,7 +213,8 @@ async function runOpenAI(instruction: string, goal: string) {
     });
     if (!res.ok) throw new Error(`OpenAI specialist failed (${res.status}).`);
     const data = await res.json();
-    return { output: extractOpenAIText(data).slice(0, 9000), urls: uniq(collectUrls(data)).slice(0, 12), confidence: 0.82, provider: 'openai' };
+    const arbitrageRun = isBroadArbitrageScan(goal);
+    return { output: extractOpenAIText(data).slice(0, arbitrageRun ? 18000 : 9000), urls: uniq(collectUrls(data)).slice(0, arbitrageRun ? 30 : 12), confidence: 0.82, provider: 'openai' };
   } finally { clearTimeout(timer); }
 }
 
@@ -254,9 +255,10 @@ async function runBase44Research(base44: any, instruction: string, goal: string,
       }, required: ['summary','evidence_urls','confidence'],
     },
   });
+  const arbitrageRun = isBroadArbitrageScan(goal);
   return {
-    output: trim(r?.summary, 9000),
-    urls: (Array.isArray(r?.evidence_urls) ? r.evidence_urls : []).filter((u) => /^https?:\/\//i.test(String(u))).slice(0, 12),
+    output: trim(r?.summary, arbitrageRun ? 18000 : 9000),
+    urls: (Array.isArray(r?.evidence_urls) ? r.evidence_urls : []).filter((u) => /^https?:\/\//i.test(String(u))).slice(0, arbitrageRun ? 30 : 12),
     confidence: Math.min(1, Math.max(0, Number(r?.confidence) || 0.65)),
     provider: useInternet ? 'buddy-web' : 'buddy-reasoner',
   };
@@ -269,8 +271,9 @@ async function executeStep({ base44, buddy, step, goal, priorResults = [] }: any
   const dependencyResults = dependencyIds.size
     ? priorResults.filter((r: any) => dependencyIds.has(r.step_id))
     : priorResults;
+  const arbitrageRun = isBroadArbitrageScan(goal);
   const priorContext = dependencyResults.length
-    ? dependencyResults.map((r: any, index: number) => `Dependency output ${index + 1} (${r.provider || 'worker'}):\n${trim(r.output, 4500)}`).join('\n\n')
+    ? dependencyResults.map((r: any, index: number) => `Dependency output ${index + 1} (${r.provider || 'worker'}):\n${trim(r.output, arbitrageRun ? 10000 : 4500)}`).join('\n\n')
     : '';
   const instructionWithInputs = priorContext
     ? `${step.instruction}\n\nUse these completed dependency outputs as input. Do not ignore or redo them unless verification requires it:\n${priorContext}`
