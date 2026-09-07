@@ -284,6 +284,42 @@ function matchKey(value: any) {
   return `${retailer}|${identifier || item}`;
 }
 
+async function enrichDiscountBatch(base44: any, candidates: any[], request: string) {
+  if (!candidates.length) return [];
+  const response = await base44.asServiceRole.integrations.Core.InvokeLLM({
+    model: 'gemini_3_flash',
+    add_context_from_internet: true,
+    prompt: [
+      'You are the discount-verification pass for retail arbitrage. Search specifically for CURRENT extra savings on these exact products.',
+      `Overall request: ${request}`,
+      'Candidates:',
+      JSON.stringify(candidates).slice(0, 18000),
+      'Preserve each exact product/retailer/identifier and its current buy_price. buy_price already includes any visible regular-to-sale/clearance markdown.',
+      'Actively check retailer digital coupons, free loyalty/member offers, clip-to-account coupons, public promo codes, manufacturer coupons, and item-specific promotions that can reduce the current buy_price now.',
+      'Return every candidate, even if no coupon exists. For every extra offer, include discounts entries with kind, description, effective_amount, exact source_url, code, eligibility, stackable_with_current_price, applies_to_exact_item, and expires_at.',
+      'Only return effective_amount when the source makes the dollar impact on the exact item calculable. Do not count future rewards/store cash, uncertain rebates, credit-card offers, employee discounts, first-time-only discounts, personalized/targeted offers, or unknown eligibility.',
+      'Do not assume stacking. A sale markdown already included in buy_price is NOT an extra coupon. Never count it twice.',
+    ].join('\n'),
+    response_json_schema: CANDIDATE_SCHEMA,
+  });
+  const returned = Array.isArray(response?.candidates) ? response.candidates : [];
+  const byKey = new Map(returned.map((candidate: any) => [matchKey(candidate), candidate]));
+  return candidates.map((candidate: any) => {
+    const enriched: any = byKey.get(matchKey(candidate)) || {};
+    const buyPrice = Number(candidate.buy_price) || 0;
+    const verifiedDiscounts = sanitizeDiscounts(enriched.discounts || candidate.discounts, buyPrice);
+    const discount = discountSummary(verifiedDiscounts);
+    return {
+      ...candidate,
+      original_price: Math.max(buyPrice, Number(enriched.original_price) || Number(candidate.original_price) || 0),
+      price_status: cleanText(enriched.price_status || candidate.price_status, 30),
+      discounts: verifiedDiscounts,
+      discount_amount: discount.total,
+      discount_description: discount.description,
+    };
+  });
+}
+
 async function crossMatchBatch(base44: any, candidates: any[], request: string) {
   if (!candidates.length) return [];
   const response = await base44.asServiceRole.integrations.Core.InvokeLLM({
