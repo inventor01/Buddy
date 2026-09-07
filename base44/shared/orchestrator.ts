@@ -38,6 +38,15 @@ const SYNTH_SCHEMA = {
           source_name: { type: 'string' },
           url: { type: 'string' },
           why_fit: { type: 'string' },
+          arbitrage: {
+            type: 'object',
+            properties: {
+              item_name: { type: 'string' }, retailer: { type: 'string' }, marketplace: { type: 'string' },
+              buy_price: { type: 'number' }, discount_amount: { type: 'number' }, discount_description: { type: 'string' },
+              net_buy_cost: { type: 'number' }, resale_price: { type: 'number' }, estimated_fees: { type: 'number' },
+              buy_url: { type: 'string' }, resale_url: { type: 'string' }, caveat: { type: 'string' },
+            },
+          },
         },
         required: ['text'],
       },
@@ -322,6 +331,7 @@ async function synthesize(base44: any, goal: string, results: any[]) {
       `User goal: ${goal}`,
       'Below are specialist outputs. Produce the final answer using ONLY claims supported by those outputs. Resolve contradictions conservatively. Never invent missing prices, dates, URLs, or actions.',
       'For every finding, use the most specific source URL actually present in the evidence. Prefer the exact article, product, listing, provider, event, route/search, or booking page. Do not replace a direct source with a site homepage or generic landing page. If only a homepage is available, leave the URL empty.',
+      isBroadArbitrageScan(goal) ? 'For this retail-arbitrage request, return ONLY specific item opportunities that have evidence for both sides. Every opportunity must include arbitrage with exact item_name, retailer, marketplace, buy_price, verified discount_amount/description when applicable, net_buy_cost, resale_price, estimated_fees, exact retailer buy_url, exact Amazon/eBay resale_url, and a caveat. Do not return flyer pages, generic deals pages, homepages, category pages, or a sentence saying verification failed as a finding. If no item has both direct evidence URLs and a positive supported spread, return findings: [] and should_notify=false.' : '',
       'If a consequential action still needs approval, say so rather than implying it happened.',
       JSON.stringify(evidence).slice(0, 28000),
     ].join('\n'),
