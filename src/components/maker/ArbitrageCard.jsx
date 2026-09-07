@@ -40,11 +40,22 @@ export default function ArbitrageCard({ item }) {
 
       <div className="mt-3 space-y-1 text-[11.5px] leading-relaxed text-neutral-500">
         {(a.brand || a.category) && <p>{[a.brand, a.category].filter(Boolean).join(" · ")}</p>}
+        {Number(a.original_price) > Number(a.buy_price) && (
+          <p>Store markdown: <strong className="text-neutral-800">{money(a.original_price)} → {money(a.buy_price)}</strong>{a.price_status ? ` · ${a.price_status}` : ""}</p>
+        )}
         {Number(a.units_to_target) > 0 && <p>Target math: <strong className="text-neutral-800">~{Number(a.units_to_target)} units</strong> at this one-unit spread would equal the current weekly target.</p>}
         {a.demand_note && <p>Demand evidence: <strong className="text-neutral-800">{a.demand_note}</strong></p>}
         {Number(a.discount_amount) > 0 && (
-          <p>Verified discount: <strong className="text-neutral-800">-{money(a.discount_amount)}</strong>{a.discount_description ? ` · ${a.discount_description}` : ""}</p>
+          <p>Verified extra savings: <strong className="text-neutral-800">-{money(a.discount_amount)}</strong></p>
         )}
+        {Array.isArray(a.discounts) && a.discounts.map((d, index) => (
+          <p key={`${d.source_url || d.description}-${index}`} className="flex flex-wrap items-center gap-1">
+            <span>{d.description || d.kind || "Verified offer"}{d.code ? ` · code ${d.code}` : ""} · -{money(d.effective_amount)}{d.eligibility ? ` · ${d.eligibility}` : ""}</span>
+            {d.source_url && <a href={d.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 font-semibold text-neutral-700 underline underline-offset-2">Offer source <ExternalLink className="h-3 w-3" /></a>}
+          </p>
+        ))}
+        {Number(a.discount_amount) > 0 && <p>Profit without extra coupon/offer savings: <strong className="text-neutral-800">{money(a.profit_without_extra_discounts)}</strong></p>}
+        {a.coupon_dependent && <p className="font-semibold text-neutral-800">Coupon-dependent: this spread is only positive if the verified extra offer still applies at checkout.</p>}
         <p>Estimated marketplace/other fees included: <strong className="text-neutral-800">{money(a.estimated_fees)}</strong></p>
         {a.caveat && <p className="text-neutral-400">{a.caveat}</p>}
       </div>
@@ -52,11 +63,13 @@ export default function ArbitrageCard({ item }) {
       <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/55 px-3.5 py-3">
         <p className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-emerald-700">What to do now</p>
         <p className="mt-1 text-[11.5px] leading-relaxed text-neutral-700">
-          {tier === "check_now"
-            ? "Open both pages now, verify the exact variant and live quantity, then recheck the spread before checkout. This is one of Buddy’s strongest current candidates."
-            : tier === "low_priority"
-              ? "Keep this below stronger candidates. Recheck only if the buy price drops further, demand improves, or you can source multiple units cheaply."
-              : "Verify the exact variant and available quantity, then recheck the resale side. Move it up only if the live spread and sourcing quantity still make sense."}
+          {a.coupon_dependent
+            ? "Open the exact store page and offer source first, clip/apply the verified discount, and confirm the net price at checkout. Then recheck the exact resale page and only proceed if the discounted spread still clears your costs."
+            : tier === "check_now"
+              ? "Open both pages now, verify the exact variant and live quantity, then recheck the spread before checkout. This is one of Buddy’s strongest current candidates."
+              : tier === "low_priority"
+                ? "Keep this below stronger candidates. Recheck only if the buy price drops further, demand improves, or you can source multiple units cheaply."
+                : "Verify the exact variant and available quantity, then recheck the resale side. Move it up only if the live spread and sourcing quantity still make sense."}
         </p>
       </div>
 
