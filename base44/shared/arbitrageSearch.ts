@@ -478,10 +478,25 @@ export async function runRetailArbitragePipeline({ base44, buddy, personalFacts 
 
   const batches: any[][] = [];
   for (let i = 0; i < enrichedCandidates.length; i += 8) batches.push(enrichedCandidates.slice(i, i + 8));
-  const matchedSettled = await Promise.allSettled(batches.slice(0, 5).map((batch) => crossMatchBatch(base44, batch, request)));
+  const matchBatches = batches.slice(0, 5);
+  const matchedSettled = await Promise.allSettled(matchBatches.map((batch) => crossMatchBatch(base44, batch, request)));
   const matches = matchedSettled.flatMap((r) => r.status === 'fulfilled' ? r.value : []);
+  const failedMatchCandidates = matchedSettled.flatMap((result, index) => {
+    if (result.status === 'fulfilled') return [];
+    return (matchBatches[index] || []).map((candidate: any) => ({
+      ...candidate,
+      marketplace: 'Amazon/eBay',
+      resale_price: 0,
+      estimated_fees: 0,
+      resale_url: '',
+      match_confidence: 0.4,
+      missing_evidence: 'Amazon/eBay cross-match failed on this pass; Buddy preserved the exact buy-side product and will retry it.',
+      caveat: 'Buy side is verified enough to keep researching, but no resale profit is counted yet.',
+    }));
+  });
+  const coveredMatches = [...matches, ...failedMatchCandidates];
 
-  const findings = matches.map((m) => toFinding(m, target)).filter(Boolean);
+  const findings = coveredMatches.map((m) => toFinding(m, target)).filter(Boolean);
   const verified = findings.filter((f: any) => f.arbitrage)
     .sort((a: any, b: any) => {
       const sa = Number(a.arbitrage?.actionability_score || 0);
@@ -500,6 +515,17 @@ export async function runRetailArbitragePipeline({ base44, buddy, personalFacts 
   return {
     findings: [...selectedVerified, ...leads.slice(0, Math.max(0, 12 - selectedVerified.length))],
     should_notify: strongVerified.length > 0,
-    verification_summary: `Ran ${retailers.length * DISCOVERY_FOCUSES.length} target-aware discovery passes across ${retailers.length} retailers, preserved ${candidates.length} exact priced candidates, ran ${Math.min(5, discountBatches.length)} dedicated coupon/discount verification batches, and cross-matched ${matches.length} candidates against resale evidence.`, 
+    verification_summary: `Ran ${retailers.length * DISCOVERY_FOCUSES.length} target-aware discovery passes across ${retailers.length} retailers, preserved ${candidates.length} exact priced candidates, ran ${Math.min(5, discountBatches.length)} dedicated coupon/discount verification batches, completed ${matchedSettled.filter((r) => r.status === 'fulfilled').length}/${matchBatches.length} resale-match batches, and preserved ${failedMatchCandidates.length} exact buy-side candidates from failed resale batches as retryable leads.`,
+    search_stats: {
+      retailers: retailers.length,
+      discovery_passes: retailers.length * DISCOVERY_FOCUSES.length,
+      exact_candidates: candidates.length,
+      discount_batches: Math.min(5, discountBatches.length),
+      match_batches_total: matchBatches.length,
+      match_batches_completed: matchedSettled.filter((r) => r.status === 'fulfilled').length,
+      match_batches_failed: matchedSettled.filter((r) => r.status === 'rejected').length,
+      verified: selectedVerified.length,
+      leads: leads.length,
+    },
   };
 }
