@@ -8,7 +8,7 @@ function uniqueStrings(values: any[], max = 8, width = 240) {
   return out;
 }
 
-export async function createReceiptOnce({ base44, buddy, summary, items = [], personalFacts = [], changesMade = [], confirmation = '', outcome = 'handled', estimatedTimeSavedMinutes = 10 }: any) {
+export async function createReceiptOnce({ base44, buddy, summary, items = [], personalFacts = [], changesMade = [], confirmation = '', outcome = 'handled' }: any) {
   if (!buddy?.id || !buddy?.owner_id) return null;
   try {
     const existing = await base44.asServiceRole.entities.BuddyReceipt.filter({ owner_id: buddy.owner_id, buddy_id: buddy.id }, '-created_date', 1);
@@ -28,7 +28,9 @@ export async function createReceiptOnce({ base44, buddy, summary, items = [], pe
       changes_made: uniqueStrings(changesMade, 10, 220),
       confirmation: String(confirmation || '').slice(0, 300),
       source_urls: sourceUrls,
-      estimated_time_saved_minutes: Math.max(0, Math.min(240, Number(estimatedTimeSavedMinutes) || 0)),
+      // Do not invent a time-saved number. Keep the legacy field neutral until
+      // Buddy has a measured source for actual elapsed/avoided work.
+      estimated_time_saved_minutes: 0,
     });
   } catch (_) {
     return null;
