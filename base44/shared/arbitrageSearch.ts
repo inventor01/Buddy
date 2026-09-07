@@ -1,6 +1,7 @@
 import { extractArbitrageProfitTarget } from './arbitrage.ts';
 import { sanitizeDiscountOffers, summarizeDiscountOffers } from './discounts.ts';
 import { isExactRetailProductUrl } from './retailEvidence.ts';
+import { isExactResaleCompUrl } from './resaleEvidence.ts';
 
 const RETAILERS = [
   ['target', 'Target'],
@@ -321,7 +322,7 @@ async function crossMatchBatch(base44: any, candidates: any[], request: string) 
       'Candidates:',
       JSON.stringify(candidates).slice(0, 16000),
       'For each candidate, search using identifier first (UPC/SKU/model) and then exact product+variant. Do not match a different size, count, color, edition, condition, bundle, or model.',
-      'Prefer a direct Amazon product page, direct eBay listing/product page, or a highly specific eBay result page that clearly supports the quoted resale price. Never use Amazon/eBay homepages.',
+      'The resale comp MUST be an exact marketplace product/listing page: Amazon /dp/ASIN or /gp/product/ASIN, or an exact eBay /itm/ listing page. Search/results pages, sold-search pages, category pages, product grids, and marketplace homepages are discovery-only and MUST NOT be returned as resale_url for a verified comp.',
       'Carry original_price, buy_price, price_status and discounts through. buy_price already includes any visible sale/clearance markdown; discounts are only EXTRA offers on top of that price.',
       'Re-check the discounts and drop any expired, wrong-item, non-stackable, targeted/personalized, future-reward, or unverifiable offer. Never double-count a sale markdown as a coupon.',
       'resale_price must be supported by the returned resale_url. estimated_fees may be a conservative estimate; label uncertainty in caveat. Do not fabricate sold-through, stock quantity, or sales velocity.',
@@ -382,7 +383,7 @@ export function toFinding(match: any, target: number) {
   const profit = Math.round((resalePrice - netBuy - estimatedFees) * 100) / 100;
   const couponDependent = profit > 0 && profitBeforeExtraDiscounts <= 0 && discountAmount > 0;
   const genericBuy = !buyUrl || !isExactRetailProductUrl(buyUrl, retailer);
-  const genericResale = !resaleUrl || isGenericEvidenceUrl(resaleUrl);
+  const genericResale = !resaleUrl || !isExactResaleCompUrl(resaleUrl, marketplace);
 
   if (itemName && retailer && netBuy > 0 && resalePrice > 0 && profit > 0 && !genericBuy && !genericResale && marketplace) {
     const units = target > 0 ? Math.max(1, Math.ceil(target / profit)) : 0;
