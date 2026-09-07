@@ -139,6 +139,18 @@ async function discoverAtRetailer(base44: any, retailer: string, request: string
   return (Array.isArray(response?.candidates) ? response.candidates : []).map((c: any) => ({ ...c, retailer }));
 }
 
+function candidateDiscoveryScore(c: any) {
+  const buyPrice = Math.max(0, Number(c?.buy_price) || 0);
+  const discount = Math.max(0, Number(c?.discount_amount) || 0);
+  const identifierBonus = cleanText(c?.identifier, 100) ? 20 : 0;
+  const brandBonus = cleanText(c?.brand, 80) ? 8 : 0;
+  const priorityText = `${c?.category || ''} ${c?.brand || ''} ${c?.item_name || ''}`.toLowerCase();
+  const priorityBonus = /lego|collectible|video game|console|electronics?|power tool|tool|vacuum|appliance|kitchen|beauty device/.test(priorityText) ? 25 : 0;
+  const valueScore = Math.min(20, (buyPrice / 150) * 20);
+  const discountScore = Math.min(27, discount > 0 && buyPrice > 0 ? (discount / (buyPrice + discount)) * 100 : 0);
+  return identifierBonus + brandBonus + priorityBonus + valueScore + discountScore;
+}
+
 function dedupeCandidates(raw: any[]) {
   const out: any[] = [];
   const seen = new Set<string>();
@@ -167,7 +179,19 @@ function dedupeCandidates(raw: any[]) {
       evidence_note: cleanText(c?.evidence_note, 180),
     });
   }
-  return out.slice(0, 30);
+  // Prevent the first retailer in the fan-out from consuming the whole match
+  // budget. Keep the strongest candidates per retailer, then rank the balanced
+  // pool globally. With six retailers this yields at most 36 products.
+  const byRetailer = new Map<string, any[]>();
+  for (const candidate of out) {
+    const key = String(candidate.retailer || '').toLowerCase();
+    if (!byRetailer.has(key)) byRetailer.set(key, []);
+    byRetailer.get(key)!.push(candidate);
+  }
+  const balanced = [...byRetailer.values()].flatMap((group) =>
+    group.sort((a, b) => candidateDiscoveryScore(b) - candidateDiscoveryScore(a)).slice(0, 6)
+  );
+  return balanced.sort((a, b) => candidateDiscoveryScore(b) - candidateDiscoveryScore(a)).slice(0, 36);
 }
 
 async function crossMatchBatch(base44: any, candidates: any[], request: string) {
@@ -313,7 +337,7 @@ export async function runRetailArbitragePipeline({ base44, buddy, personalFacts 
 
   const batches: any[][] = [];
   for (let i = 0; i < candidates.length; i += 8) batches.push(candidates.slice(i, i + 8));
-  const matchedSettled = await Promise.allSettled(batches.slice(0, 4).map((batch) => crossMatchBatch(base44, batch, request)));
+  const matchedSettled = await Promise.allSettled(batches.slice(0, 5).map((batch) => crossMatchBatch(base44, batch, request)));
   const matches = matchedSettled.flatMap((r) => r.status === 'fulfilled' ? r.value : []);
 
   const findings = matches.map((m) => toFinding(m, target)).filter(Boolean);
