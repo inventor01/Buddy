@@ -109,8 +109,8 @@ export default async function(req) {
       const portfolio = arbitragePortfolioSummary(items, target);
       const leadCount = items.filter((item) => item?.arbitrage_lead).length;
       const summary = target > 0
-        ? `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities toward your $${target.toLocaleString()} weekly target. Gap: $${portfolio.gap.toLocaleString()}.${leadCount ? ` ${leadCount} more exact product lead${leadCount === 1 ? '' : 's'} still need one side verified.` : ''}`
-        : `This run found ${portfolio.count} verified opportunities${leadCount ? ` plus ${leadCount} exact product lead${leadCount === 1 ? '' : 's'} still being verified` : ''}.`;
+        ? `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities toward your $${target.toLocaleString()} weekly target. Gap: $${portfolio.gap.toLocaleString()}. Action queue: ${portfolio.check_now} CHECK NOW, ${portfolio.promising} promising, ${portfolio.low_priority} low priority.${leadCount ? ` ${leadCount} more exact product lead${leadCount === 1 ? '' : 's'} still need one side verified.` : ''}`
+        : `This run found ${portfolio.count} verified opportunities: ${portfolio.check_now} CHECK NOW, ${portfolio.promising} promising, ${portfolio.low_priority} low priority${leadCount ? `, plus ${leadCount} exact product lead${leadCount === 1 ? '' : 's'} still being verified` : ''}.`;
       return Response.json({ state: 'answer', lines: [summary, ...toLines(items)], items, message: summary });
     }
 
@@ -173,8 +173,8 @@ export default async function(req) {
       const portfolio = arbitragePortfolioSummary(items, arbitrageTarget);
       const leadCount = items.filter((item) => item?.arbitrage_lead).length;
       const summary = arbitrageTarget > 0
-        ? `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities toward your $${arbitrageTarget.toLocaleString()} weekly target. Gap: $${portfolio.gap.toLocaleString()}.${leadCount ? ` Buddy also kept ${leadCount} promising lead${leadCount === 1 ? '' : 's'} that still need one side verified and are not counted yet.` : ''} This is opportunity math, not guaranteed profit or confirmed inventory quantity.`
-        : `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities.${leadCount ? ` Buddy also kept ${leadCount} promising lead${leadCount === 1 ? '' : 's'} that still need one side verified.` : ''}`;
+        ? `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities toward your $${arbitrageTarget.toLocaleString()} weekly target. Gap: $${portfolio.gap.toLocaleString()}. Action queue: ${portfolio.check_now} CHECK NOW, ${portfolio.promising} promising, ${portfolio.low_priority} low priority.${leadCount ? ` Buddy also kept ${leadCount} promising lead${leadCount === 1 ? '' : 's'} that still need one side verified and are not counted yet.` : ''} This is opportunity math, not guaranteed profit or confirmed inventory quantity.`
+        : `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities. Action queue: ${portfolio.check_now} CHECK NOW, ${portfolio.promising} promising, ${portfolio.low_priority} low priority.${leadCount ? ` Buddy also kept ${leadCount} promising lead${leadCount === 1 ? '' : 's'} that still need one side verified.` : ''}`;
       return Response.json({ state: 'answer', lines: [summary, ...toLines(items)], items, message: summary });
     }
 
