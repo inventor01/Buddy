@@ -14,6 +14,7 @@ import { loadLinkedBuddies, linkedBuddyPromptLines } from "./linkedBuddies.ts";
 import { taskStepPromptLines } from "./taskChain.ts";
 import { isBroadArbitrageScan, suppressOptionalClarification } from "./clarification.ts";
 import { arbitragePortfolioSummary, extractArbitrageProfitTarget, normalizeArbitrageCandidate, normalizeArbitrageLead } from "./arbitrage.ts";
+import { runRetailArbitragePipeline } from "./arbitrageSearch.ts";
 
 // The clock where the person actually is. A note set for 9 in the morning
 // should run at their 9, and "already ran today" means their today — so both
@@ -359,7 +360,19 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
   const taskLines = taskStepPromptLines(buddy.task_steps);
   let findings;
   const requestTextForRouting = `${buddy.note || ''} ${buddy.what_line || ''}`;
-  if (buddy.kind === "web" && (buddy.execution_mode === "chain" || shouldOrchestrateRequest(requestTextForRouting))) {
+  if (buddy.kind === "web" && isBroadArbitrageScan(requestTextForRouting)) {
+    try {
+      findings = await runRetailArbitragePipeline({ base44: client, buddy, personalFacts });
+    } catch (_) {
+      // The dedicated fan-out pipeline is preferred for arbitrage, but a
+      // specialist outage must not make the handoff unusable.
+      try {
+        findings = await runOrchestratedBuddy({ base44: client, buddy, personalFacts, delegationLines, linkedContextLines: linkedLines });
+      } catch (_) {
+        findings = await runGenericWebFindings({ client, buddy, imageUrl, timeZone, personalFacts, delegationLines, linkedLines, taskLines });
+      }
+    }
+  } else if (buddy.kind === "web" && (buddy.execution_mode === "chain" || shouldOrchestrateRequest(requestTextForRouting))) {
     try {
       findings = await runOrchestratedBuddy({ base44: client, buddy, personalFacts, delegationLines, linkedContextLines: linkedLines });
     } catch (_) {
