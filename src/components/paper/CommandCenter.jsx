@@ -51,7 +51,6 @@ export default function CommandCenter({ me, profile, buddies, receipts = [], esc
   const repeating = buddies.filter((b) => b.status === "active" && b.run_mode === "repeat").slice(0, 3);
   const activeCount = buddies.filter((b) => b.status === "active").length;
   const handledCount = buddies.filter((b) => b.status === "done").length;
-  const timeSaved = receipts.reduce((sum, r) => sum + (Number(r?.estimated_time_saved_minutes) || 0), 0);
   const recentInsight = [...buddies]
     .filter((b) => firstLine(b))
     .sort((a, b) => String(b.updated_date || b.created_date).localeCompare(String(a.updated_date || a.created_date)))[0];
@@ -74,8 +73,7 @@ export default function CommandCenter({ me, profile, buddies, receipts = [], esc
         </p>
         {receipts.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
-            <span className="rounded-full border border-emerald-100 bg-emerald-50/70 px-3 py-1.5 text-[11.5px] font-medium text-emerald-700">{receipts.length} handled with receipts</span>
-            {timeSaved > 0 && <span className="rounded-full border border-white/70 bg-white/60 px-3 py-1.5 text-[11.5px] font-medium text-neutral-600">About {timeSaved >= 60 ? `${Math.floor(timeSaved / 60)}h ${timeSaved % 60}m` : `${timeSaved}m`} back</span>}
+            <span className="rounded-full border border-emerald-100 bg-emerald-50/70 px-3 py-1.5 text-[11.5px] font-medium text-emerald-700">{receipts.length} completed {receipts.length === 1 ? "handoff" : "handoffs"} with a receipt</span>
           </div>
         )}
       </div>
@@ -121,7 +119,7 @@ export default function CommandCenter({ me, profile, buddies, receipts = [], esc
           <div className="flex items-start gap-3">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><Sparkles className="h-4 w-4" /></span>
             <div>
-              <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Buddy noticed</p>
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{["watch", "repeat"].includes(recentInsight.run_mode) ? "Buddy noticed" : "Latest from Buddy"}</p>
               <p className="mt-1.5 text-[14px] leading-relaxed text-neutral-800">{firstLine(recentInsight)}</p>
               <p className="mt-2 text-[11.5px] font-medium text-neutral-400">From {recentInsight.name}</p>
             </div>
