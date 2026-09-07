@@ -39,17 +39,29 @@ export function sanitizeDiscountOffers(raw: any, buyPrice: number, nowMs = Date.
       code: String(d?.code || '').trim().slice(0, 50),
       eligibility,
       stackable_with_current_price: true,
+      stackable_with_other_offers: d?.stackable_with_other_offers === true,
       applies_to_exact_item: true,
       expires_at: expiresAt,
     });
   }
 
-  // Bound the total so malformed/model-supplied offers can never reduce net cost
-  // below zero. We intentionally do not infer stacking between discount offers;
-  // each accepted offer must itself explicitly stack with the current price.
+  // Never assume two coupons stack with each other. Start with the strongest
+  // verified offer. Additional offers are included only when every offer in the
+  // combination explicitly says it can stack with other offers.
+  accepted.sort((a, b) => b.effective_amount - a.effective_amount);
+  let selected: any[] = [];
+  for (const offer of accepted) {
+    if (!selected.length) {
+      selected = [offer];
+      continue;
+    }
+    if (offer.stackable_with_other_offers !== true || selected.some((d) => d.stackable_with_other_offers !== true)) continue;
+    selected.push(offer);
+  }
+
   let remaining = price;
   const bounded: any[] = [];
-  for (const d of accepted) {
+  for (const d of selected) {
     const applied = Math.min(remaining, d.effective_amount);
     if (applied <= 0) continue;
     bounded.push({ ...d, effective_amount: Math.round(applied * 100) / 100 });
