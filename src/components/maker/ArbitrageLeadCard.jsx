@@ -57,7 +57,7 @@ export default function ArbitrageLeadCard({ item }) {
         <p className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-amber-700">Next verification</p>
         <p className="mt-1 text-[11.5px] leading-relaxed text-neutral-700">
           {a.buy_url
-            ? "Use the exact model/SKU above to confirm the matching Amazon or eBay price. Buddy will retry this lead on the next run."
+            ? "Use the exact model/SKU above to resolve the resale comp to an exact Amazon product page or eBay /itm/ listing page. Search/results pages do not count. Buddy will retry this lead on the next run."
             : "Find the exact retailer product/variant and current buy price. Buddy will retry this lead on the next run."}
         </p>
       </div>
