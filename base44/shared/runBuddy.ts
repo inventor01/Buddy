@@ -393,14 +393,15 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
   if (buddy.kind === "web" && isBroadArbitrageScan(requestTextForRouting)) {
     try {
       findings = await runRetailArbitragePipeline({ base44: client, buddy, personalFacts });
-    } catch (_) {
-      // The dedicated fan-out pipeline is preferred for arbitrage, but a
-      // specialist outage must not make the handoff unusable.
-      try {
-        findings = await runOrchestratedBuddy({ base44: client, buddy, personalFacts, delegationLines, linkedContextLines: linkedLines });
-      } catch (_) {
-        findings = await runGenericWebFindings({ client, buddy, imageUrl, timeZone, personalFacts, delegationLines, linkedLines, taskLines });
-      }
+    } catch (error: any) {
+      // Arbitrage must never silently fall back to generic research: doing so
+      // hides a pipeline failure behind a misleading "nothing found" result.
+      findings = {
+        findings: [],
+        should_notify: false,
+        arbitrage_pipeline_error: String(error?.message || 'The arbitrage pipeline could not finish this pass.').slice(0, 300),
+        verification_summary: 'The dedicated arbitrage pipeline failed before it could safely produce results; no generic substitute was presented as equivalent research.',
+      };
     }
   } else if (buddy.kind === "web" && (buddy.execution_mode === "chain" || shouldOrchestrateRequest(requestTextForRouting))) {
     try {
@@ -513,10 +514,14 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
   } else if (items.length) {
     lines = toLines(items);
   } else {
+    const pipelineError = broadArbitrage && typeof findings?.arbitrage_pipeline_error === 'string' ? findings.arbitrage_pipeline_error : '';
+    const verificationSummary = broadArbitrage && typeof findings?.verification_summary === 'string' ? findings.verification_summary : '';
     lines = [broadArbitrage
-      ? (arbitrageTarget > 0
-          ? `No specific arbitrage opportunity cleared Buddy’s evidence and profit checks on this run. Your $${arbitrageTarget.toLocaleString()} weekly target stays in place; Buddy should keep scanning broadly on the next scheduled run.`
-          : "No specific arbitrage opportunity cleared Buddy’s evidence and profit checks today.")
+      ? (pipelineError
+          ? `Buddy’s dedicated arbitrage search hit a pipeline error before it could safely finish: ${pipelineError} No generic search result was substituted. Run it again to retry the exact-product pipeline.`
+          : (arbitrageTarget > 0
+              ? `Buddy completed this arbitrage pass but did not yet have an exact product with enough buy-side and resale evidence to count toward your $${arbitrageTarget.toLocaleString()} weekly target.${verificationSummary ? ` ${verificationSummary}` : ''} Any exact one-sided products will be kept for the next verification pass.`
+              : `Buddy completed this arbitrage pass but did not yet have an exact product with enough buy-side and resale evidence to calculate a verified spread.${verificationSummary ? ` ${verificationSummary}` : ''}`))
       : (shouldNotify ? "Nothing useful turned up this time." : "Nothing changed — still keeping an eye on it.")];
   }
 
