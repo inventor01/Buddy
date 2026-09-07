@@ -15,7 +15,10 @@ export function arbitragePortfolioSummary(items: any[], target = 0) {
   const verifiedPotential = Math.round(opportunities.reduce((sum, item) => sum + Math.max(0, Number(item.arbitrage?.estimated_profit) || 0), 0) * 100) / 100;
   const goal = Math.max(0, Number(target) || 0);
   const gap = Math.max(0, Math.round((goal - verifiedPotential) * 100) / 100);
-  return { verified_potential: verifiedPotential, target: goal, gap, count: opportunities.length };
+  const checkNow = opportunities.filter((item) => item.arbitrage?.action_tier === 'check_now').length;
+  const promising = opportunities.filter((item) => item.arbitrage?.action_tier === 'promising').length;
+  const lowPriority = opportunities.filter((item) => item.arbitrage?.action_tier === 'low_priority').length;
+  return { verified_potential: verifiedPotential, target: goal, gap, count: opportunities.length, check_now: checkNow, promising, low_priority: lowPriority };
 }
 
 export function normalizeArbitrageLead(raw: any, sanitizeUrl: (value: unknown) => string) {
