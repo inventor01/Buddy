@@ -5,8 +5,11 @@ export default function AuthLayout({ icon: Icon, title, subtitle, footer, childr
     <div className="page-glow flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="mb-10 text-center">
-          <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-900">
-            <Icon className="h-7 w-7 text-white" aria-hidden="true" />
+          <a href="/" className="mb-5 inline-block font-heading text-[15px] font-semibold tracking-tight text-neutral-900">Buddy</a>
+          <div className="mb-4 flex justify-center">
+            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-900">
+              <Icon className="h-7 w-7 text-white" aria-hidden="true" />
+            </div>
           </div>
           <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground">
             {title}
