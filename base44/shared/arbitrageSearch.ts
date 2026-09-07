@@ -21,6 +21,11 @@ const RETAILERS = [
 
 const DEFAULT_RETAILERS = ['Target', 'Walmart', 'Best Buy', 'Home Depot', "Lowe's", 'Walgreens'];
 
+const DISCOVERY_FOCUSES = [
+  'HIGH-VALUE EXACT-SKU: LEGO and sealed toys/collectibles, video games/consoles/accessories, consumer electronics, power tools/tools, vacuums/small appliances, premium kitchen appliances, and branded beauty devices. Prefer recognizable brands and items typically priced/resold above $35.',
+  'DEEP-DISCOUNT: current clearance/coupon/markdown items with an unusually large percentage or dollar discount and a direct product page. Prefer shippable branded goods. Deprioritize groceries, commodity consumables, low-dollar household basics, bulky furniture, and generic apparel unless the exact variant has an obvious high-value resale case.'
+];
+
 const CANDIDATE_SCHEMA = {
   type: 'object',
   properties: {
@@ -31,6 +36,8 @@ const CANDIDATE_SCHEMA = {
         properties: {
           item_name: { type: 'string' },
           retailer: { type: 'string' },
+          category: { type: 'string' },
+          brand: { type: 'string' },
           identifier: { type: 'string' },
           variant: { type: 'string' },
           buy_price: { type: 'number' },
@@ -57,6 +64,8 @@ const MATCH_SCHEMA = {
         properties: {
           item_name: { type: 'string' },
           retailer: { type: 'string' },
+          category: { type: 'string' },
+          brand: { type: 'string' },
           identifier: { type: 'string' },
           buy_price: { type: 'number' },
           discount_amount: { type: 'number' },
@@ -67,6 +76,7 @@ const MATCH_SCHEMA = {
           estimated_fees: { type: 'number' },
           resale_url: { type: 'string' },
           match_confidence: { type: 'number' },
+          demand_note: { type: 'string' },
           caveat: { type: 'string' },
           missing_evidence: { type: 'string' },
           availability_note: { type: 'string' },
