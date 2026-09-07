@@ -23,6 +23,8 @@ export function normalizeArbitrageLead(raw: any, sanitizeUrl: (value: unknown) =
   const itemName = String(raw.item_name || '').trim().slice(0, 120);
   const retailer = String(raw.retailer || '').trim().slice(0, 60);
   const marketplace = String(raw.marketplace || '').trim().slice(0, 60);
+  const category = String(raw.category || '').trim().slice(0, 80);
+  const brand = String(raw.brand || '').trim().slice(0, 80);
   const identifier = String(raw.identifier || '').trim().slice(0, 100);
   const buyPrice = Math.max(0, Number(raw.buy_price) || 0);
   const resalePrice = Math.max(0, Number(raw.resale_price) || 0);
@@ -45,6 +47,8 @@ export function normalizeArbitrageLead(raw: any, sanitizeUrl: (value: unknown) =
     item_name: itemName,
     retailer,
     marketplace,
+    category,
+    brand,
     identifier,
     buy_price: Math.round(buyPrice * 100) / 100,
     resale_price: Math.round(resalePrice * 100) / 100,
@@ -71,6 +75,8 @@ export function normalizeArbitrageCandidate(raw: any, sanitizeUrl: (value: unkno
   const itemName = String(raw.item_name || '').trim().slice(0, 120);
   const retailer = String(raw.retailer || '').trim().slice(0, 60);
   const marketplace = String(raw.marketplace || '').trim().slice(0, 60);
+  const category = String(raw.category || '').trim().slice(0, 80);
+  const brand = String(raw.brand || '').trim().slice(0, 80);
   const buyPrice = Number(raw.buy_price) || 0;
   const discountAmount = Math.max(0, Number(raw.discount_amount) || 0);
   const statedNet = Number(raw.net_buy_cost) || 0;
@@ -85,10 +91,22 @@ export function normalizeArbitrageCandidate(raw: any, sanitizeUrl: (value: unkno
   if (!itemName || !retailer || !marketplace || netBuyCost <= 0 || resalePrice <= 0 || estimatedProfit <= 0) return null;
   if (!buyUrl || !resaleUrl || isGenericArbitrageEvidenceUrl(buyUrl) || isGenericArbitrageEvidenceUrl(resaleUrl)) return null;
 
+  const actionabilityScore = Math.min(100, Math.max(0, Math.round(Number(raw.actionability_score) || 0)));
+  const actionTier = ['check_now','promising','low_priority'].includes(String(raw.action_tier || '')) ? String(raw.action_tier) : 'promising';
+  const unitsToTarget = Math.max(0, Math.round(Number(raw.units_to_target) || 0));
+  const matchConfidence = Math.min(1, Math.max(0, Number(raw.match_confidence) || 0));
+
   return {
     item_name: itemName,
     retailer,
     marketplace,
+    category,
+    brand,
+    actionability_score: actionabilityScore,
+    action_tier: actionTier,
+    units_to_target: unitsToTarget,
+    match_confidence: matchConfidence,
+    demand_note: String(raw.demand_note || '').trim().slice(0, 220),
     buy_price: Math.round(buyPrice * 100) / 100,
     discount_amount: Math.round(discountAmount * 100) / 100,
     discount_description: String(raw.discount_description || '').trim().slice(0, 180),
