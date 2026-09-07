@@ -119,9 +119,15 @@ export default function FoundIt({ result, runMode = "once", onContinue, onRestar
     };
     if (empty) return {
       icon: Search,
-      eyebrow: runMode === "watch" ? "Still watching" : "No solid answer yet",
-      title: runMode === "watch" ? "Nothing worth bothering you about yet." : "Buddy couldn’t verify a useful answer yet.",
-      body: runMode === "watch" ? "It’ll stay quiet until something actually changes." : "Try making the request a little more specific.",
+      eyebrow: runMode === "watch" || runMode === "repeat" ? "Nothing cleared the bar this run" : "No solid answer yet",
+      title: runMode === "watch"
+        ? "Nothing worth bothering you about yet."
+        : runMode === "repeat"
+          ? "No verified opportunity was strong enough today."
+          : "Buddy couldn’t verify a useful answer yet.",
+      body: result?.message || (runMode === "watch" || runMode === "repeat"
+        ? "Buddy will keep the request as-is and check again on the next run."
+        : "Change the request only if you want to narrow or adjust it."),
       tone: "neutral",
     };
     return {
