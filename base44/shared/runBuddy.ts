@@ -13,6 +13,7 @@ import { runOrchestratedBuddy, shouldOrchestrateRequest } from "./orchestrator.t
 import { loadLinkedBuddies, linkedBuddyPromptLines } from "./linkedBuddies.ts";
 import { taskStepPromptLines } from "./taskChain.ts";
 import { isBroadArbitrageScan, suppressOptionalClarification } from "./clarification.ts";
+import { normalizeArbitrageCandidate } from "./arbitrage.ts";
 
 // The clock where the person actually is. A note set for 9 in the morning
 // should run at their 9, and "already ran today" means their today — so both
@@ -244,49 +245,8 @@ export function toFindingItems(raw) {
         };
       }
     }
-    let arbitrage = null;
     const a = f && typeof f === "object" ? f.arbitrage : null;
-    if (a && typeof a === "object") {
-      const itemName = String(a.item_name || '').trim().slice(0, 120);
-      const retailer = String(a.retailer || '').trim().slice(0, 60);
-      const marketplace = String(a.marketplace || '').trim().slice(0, 60);
-      const buyPrice = Number(a.buy_price) || 0;
-      const discountAmount = Math.max(0, Number(a.discount_amount) || 0);
-      const statedNet = Number(a.net_buy_cost) || 0;
-      const netBuyCost = buyPrice > 0 ? Math.max(0, buyPrice - discountAmount) : statedNet;
-      const resalePrice = Number(a.resale_price) || 0;
-      const estimatedFees = Math.max(0, Number(a.estimated_fees) || 0);
-      const buyUrl = sanitizeResultUrl(a.buy_url);
-      const resaleUrl = sanitizeResultUrl(a.resale_url);
-      const estimatedProfit = Math.round((resalePrice - netBuyCost - estimatedFees) * 100) / 100;
-      const roiPercent = netBuyCost > 0 ? Math.round((estimatedProfit / netBuyCost) * 1000) / 10 : 0;
-      const genericDealPage = (u) => {
-        try {
-          const path = new URL(String(u || '')).pathname.replace(/\/+$/, '');
-          return /\/(?:current[-_]?flyer|weekly[-_]?ad|weekly[-_]?ads|circular|deals?|sales?|clearance)$/i.test(path);
-        } catch (_) {
-          return true;
-        }
-      };
-      if (itemName && retailer && marketplace && netBuyCost > 0 && resalePrice > 0 && estimatedProfit > 0 && buyUrl && resaleUrl && !genericDealPage(buyUrl) && !genericDealPage(resaleUrl)) {
-        arbitrage = {
-          item_name: itemName,
-          retailer,
-          marketplace,
-          buy_price: buyPrice,
-          discount_amount: discountAmount,
-          discount_description: String(a.discount_description || '').trim().slice(0, 180),
-          net_buy_cost: Math.round(netBuyCost * 100) / 100,
-          resale_price: Math.round(resalePrice * 100) / 100,
-          estimated_fees: Math.round(estimatedFees * 100) / 100,
-          estimated_profit: estimatedProfit,
-          roi_percent: roiPercent,
-          buy_url: buyUrl,
-          resale_url: resaleUrl,
-          caveat: String(a.caveat || '').trim().slice(0, 300),
-        };
-      }
-    }
+    const arbitrage = normalizeArbitrageCandidate(a, sanitizeResultUrl);
     const finalUrl = arbitrage?.buy_url || url;
     const finalSource = source || arbitrage?.retailer || '';
     const finalWhyFit = arbitrage ? '' : why_fit;
