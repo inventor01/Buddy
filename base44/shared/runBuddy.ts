@@ -260,7 +260,14 @@ export function toFindingItems(raw) {
       const resaleUrl = sanitizeResultUrl(a.resale_url);
       const estimatedProfit = Math.round((resalePrice - netBuyCost - estimatedFees) * 100) / 100;
       const roiPercent = netBuyCost > 0 ? Math.round((estimatedProfit / netBuyCost) * 1000) / 10 : 0;
-      const genericDealPage = (u) => /\/(?:current[-_]?flyer|weekly[-_]?ad|weekly[-_]?ads|circular|deals?|sales?|clearance)\/?(?:[?#].*)?$/i.test(String(u || ''));
+      const genericDealPage = (u) => {
+        try {
+          const path = new URL(String(u || '')).pathname.replace(/\/+$/, '');
+          return /\/(?:current[-_]?flyer|weekly[-_]?ad|weekly[-_]?ads|circular|deals?|sales?|clearance)$/i.test(path);
+        } catch (_) {
+          return true;
+        }
+      };
       if (itemName && retailer && marketplace && netBuyCost > 0 && resalePrice > 0 && estimatedProfit > 0 && buyUrl && resaleUrl && !genericDealPage(buyUrl) && !genericDealPage(resaleUrl)) {
         arbitrage = {
           item_name: itemName,
