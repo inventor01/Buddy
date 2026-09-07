@@ -363,11 +363,12 @@ async function synthesize(base44: any, goal: string, results: any[]) {
     const verified = verifyWholesaleRaw(domain.raw);
     return { ...verified, verification_summary: 'Buddy independently recomputed the wholesale formula and preserved the source-backed ARV/comps.' };
   }
+  const arbitrageRun = isBroadArbitrageScan(goal);
   const evidence = results.map((r, i) => ({
     step: i + 1,
     provider: r.provider,
-    output: trim(r.output, 5000),
-    urls: r.urls || [],
+    output: trim(r.output, arbitrageRun ? 10000 : 5000),
+    urls: (r.urls || []).slice(0, arbitrageRun ? 30 : 12),
     confidence: r.confidence,
   }));
   return await base44.asServiceRole.integrations.Core.InvokeLLM({
@@ -379,7 +380,7 @@ async function synthesize(base44: any, goal: string, results: any[]) {
       'For every finding, use the most specific source URL actually present in the evidence. Prefer the exact article, product, listing, provider, event, route/search, or booking page. Do not replace a direct source with a site homepage or generic landing page. If only a homepage is available, leave the URL empty.',
       isBroadArbitrageScan(goal) ? `For this retail-arbitrage request, return specific item results only. VERIFIED opportunities must include arbitrage with exact item_name, retailer, marketplace, buy_price, verified discount_amount/description when applicable, net_buy_cost, resale_price, estimated_fees, exact retailer buy_url, exact Amazon/eBay resale_url, and a caveat. ${extractArbitrageProfitTarget(goal) > 0 ? `The $${extractArbitrageProfitTarget(goal).toLocaleString()} figure is the combined weekly target, NOT a minimum profit requirement for each item. Keep all useful positive-spread items even if the current batch totals less than the target.` : ''} If a specific item has a direct non-generic URL+price on exactly one side but the other side still needs proof, return arbitrage_lead with the exact item, identifier when available, the verified side, what evidence is missing, why it is promising, and confidence. Leads are NOT profit and must not count toward the target. Never use flyer pages, generic deals pages, homepages, category pages, or marketplace homepages as final evidence.` : '',
       'If a consequential action still needs approval, say so rather than implying it happened.',
-      JSON.stringify(evidence).slice(0, 28000),
+      JSON.stringify(evidence).slice(0, arbitrageRun ? 52000 : 28000),
     ].join('\n'),
     response_json_schema: SYNTH_SCHEMA,
   });
@@ -435,7 +436,8 @@ export async function runOrchestratedBuddy({ base44, buddy, personalFacts = [], 
         providers.push(r.provider);
         if (r.used_fallback) fallbackCount += 1;
         const waitingApproval = step.approval_required === true && step.kind === 'connected_action';
-        steps[i] = { ...step, provider: r.provider, status: waitingApproval ? 'waiting_approval' : 'completed', output: trim(r.output, 8000), evidence_urls: (r.urls || []).slice(0, 12), confidence: r.confidence || 0, latency_ms: r.latency_ms || 0, attempted_providers: r.attempted_providers || [r.provider] };
+        const arbitrageRun = isBroadArbitrageScan(goal);
+        steps[i] = { ...step, provider: r.provider, status: waitingApproval ? 'waiting_approval' : 'completed', output: trim(r.output, arbitrageRun ? 18000 : 8000), evidence_urls: (r.urls || []).slice(0, arbitrageRun ? 30 : 12), confidence: r.confidence || 0, latency_ms: r.latency_ms || 0, attempted_providers: r.attempted_providers || [r.provider] };
       } catch (stepError: any) {
         steps[i] = { ...step, status: 'failed', error: trim(stepError?.message, 300) };
       }
