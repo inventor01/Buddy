@@ -400,6 +400,45 @@ export default function Home() {
     }
   };
 
+  const runSearchNow = async (b) => {
+    if (!b?.id || sending) return;
+    if (["pending", "needs_connection", "executing"].includes(String(b.approval_status || ""))) {
+      toast({ title: "Finish the step waiting for you before running this again." });
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await base44.functions.invoke("runBuddyNow", { buddyId: b.id });
+      const lines = Array.isArray(res.data?.lines) ? res.data.lines : [];
+      const items = Array.isArray(res.data?.items) ? res.data.items : [];
+      const serverPatch = res.data?.buddy_patch && typeof res.data.buddy_patch === "object" ? res.data.buddy_patch : {};
+      const state = res.data?.state || "answer";
+
+      let text = lines.join("\n");
+      if (!text && res.data?.message) text = String(res.data.message);
+      if (!text && state === "empty") text = "Buddy couldn't verify a useful answer on this run.";
+
+      const noteMsg = text
+        ? { who: "note", at: new Date().toISOString(), text, items }
+        : null;
+      const messages = noteMsg ? [...(b.messages || []), noteMsg] : (b.messages || []);
+      const patch = { ...serverPatch, ...(noteMsg ? { messages } : {}) };
+
+      if (noteMsg) await base44.entities.Buddy.update(b.id, { messages });
+      setBuddies((prev) => prev.map((x) => (x.id === b.id ? { ...x, ...patch } : x)));
+
+      if (state === "approval") toast({ title: "Fresh results are in. The next outside step is ready for your approval." });
+      else if (state === "needs_detail") toast({ title: res.data?.message || "Buddy needs one detail before it can continue." });
+      else if (res.data?.no_new_reply) toast({ title: "No new reply yet." });
+
+      await load();
+    } catch (e) {
+      toast({ title: e?.response?.data?.error || e?.message || "Buddy couldn't run that search — try again.", variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
+
   const sendInThread = async (b, text) => {
     setSending(true);
     try {
@@ -504,6 +543,7 @@ export default function Home() {
               onApprove={(b) => decideAction(b, true)}
               onReject={(b) => decideAction(b, false)}
               onContinueChain={continueChain}
+              onRunSearch={runSearchNow}
               onOpenBuddy={selectNote}
               busy={sending}
             />
