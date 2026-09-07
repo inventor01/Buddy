@@ -3,6 +3,7 @@ import { isWholesalePropertyRequest, runWholesaleDealFinder } from './realEstate
 import { markProviderVerified, providerCapability, rankProviders, recordProviderAttempt } from './providerPerformance.ts';
 import { taskStepsToOrchestration } from './taskChain.ts';
 import { isBroadArbitrageScan } from './clarification.ts';
+import { extractArbitrageProfitTarget } from './arbitrage.ts';
 
 const PLAN_SCHEMA = {
   type: 'object',
@@ -62,7 +63,7 @@ function trim(value: unknown, n = 4000) { return String(value || '').trim().slic
 
 export function shouldOrchestrateRequest(text: string) {
   const t = String(text || '').toLowerCase();
-  if (isWholesalePropertyRequest(t)) return true;
+  if (isWholesalePropertyRequest(t) || isBroadArbitrageScan(t)) return true;
   const verbs = ['find','compare','analyze','calculate','verify','check','research','rank','recommend','contact','book','schedule','create','send','summarize','plan'];
   const verbCount = verbs.filter((v) => new RegExp(`\\b${v}`).test(t)).length;
   const multiSource = /\b(zillow|redfin|realtor|amazon|google|reddit|youtube|multiple sources|several sites|across)\b/.test(t);
@@ -114,7 +115,7 @@ export async function planOrchestration(base44: any, buddy: any, personalFacts: 
       delegationLines.length ? delegationLines.join(' ') : '',
       linkedContextLines.length ? linkedContextLines.join('\n') : '',
       'Use at most 5 steps. Prefer authoritative APIs/data for domain facts, browser_fetch for a specific URL, web_research for current public research, calculation for deterministic math, and verify as the final step.',
-      isBroadArbitrageScan(request) ? 'This is intentionally a broad retail-arbitrage scan. Do not narrow it to one product category. Research across the named stores, compare against the named resale marketplaces, incorporate only verifiable coupons/discounts, calculate potential spreads with labeled assumptions, rank the best opportunities, then verify the strongest claims.' : '',
+      isBroadArbitrageScan(request) ? `This is intentionally a broad retail-arbitrage scan. Do not narrow it to one product category. ${extractArbitrageProfitTarget(request) > 0 ? `The $${extractArbitrageProfitTarget(request).toLocaleString()} amount is the aggregate weekly profit target across multiple opportunities unless the user explicitly said each/per deal.` : ''} Research broadly across any named stores, or use broad current U.S. retail/online sources when none are named; compare against named resale marketplaces or Amazon/eBay by default. Incorporate only verifiable coupons/discounts, calculate positive spreads with labeled assumptions, rank the best opportunities, then verify the strongest claims. Do not throw away smaller valid opportunities simply because the portfolio has not reached the weekly target yet.` : '',
       'Do not create a connected_action step that sends, books, pays, posts, deletes, or commits without approval. Such a step may only prepare or identify the required approval.',
     ].filter(Boolean).join('\n'),
     response_json_schema: PLAN_SCHEMA,
@@ -331,7 +332,7 @@ async function synthesize(base44: any, goal: string, results: any[]) {
       `User goal: ${goal}`,
       'Below are specialist outputs. Produce the final answer using ONLY claims supported by those outputs. Resolve contradictions conservatively. Never invent missing prices, dates, URLs, or actions.',
       'For every finding, use the most specific source URL actually present in the evidence. Prefer the exact article, product, listing, provider, event, route/search, or booking page. Do not replace a direct source with a site homepage or generic landing page. If only a homepage is available, leave the URL empty.',
-      isBroadArbitrageScan(goal) ? 'For this retail-arbitrage request, return ONLY specific item opportunities that have evidence for both sides. Every opportunity must include arbitrage with exact item_name, retailer, marketplace, buy_price, verified discount_amount/description when applicable, net_buy_cost, resale_price, estimated_fees, exact retailer buy_url, exact Amazon/eBay resale_url, and a caveat. Do not return flyer pages, generic deals pages, homepages, category pages, or a sentence saying verification failed as a finding. If no item has both direct evidence URLs and a positive supported spread, return findings: [] and should_notify=false.' : '',
+      isBroadArbitrageScan(goal) ? `For this retail-arbitrage request, return ONLY specific item opportunities that have evidence for both sides. Every opportunity must include arbitrage with exact item_name, retailer, marketplace, buy_price, verified discount_amount/description when applicable, net_buy_cost, resale_price, estimated_fees, exact retailer buy_url, exact Amazon/eBay resale_url, and a caveat. ${extractArbitrageProfitTarget(goal) > 0 ? `The $${extractArbitrageProfitTarget(goal).toLocaleString()} figure is the combined weekly target, NOT a minimum profit requirement for each item. Keep all useful positive-spread items even if the current batch totals less than the target.` : ''} Do not return flyer pages, generic deals pages, homepages, category pages, or a sentence saying verification failed as a finding. If no item has both direct evidence URLs and a positive supported spread, return findings: [] and should_notify=false.` : '',
       'If a consequential action still needs approval, say so rather than implying it happened.',
       JSON.stringify(evidence).slice(0, 28000),
     ].join('\n'),
