@@ -12,6 +12,7 @@ import PlanPanel from "@/components/maker/PlanPanel";
 import PaymentSheet from "@/components/paper/PaymentSheet";
 import { readBigText, applyBigText } from "@/lib/bigText";
 import { readPendingNote, clearPendingNote } from "@/lib/pendingNote";
+import { newClientToken } from "@/lib/clientToken";
 import { ensureTimezone } from "@/lib/timezone";
 
 // The home page IS the product (10a) — a rail of note threads on the left,
@@ -55,6 +56,7 @@ export default function Home() {
     try {
       createRes = await base44.functions.invoke("createBuddyRecord", {
       note: spec.note,
+      client_token: typeof spec.clientToken === "string" && spec.clientToken ? spec.clientToken : undefined,
       kind: ["ads", "social"].includes(spec.kind) ? spec.kind : "web",
       run_mode: ["once", "watch", "repeat"].includes(spec.runMode) ? spec.runMode : "once",
       capability: ["gmail", "calendar", "tasks"].includes(spec.capability) ? spec.capability : "web",
@@ -136,6 +138,7 @@ export default function Home() {
         const l = pending.lines || {};
         const b = await createNoteAndRun({
           note: pending.note,
+          clientToken: newClientToken(),
           kind: ["ads", "social"].includes(l.kind) ? l.kind : "web",
           runMode: ["once", "watch", "repeat"].includes(l.runMode) ? l.runMode : "once",
           capability: ["gmail", "calendar", "tasks"].includes(l.capability) ? l.capability : "web",
@@ -265,6 +268,7 @@ export default function Home() {
       setDraft({
         note,
         image: imageUrl,
+        clientToken: newClientToken(),
         plan: {
           name: plan.name,
           creature: plan.creature,
@@ -301,6 +305,7 @@ export default function Home() {
     try {
       const saved = await createNoteAndRun({
         note: d.note,
+        clientToken: d.clientToken,
         kind: ["ads", "social"].includes(d.plan.kind) ? d.plan.kind : "web",
         runMode: ["once", "watch", "repeat"].includes(d.plan.runMode) ? d.plan.runMode : "once",
         capability: ["gmail", "calendar", "tasks"].includes(d.plan.capability) ? d.plan.capability : "web",

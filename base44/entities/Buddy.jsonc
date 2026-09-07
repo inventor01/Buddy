@@ -104,6 +104,22 @@
       "default": "not_needed",
       "description": "Safety gate for actions that change something outside Buddy."
     },
+    "execution_token": {
+      "type": "string",
+      "description": "Unique token proving which request owns an in-flight approved action; cleared when the action finishes or fails. Prevents a concurrent double-click from sending the outside action twice."
+    },
+    "run_lock_at": {
+      "type": "string",
+      "description": "ISO timestamp of the in-flight run lock; empty when idle. A stale lock self-heals after the TTL."
+    },
+    "run_token": {
+      "type": "string",
+      "description": "Unique token proving which worker owns the current run lock."
+    },
+    "client_token": {
+      "type": "string",
+      "description": "Client-generated id for one create intent; a replayed create returns the original record instead of a duplicate."
+    },
     "deferred_action": {
       "type": "boolean",
       "default": false,

@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { runBuddy, parseScheduleHour, nowInZone, scheduleMatchesToday } from '../../shared/runBuddy.ts';
+import { schedulerRunVerdict } from '../../shared/stateMachine.ts';
+import { claimRunLock, releaseRunLock } from '../../shared/runLock.ts';
 import { loadProfile, loadHousehold, householdFacts, relevantProfileFacts } from '../../shared/personalization.ts';
 import { requestCategory, loadDelegationPolicy, delegationPromptLines } from '../../shared/delegation.ts';
 import { loadVerifiedPhone } from '../../shared/phone.ts';
@@ -70,21 +72,33 @@ export default async function(req) {
           continue;
         }
       }
-      if (['pending', 'needs_connection', 'executing'].includes(String(buddy.approval_status || ''))) continue;
-      if (buddy.action_type === 'email_read' && buddy.chain_state?.phase === 'waiting_response') continue;
+      // One authoritative due decision (shared/stateMachine): user-presence
+      // states, pauses, fresh run locks, "already ran today", the scheduled
+      // hour, and the repeat weekday all block there — in one place.
       const owner = await ownerOf(buddy.owner_id);
       const local = nowInZone(owner?.timezone);
-      const scheduledHour = parseScheduleHour(buddy.schedule_time);
-      const reachedTimeToday = local.hour >= scheduledHour;
-      const rightDay = buddy.run_mode !== 'repeat' || scheduleMatchesToday(buddy.when_line, owner?.timezone);
-      if (reachedTimeToday && rightDay && buddy.last_run_date !== local.date) {
+      const verdict = schedulerRunVerdict({
+        buddy,
+        localDate: local.date,
+        localHour: local.hour,
+        scheduledHour: parseScheduleHour(buddy.schedule_time),
+        rightDay: buddy.run_mode !== 'repeat' || scheduleMatchesToday(buddy.when_line, owner?.timezone),
+        nowMs: Date.now()
+      });
+      if (verdict.ok) {
         due.push({ buddy, owner });
       }
     }
 
     const results = [];
     const runOne = async ({ buddy, owner }) => {
+      let lockToken = '';
       try {
+        // One runner at a time: this sweep and a manual "Run now" share the
+        // same run lock, so a handoff can never execute twice concurrently.
+        const claim = await claimRunLock(base44.asServiceRole, buddy.id);
+        if (!claim.ok) return { id: buddy.id, name: buddy.name, ok: true, skipped: claim.reason };
+        lockToken = claim.token;
         const profile = await loadProfile(base44, buddy.owner_id);
         const household = await loadHousehold(base44, buddy.owner_id);
         const requestText = `${buddy.note || ''} ${buddy.what_line || ''}`;
@@ -109,6 +123,8 @@ export default async function(req) {
         return { id: buddy.id, name: buddy.name, ok: true, count: result.lines.length };
       } catch (e) {
         return { id: buddy.id, name: buddy.name, ok: false, error: String(e.message || e) };
+      } finally {
+        if (lockToken) await releaseRunLock(base44.asServiceRole, buddy.id, lockToken);
       }
     };
 
@@ -121,7 +137,7 @@ export default async function(req) {
     return Response.json({
       scanned: buddies.length,
       due: due.length,
-      ran: results.filter((r) => r.ok).length,
+      ran: results.filter((r) => r.ok && !r.skipped).length,
       results
     });
   } catch (error) {

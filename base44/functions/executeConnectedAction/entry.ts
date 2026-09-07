@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { secrets } from 'base44:runtime';
 import { createReceiptOnce } from '../../shared/receipts.ts';
 import { recordEscalationOnce, resolveEscalation } from '../../shared/escalation.ts';
+import { approvalVerdict, nextJobStatus } from '../../shared/stateMachine.ts';
 
 function base64Url(input: string) {
   const bytes = new TextEncoder().encode(input);
@@ -90,9 +91,10 @@ async function advanceLatestJobAfterAction(base44: any, buddy: any, continuation
       steps[targetIndex] = { ...steps[targetIndex], status: 'completed', error: '' };
     }
     const waitingForResponse = continuationPatch?.chain_state?.phase === 'waiting_response';
-    const stillWaitingApproval = steps.some((step: any) => step.status === 'waiting_approval');
-    const hasPending = steps.some((step: any) => step.status === 'pending');
-    const status = waitingForResponse ? 'needs_user' : stillWaitingApproval ? 'needs_approval' : hasPending ? 'running' : 'completed';
+    // One authoritative job-status rule (shared/stateMachine): waiting on the
+    // person first, then approvals, then a failed step (which must never be
+    // reported completed), then in-flight or pending work.
+    const status = waitingForResponse ? 'needs_user' : nextJobStatus(steps);
     await base44.asServiceRole.entities.BuddyJob.update(job.id, {
       steps,
       status,
@@ -141,8 +143,19 @@ export default async function(req: Request) {
 
     const buddy = await base44.entities.Buddy.get(buddyId);
     actionBuddy = buddy;
-    if (!buddy || buddy.owner_id !== user.id) {
-      return Response.json({ error: 'That handoff is not yours.' }, { status: 403 });
+    // One authoritative approval decision (shared/stateMachine): only the
+    // owner, only a request still pending (or waiting on a connection).
+    // Replayed approvals after execution, late rejects that would rewrite an
+    // executed result back to rejected, and other people's handoffs all stop
+    // here with a structured refusal.
+    const verdict = approvalVerdict(buddy, user.id, approve);
+    if (!verdict.ok) {
+      const message = verdict.code === 'not_yours'
+        ? 'That handoff is not yours.'
+        : verdict.code === 'not_found'
+          ? 'That handoff could not be found.'
+          : 'This handoff is not waiting for a decision.';
+      return Response.json({ error: message, code: verdict.code }, { status: verdict.status });
     }
 
     if (!approve) {
@@ -163,29 +176,40 @@ export default async function(req: Request) {
       return Response.json({ ok: true, rejected: true, buddy_patch: patch });
     }
 
-    if (buddy.approval_status !== 'pending' && buddy.approval_status !== 'needs_connection') {
-      return Response.json({ error: 'This handoff is not waiting for approval.' }, { status: 409 });
+    // Validate the exact action BEFORE claiming it, so a malformed payload can
+    // never strand the handoff in an in-flight state.
+    const action = buddy.action_type || 'none';
+    const payload = cleanPayload(buddy.action_payload || {});
+    if (action === 'email_send' && (!payload.recipient || !payload.subject || !payload.body)) {
+      return Response.json({ error: 'The email is missing a recipient, subject, or message.' }, { status: 400 });
+    }
+    if (action === 'calendar_create' && (!payload.title || !payload.start)) {
+      return Response.json({ error: 'The calendar item is missing a title or start time.' }, { status: 400 });
+    }
+    if (action === 'task_create' && !payload.title) {
+      return Response.json({ error: 'The task needs a title.' }, { status: 400 });
+    }
+    if (!['email_send', 'calendar_create', 'task_create'].includes(action)) {
+      return Response.json({ error: 'This handoff does not have a supported action yet.' }, { status: 400 });
     }
 
-    // Move into an explicit in-flight state before touching an outside service.
-    // This blocks ordinary retries/double-clicks from reusing an approval.
-    await base44.entities.Buddy.update(buddy.id, { approval_status: 'executing' });
+    // Move into an explicit in-flight state and prove THIS request owns it by
+    // reading back a unique execution token. Two concurrent approvals both set
+    // 'executing', but only one reads back its own token — the loser is
+    // refused, so the outside action can never be sent twice.
+    const executionToken = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    await base44.entities.Buddy.update(buddy.id, { approval_status: 'executing', execution_token: executionToken });
     const locked = await base44.entities.Buddy.get(buddy.id);
-    if (!locked || locked.approval_status !== 'executing') {
+    if (!locked || String(locked.execution_token || '') !== executionToken || locked.approval_status !== 'executing') {
       return Response.json({ error: 'This handoff is already being handled.' }, { status: 409 });
     }
 
-    const action = buddy.action_type || 'none';
-    const payload = cleanPayload(buddy.action_payload || {});
     const { accessToken } = await userConnection(base44, buddy.capability || 'web');
 
     let summary = '';
     let continuationPatch: any = null;
 
     if (action === 'email_send') {
-      if (!payload.recipient || !payload.subject || !payload.body) {
-        return Response.json({ error: 'The email is missing a recipient, subject, or message.' }, { status: 400 });
-      }
       const mimeHeaders = [
         `To: ${payload.recipient}`,
         `Subject: ${payload.subject}`,
@@ -233,11 +257,11 @@ export default async function(req: Request) {
         summary = `Sent the email to ${payload.recipient}.`;
       }
     } else if (action === 'calendar_create') {
-      if (!payload.title || !payload.start) {
-        return Response.json({ error: 'The calendar item is missing a title or start time.' }, { status: 400 });
-      }
       const normalized = await normalizeCalendarRange(base44, payload, typeof user.timezone === 'string' ? user.timezone : 'UTC');
       if (!normalized.start || !normalized.end) {
+        // Restore the request to pending so the owner can fix or re-approve
+        // it — an unreadable time must not strand it in the in-flight state.
+        await base44.entities.Buddy.update(buddy.id, { approval_status: 'pending', execution_token: '' });
         return Response.json({ error: 'I could not safely understand that calendar time.' }, { status: 400 });
       }
       const event: any = {
@@ -259,7 +283,6 @@ export default async function(req: Request) {
       if (!r.ok) throw new Error(`Calendar rejected the event (${r.status}).`);
       summary = `Added “${payload.title}” to your calendar.`;
     } else if (action === 'task_create') {
-      if (!payload.title) return Response.json({ error: 'The task needs a title.' }, { status: 400 });
       const task: any = { title: payload.title, notes: payload.notes || undefined };
       if (payload.due) {
         const due = await normalizeTaskDue(base44, payload.due, typeof user.timezone === 'string' ? user.timezone : 'UTC');
@@ -273,8 +296,6 @@ export default async function(req: Request) {
       });
       if (!r.ok) throw new Error(`Google Tasks rejected the task (${r.status}).`);
       summary = `Added “${payload.title}” to your tasks.`;
-    } else {
-      return Response.json({ error: 'This handoff does not have a supported action yet.' }, { status: 400 });
     }
 
     const msg = { who: 'note', at: new Date().toISOString(), text: summary };
@@ -285,6 +306,7 @@ export default async function(req: Request) {
     };
     await base44.entities.Buddy.update(buddy.id, {
       ...finalPatch,
+      execution_token: '',
       messages,
       last_result: [summary],
     });
@@ -315,13 +337,13 @@ export default async function(req: Request) {
     if (error?.code === 'NEEDS_CONNECTION') {
       try {
         const base44 = createClientFromRequest(req);
-        if (actionBuddyId) await base44.entities.Buddy.update(actionBuddyId, { approval_status: 'needs_connection' });
+        if (actionBuddyId) await base44.entities.Buddy.update(actionBuddyId, { approval_status: 'needs_connection', execution_token: '' });
       } catch (_) {}
       return Response.json({ error: message, needs_connection: true }, { status: 409 });
     }
     try {
       const base44 = createClientFromRequest(req);
-      if (actionBuddyId) await base44.entities.Buddy.update(actionBuddyId, { approval_status: 'failed' });
+      if (actionBuddyId) await base44.entities.Buddy.update(actionBuddyId, { approval_status: 'failed', execution_token: '' });
       if (actionBuddy?.owner_id) await recordEscalationOnce({ base44, buddy: actionBuddy, reason: message, nextStep: 'Reconnect the service or retry the approved action. The request and approval details are preserved.' });
     } catch (_) {}
     return Response.json({ error: message, preserved: !!actionBuddyId }, { status: 500 });

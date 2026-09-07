@@ -14,13 +14,23 @@ function clientHint(req: Request) {
   return `${ip}|${ua}`;
 }
 
+// Pure rate-limit decision for one bucket: an unexpired row at its limit
+// refuses; anything stale or under the limit allows. Gate-tested.
+export function bucketAllows(row: any, limit: number, nowMs: number) {
+  if (!row) return true;
+  if (Date.parse(String(row.expires_at || '')) > nowMs) {
+    return Number(row.count || 0) < limit;
+  }
+  return true;
+}
+
 async function bump(base44: any, key: string, limit: number, expiresAt: Date) {
   const rows = await base44.asServiceRole.entities.UsageBucket.filter({ bucket_key: key }, '-created_date', 1);
   const row = Array.isArray(rows) ? rows[0] : null;
   const now = Date.now();
   if (row && Date.parse(row.expires_at || '') > now) {
+    if (!bucketAllows(row, limit, now)) return false;
     const count = Number(row.count || 0);
-    if (count >= limit) return false;
     await base44.asServiceRole.entities.UsageBucket.update(row.id, { count: count + 1 });
     return true;
   }

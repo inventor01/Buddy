@@ -13,6 +13,7 @@ import { runOrchestratedBuddy, shouldOrchestrateRequest } from "./orchestrator.t
 import { loadLinkedBuddies, linkedBuddyPromptLines } from "./linkedBuddies.ts";
 import { taskStepPromptLines } from "./taskChain.ts";
 import { isBroadArbitrageScan, suppressOptionalClarification } from "./clarification.ts";
+import { notifyVerdict, statusAfterRun } from "./stateMachine.ts";
 import { arbitragePortfolioSummary, extractArbitrageProfitTarget, normalizeArbitrageCandidate, normalizeArbitrageLead } from "./arbitrage.ts";
 import { runRetailArbitragePipeline } from "./arbitrageSearch.ts";
 import { buildResponseIntelligence, responseIntelligenceLines } from "./responseIntelligence.ts";
@@ -463,8 +464,15 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
   }
 
   if (question) {
+    // Re-read the thread right before pinning, so a reply the user sent while
+    // this run was in flight is never overwritten by this update.
+    let currentMessages = Array.isArray(buddy.messages) ? buddy.messages : [];
+    try {
+      const fresh = await entityClient.entities.Buddy.get(buddy.id);
+      if (Array.isArray(fresh?.messages)) currentMessages = fresh.messages;
+    } catch (_) {}
     const msg = { who: "note", at: new Date().toISOString(), text: question };
-    const messages = [...(Array.isArray(buddy.messages) ? buddy.messages : []), msg];
+    const messages = [...currentMessages, msg];
     await entityClient.entities.Buddy.update(buddy.id, {
       messages,
       last_run_date: nowInZone(timeZone).date,
@@ -501,8 +509,9 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
   let items = toFindingItems(findings?.findings, broadArbitrage ? 12 : 5);
   if (broadArbitrage) {
     items = items.filter((item) => item?.arbitrage || item?.arbitrage_lead);
-    const verifiedCount = items.filter((item) => item?.arbitrage).length;
-    shouldNotify = shouldNotify && verifiedCount > 0;
+    // One authoritative notification rule (shared/stateMachine): only a
+    // VERIFIED opportunity may interrupt the person — never a one-sided lead.
+    shouldNotify = notifyVerdict({ shouldNotify, items, isArbitrageScan: true });
   }
 
   const responseIntelligence = items.length
@@ -538,15 +547,16 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
   }
 
   const today = nowInZone(timeZone).date;
-  const finishing = buddy.run_mode === "once";
   const unresolvedArbitrageLeads = broadArbitrage
     ? items.filter((item) => item?.arbitrage_lead).slice(0, 12).map((item) => ({ ...item.arbitrage_lead, last_seen_at: new Date().toISOString() }))
     : undefined;
   await entityClient.entities.Buddy.update(buddy.id, {
     last_result: lines,
     last_run_date: today,
-    ...(broadArbitrage ? { arbitrage_leads: unresolvedArbitrageLeads, arbitrage_leads_updated_at: new Date().toISOString() } : {}),
-    ...(finishing ? { status: "done" } : {})
+    // One authoritative completion rule (shared/stateMachine): a once-handoff
+    // finishes as done; watch/repeat keep the status they had.
+    status: statusAfterRun(buddy.run_mode, buddy.status),
+    ...(broadArbitrage ? { arbitrage_leads: unresolvedArbitrageLeads, arbitrage_leads_updated_at: new Date().toISOString() } : {})
   });
 
   // The TELLS line decides the channel: "text me" → SMS only,

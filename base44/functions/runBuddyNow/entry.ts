@@ -10,6 +10,7 @@ import { createReceiptOnce } from '../../shared/receipts.ts';
 import { recordEscalationOnce, resolveEscalation } from '../../shared/escalation.ts';
 import { loadVerifiedPhone } from '../../shared/phone.ts';
 import { resolveBuddyMentions, loadLinkedBuddies, linkedBuddyPromptLines } from '../../shared/linkedBuddies.ts';
+import { claimRunLock, releaseRunLock } from '../../shared/runLock.ts';
 import { taskStepPromptLines } from '../../shared/taskChain.ts';
 import { suppressOptionalClarification } from '../../shared/clarification.ts';
 
@@ -521,6 +522,18 @@ export default async function (req) {
     }
 
     // ── Mode 1: standard run ─────────────────────────────────────────────
+    // One runner at a time per handoff: the hourly scheduler and a manual
+    // "Run now" share the same run lock (fresh-lock check + unique-token
+    // read-back), so the same note can never execute twice concurrently —
+    // no double spend, no double notification, no out-of-order writes.
+    const claim = await claimRunLock(base44, buddyId);
+    if (!claim.ok) {
+      return Response.json({
+        error: 'This handoff is already running — it will finish in a moment.',
+        code: 'ALREADY_RUNNING',
+      }, { status: 409 });
+    }
+    try {
     // Deferred writes first perform their research/planning step; they do not
     // touch the outside service until a later user choice resolves them.
     if (!buddy.deferred_action && (buddy.action_type === 'email_read' || buddy.action_type === 'calendar_read')) {
@@ -630,6 +643,12 @@ export default async function (req) {
 
     await resolveEscalation(base44, buddy.id, user.id);
     return Response.json({ state: 'answer', lines: result.lines, items: result.items, receipt: receipt ? { id: receipt.id, completed_at: receipt.completed_at } : null, delegation: delegation ? { category, level: delegation.level } : null });
+    } finally {
+      // Release the lock on every path — success, clarification, approval, or
+      // error — so a finished run never blocks the next one. A crashed worker
+      // self-heals through the lock TTL.
+      await releaseRunLock(base44, buddyId, claim.token);
+    }
   } catch (error) {
     const message = (error as Error).message || 'Buddy could not finish this automatically.';
     if (failureBase44 && failureBuddy?.owner_id) {

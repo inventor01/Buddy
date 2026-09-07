@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { checkUsageLimit } from '../../shared/rateLimit.ts';
 import { normalizeTaskSteps } from '../../shared/taskChain.ts';
+import { duplicateCreateVerdict, freeHandoffVerdict } from '../../shared/stateMachine.ts';
 
 const CREATURES = ['sam', 'sid', 'bells', 'med'];
 const RUN_MODES = ['once', 'watch', 'repeat'];
@@ -50,24 +51,44 @@ export default async function(req: Request) {
       );
     }
 
-    // Enforce the free limit on the server. UI copy is never the security or
-    // billing boundary. Deleted records no longer count; all existing things do.
+    // Enforce the free limit on the server — one authoritative rule
+    // (shared/stateMachine). UI copy is never the security or billing
+    // boundary. Deleted records no longer count; all existing things do.
+    let existingCount = 0;
     if (user.plan !== 'pro' && user.role !== 'admin') {
       const existing = await base44.asServiceRole.entities.Buddy.filter(
         { owner_id: user.id },
         '-created_date',
         4
       );
-      if (Array.isArray(existing) && existing.length >= 3) {
-        return Response.json(
-          { error: 'You have used your three free things.', upgrade_required: true },
-          { status: 403 }
-        );
-      }
+      existingCount = Array.isArray(existing) ? existing.length : 0;
+    }
+    const limitVerdict = freeHandoffVerdict({ plan: user.plan, role: user.role, existingCount });
+    if (!limitVerdict.ok) {
+      return Response.json(
+        { error: 'You have used your three free things.', upgrade_required: true },
+        { status: 403 }
+      );
     }
 
     let body: any = {};
     try { body = await req.json(); } catch (_) { body = {}; }
+
+    // Duplicate create suppression: one client token per create intent — a
+    // replayed submit (double-click, retry) returns the original record
+    // instead of creating a second handoff.
+    const clientToken = text(body.client_token, 64);
+    if (clientToken) {
+      const existingForToken = await base44.asServiceRole.entities.Buddy.filter(
+        { owner_id: user.id, client_token: clientToken },
+        '-created_date',
+        1
+      );
+      const dupe = duplicateCreateVerdict(existingForToken);
+      if (dupe.duplicate) {
+        return Response.json({ buddy: dupe.buddy });
+      }
+    }
 
     const rawNote = typeof body.note === 'string' ? body.note.trim() : '';
     if (rawNote.length > BUDDY_REQUEST_MAX) {
@@ -130,6 +151,7 @@ export default async function(req: Request) {
       schedule_time: text(body.schedule_time, 40) || '9:00 AM',
       status: 'active',
     };
+    if (clientToken) record.client_token = clientToken;
 
     const imageUrl = text(body.image_url, 500);
     if (/^https?:\/\//i.test(imageUrl)) record.image_url = imageUrl;

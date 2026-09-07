@@ -8,6 +8,7 @@ import PlanBoard from "@/components/maker/PlanBoard";
 import FoundIt from "@/components/maker/FoundIt";
 import PaymentSheet from "@/components/paper/PaymentSheet";
 import { savePendingNote } from "@/lib/pendingNote";
+import { newClientToken } from "@/lib/clientToken";
 import { ensureTimezone } from "@/lib/timezone";
 
 // One box, like a chat window — but what you type becomes a small set of
@@ -74,6 +75,9 @@ export default function Start() {
   const [authed, setAuthed] = useState(null); // null while checking
   const [mentionBuddies, setMentionBuddies] = useState([]);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  // One token per plan intent: a double-submitted create returns the
+  // original handoff instead of making a second one.
+  const [clientToken, setClientToken] = useState("");
   const mentionMatch = note.match(/(?:^|\s)@([^\s\[]*)$/);
   const mentionQuery = mentionMatch ? String(mentionMatch[1] || "").toLowerCase() : null;
   const mentionChoices = mentionQuery === null
@@ -162,6 +166,7 @@ export default function Start() {
       });
       setOrder(CATS);
       setEditing(null);
+      setClientToken(newClientToken());
       setStep("plan");
     } catch (e) {
       const message = e?.response?.data?.error || e?.message || "It couldn't read that — try again.";
@@ -264,6 +269,7 @@ export default function Start() {
 
       const createRes = await base44.functions.invoke("createBuddyRecord", {
         note: note.trim(),
+        client_token: clientToken || undefined,
         image_url: image,
         kind: ["ads", "social"].includes(lines.kind) ? lines.kind : "web",
         run_mode: ["once", "watch", "repeat"].includes(lines.runMode) ? lines.runMode : "once",
@@ -408,6 +414,7 @@ export default function Start() {
     setAnswer("");
     setOrder(CATS);
     setEditing(null);
+    setClientToken("");
     setResult(null);
     setCreatedId(null);
     setPhone("");
