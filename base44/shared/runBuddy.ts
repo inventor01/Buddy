@@ -15,6 +15,7 @@ import { taskStepPromptLines } from "./taskChain.ts";
 import { isBroadArbitrageScan, suppressOptionalClarification } from "./clarification.ts";
 import { arbitragePortfolioSummary, extractArbitrageProfitTarget, normalizeArbitrageCandidate, normalizeArbitrageLead } from "./arbitrage.ts";
 import { runRetailArbitragePipeline } from "./arbitrageSearch.ts";
+import { buildResponseIntelligence, responseIntelligenceLines } from "./responseIntelligence.ts";
 
 // The clock where the person actually is. A note set for 9 in the morning
 // should run at their 9, and "already ran today" means their today — so both
@@ -503,6 +504,17 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
     const verifiedCount = items.filter((item) => item?.arbitrage).length;
     shouldNotify = shouldNotify && verifiedCount > 0;
   }
+
+  const responseIntelligence = items.length
+    ? await buildResponseIntelligence({
+        base44: client,
+        request: requestText,
+        items,
+        verificationSummary: typeof findings?.verification_summary === 'string' ? findings.verification_summary : '',
+        personalFacts,
+      })
+    : null;
+  const intelligenceLines = responseIntelligenceLines(responseIntelligence);
   let lines;
   if (items.length && broadArbitrage) {
     const portfolio = arbitragePortfolioSummary(items, arbitrageTarget);
@@ -510,9 +522,9 @@ export async function runBuddy({ client, entityClient, buddy, userEmail, notifyE
     const progress = arbitrageTarget > 0
       ? `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities toward your $${arbitrageTarget.toLocaleString()} weekly target. Gap: $${portfolio.gap.toLocaleString()}. Action queue: ${portfolio.check_now} CHECK NOW, ${portfolio.promising} promising, ${portfolio.low_priority} low priority.${leadCount ? ` Buddy also kept ${leadCount} one-sided lead${leadCount === 1 ? '' : 's'} still being verified; they are not counted toward the target yet.` : ''} This is opportunity math, not guaranteed profit or confirmed inventory quantity.`
       : `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities. Action queue: ${portfolio.check_now} CHECK NOW, ${portfolio.promising} promising, ${portfolio.low_priority} low priority.${leadCount ? ` Buddy also kept ${leadCount} one-sided lead${leadCount === 1 ? '' : 's'} still being verified.` : ''} This is opportunity math, not guaranteed profit or confirmed inventory quantity.`;
-    lines = [progress, ...toLines(items)];
+    lines = [progress, ...intelligenceLines, ...toLines(items)];
   } else if (items.length) {
-    lines = toLines(items);
+    lines = [...intelligenceLines, ...toLines(items)];
   } else {
     const pipelineError = broadArbitrage && typeof findings?.arbitrage_pipeline_error === 'string' ? findings.arbitrage_pipeline_error : '';
     const verificationSummary = broadArbitrage && typeof findings?.verification_summary === 'string' ? findings.verification_summary : '';
