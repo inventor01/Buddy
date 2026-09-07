@@ -17,19 +17,25 @@ export function isExactResaleCompUrl(value: unknown, marketplace?: unknown) {
   const path = url.pathname.replace(/\/+$/, '') || '/';
   const market = String(marketplace || '').toLowerCase();
 
-  if (host.endsWith('amazon.com') || market.includes('amazon')) {
+  // The actual URL host is authoritative. Do not let a generic label such as
+  // "Amazon/eBay" make an eBay URL enter the Amazon branch (or vice versa).
+  if (host.endsWith('amazon.com')) {
     // Exact Amazon product-detail pages. ASINs are 10 alphanumeric chars.
     if (/\/dp\/[A-Z0-9]{10}(?:\/|$)/i.test(path)) return true;
     if (/\/gp\/product\/[A-Z0-9]{10}(?:\/|$)/i.test(path)) return true;
+    if (/\/gp\/aw\/d\/[A-Z0-9]{10}(?:\/|$)/i.test(path)) return true;
     return false;
   }
 
-  if (host.endsWith('ebay.com') || market.includes('ebay')) {
+  if (host.endsWith('ebay.com')) {
     // Exact eBay item/listing page. A search/results page is never a comp.
     if (/\/itm\/(?:[^/]+\/)?\d{9,15}(?:\/|$)/i.test(path)) return true;
     return false;
   }
 
+  // Unknown/non-marketplace hosts cannot prove an Amazon/eBay comp even if a
+  // model supplied a marketplace label.
+  void market;
   return false;
 }
 
