@@ -1,5 +1,6 @@
 import { extractArbitrageProfitTarget } from './arbitrage.ts';
 import { sanitizeDiscountOffers, summarizeDiscountOffers } from './discounts.ts';
+import { isExactRetailProductUrl } from './retailEvidence.ts';
 
 const RETAILERS = [
   ['target', 'Target'],
@@ -127,7 +128,9 @@ function isGenericEvidenceUrl(value: string) {
     const url = new URL(value);
     const path = url.pathname.replace(/\/+$/, '') || '/';
     if (path === '/') return true;
-    return /\/(?:current[-_]?flyer|weekly[-_]?ad|weekly[-_]?ads|circular|deals?|sales?|clearance|search|shop|products?|category|categories)$/i.test(path);
+    if (/\/(?:c|q|s|search|browse|category|categories|collections?|current[-_]?flyer|weekly[-_]?ad|weekly[-_]?ads|circular|deals?|sales?|clearance|shop)(?:\/|$)/i.test(path)) return true;
+    if (/^(?:q|query|search|keyword|category|cat)$/i.test([...url.searchParams.keys()][0] || '')) return true;
+    return false;
   } catch (_) { return true; }
 }
 
@@ -192,7 +195,7 @@ function dedupeCandidates(raw: any[]) {
     const identifier = cleanText(c?.identifier, 100);
     const buyUrl = cleanUrl(c?.buy_url);
     const buyPrice = Number(c?.buy_price) || 0;
-    if (!itemName || !retailer || !buyUrl || buyPrice <= 0 || isGenericEvidenceUrl(buyUrl)) continue;
+    if (!itemName || !retailer || !buyUrl || buyPrice <= 0 || !isExactRetailProductUrl(buyUrl, retailer)) continue;
     const key = `${retailer.toLowerCase()}|${identifier || itemName.toLowerCase()}`;
     if (seen.has(key)) continue;
     seen.add(key);
