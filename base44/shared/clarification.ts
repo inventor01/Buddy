@@ -8,7 +8,7 @@ function normalized(value: unknown) {
 
 export function isBroadArbitrageScan(value: unknown) {
   const text = normalized(value);
-  const arbitrageIntent = /\b(arbitrage|resell(?:ing)?|resale|flip(?:ping)?|buy low|price spread|profit opportunities?)\b/.test(text);
+  const arbitrageIntent = /\b(arbitrage|arbritage|arbitage|resell(?:ing)?|resale|flip(?:ping)?|buy low|price spread|profit opportunities?)\b/.test(text);
   const discoveryIntent = /\b(find|search|scan|look for|hunt|identify|opportunit|deals?|profitable|margin)\b/.test(text);
   const marketplaceIntent = /\b(amazon|ebay|marketplace|resale market|secondary market)\b/.test(text);
   const retailerMatches = text.match(/\b(target|ollie'?s|kroger'?s|meijer'?s|tj\s*maxx|walmart|costco|sam'?s club|walgreens|cvs|home depot|lowe'?s|best buy|marshalls|ross|aldi)\b/g) || [];
