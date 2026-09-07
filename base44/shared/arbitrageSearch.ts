@@ -194,6 +194,13 @@ function dedupeCandidates(raw: any[]) {
   return balanced.sort((a, b) => candidateDiscoveryScore(b) - candidateDiscoveryScore(a)).slice(0, 36);
 }
 
+function matchKey(value: any) {
+  const retailer = cleanText(value?.retailer, 60).toLowerCase();
+  const identifier = cleanText(value?.identifier, 100).toLowerCase();
+  const item = cleanText(value?.item_name, 120).toLowerCase().replace(/\s+/g, ' ');
+  return `${retailer}|${identifier || item}`;
+}
+
 async function crossMatchBatch(base44: any, candidates: any[], request: string) {
   if (!candidates.length) return [];
   const response = await base44.asServiceRole.integrations.Core.InvokeLLM({
@@ -212,7 +219,32 @@ async function crossMatchBatch(base44: any, candidates: any[], request: string) 
     ].join('\n'),
     response_json_schema: MATCH_SCHEMA,
   });
-  return Array.isArray(response?.matches) ? response.matches : [];
+  const returned = Array.isArray(response?.matches) ? response.matches : [];
+  const byKey = new Map(returned.map((match: any) => [matchKey(match), match]));
+  // Never silently lose an exact retail product because the resale search could
+  // not finish. Missing matches become explicit one-sided leads for the next run.
+  return candidates.map((candidate: any) => {
+    const matched = byKey.get(matchKey(candidate));
+    if (matched) return {
+      ...candidate,
+      ...matched,
+      category: matched.category || candidate.category || '',
+      brand: matched.brand || candidate.brand || '',
+      identifier: matched.identifier || candidate.identifier || '',
+      buy_url: matched.buy_url || candidate.buy_url,
+      buy_price: Number(matched.buy_price) > 0 ? matched.buy_price : candidate.buy_price,
+    };
+    return {
+      ...candidate,
+      marketplace: 'Amazon/eBay',
+      resale_price: 0,
+      estimated_fees: 0,
+      resale_url: '',
+      match_confidence: 0.45,
+      missing_evidence: 'Exact Amazon/eBay resale evidence did not clear this pass; Buddy will retry the SKU.',
+      caveat: 'Retail buy side is preserved; no profit is counted until resale evidence clears.',
+    };
+  });
 }
 
 function toFinding(match: any, target: number) {
@@ -352,10 +384,13 @@ export async function runRetailArbitragePipeline({ base44, buddy, personalFacts 
     });
   const leads = findings.filter((f: any) => f.arbitrage_lead)
     .sort((a: any, b: any) => Number(b.arbitrage_lead?.confidence || 0) - Number(a.arbitrage_lead?.confidence || 0));
+  const strongVerified = verified.filter((f: any) => f.arbitrage?.action_tier !== 'low_priority');
+  const lowPriorityVerified = verified.filter((f: any) => f.arbitrage?.action_tier === 'low_priority');
+  const selectedVerified = [...strongVerified.slice(0, 8), ...lowPriorityVerified.slice(0, Math.max(0, 8 - strongVerified.length))];
 
   return {
-    findings: [...verified.slice(0, 8), ...leads.slice(0, Math.max(0, 12 - Math.min(8, verified.length)))],
-    should_notify: verified.length > 0,
+    findings: [...selectedVerified, ...leads.slice(0, Math.max(0, 12 - selectedVerified.length))],
+    should_notify: strongVerified.length > 0,
     verification_summary: `Ran ${retailers.length * DISCOVERY_FOCUSES.length} target-aware discovery passes across ${retailers.length} retailers, preserved ${candidates.length} exact priced candidates, and cross-matched ${matches.length} candidates against resale evidence.`,
   };
 }
