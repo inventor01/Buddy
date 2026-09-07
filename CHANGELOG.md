@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-09-06 — Arbitrage discovery pipeline + carry-forward leads
+
+### Root cause
+- The verified-arbitrage evidence gate was intentionally strict, but the discovery engine had only two outcomes: fully verified or discarded. Exact retailer pricing and exact resale evidence frequently become available in separate passes, so useful one-sided candidates were thrown away and the user saw an empty result.
+- Arbitrage specialist outputs were truncated at normal-task limits (roughly 4.5K–9K characters and 12 URLs) between research stages, which could cut most of a 25–40 product candidate pool before resale matching and final verification.
+- Every scheduled run effectively started from zero; unresolved products from yesterday were not preserved as a verification queue.
+
+### Permanent fix
+- Added a third state, `arbitrage_lead`, for specific products where exactly one side has direct non-generic price evidence. Leads include exact identifiers when available, the verified side, missing evidence, confidence, and why the product is worth another verification pass.
+- Leads never count toward the $5K target, never receive profit/ROI numbers, and generic flyers/deals hubs are still rejected.
+- Added a dedicated amber “Promising lead · still verifying” card and a result state that does not falsely say the request is handled.
+- The arbitrage planner now builds a 25–40 candidate pool, preserves UPC/SKU/model/variant details, cross-matches roughly the strongest 15, and keeps one-sided candidates instead of discarding them.
+- Increased intermediate arbitrage-only context/output/evidence limits to preserve up to 30 source URLs and substantially more candidate detail between specialist stages; normal Buddy requests retain their previous limits.
+- Added top-level unresolved arbitrage lead storage on Buddy records. Daily runs save the latest one-sided candidates and, for up to seven days, attempt to finish verifying them before starting a new broad scan.
+- Generic fallback research also consumes saved prior leads, so the pipeline remains cumulative even if enhanced orchestration is unavailable.
+- Result summaries now separately report verified estimated one-unit profit and the number of promising leads still being checked.
+
+### QA
+- One-sided exact product lead survives while generic Ollie’s flyer lead is rejected.
+- Verified opportunity math still recomputes correctly server-side.
+- Lead candidates do not contribute to the $5K target or verified-opportunity count.
+- Existing `5k` target parsing remains correct.
+- Buddy schema parses with the new persisted lead queue.
+- Production build, ESLint, shared runner/orchestrator/preview bundles, `git diff --check`, and targeted lead-pipeline regression tests pass.
+
+
 ## 2026-09-06 — Weekly arbitrage target portfolio behavior
 
 ### Root cause
