@@ -42,7 +42,8 @@ const SYNTH_SCHEMA = {
           arbitrage: {
             type: 'object',
             properties: {
-              item_name: { type: 'string' }, retailer: { type: 'string' }, marketplace: { type: 'string' },
+              item_name: { type: 'string' }, retailer: { type: 'string' }, marketplace: { type: 'string' }, category: { type: 'string' }, brand: { type: 'string' },
+              actionability_score: { type: 'number' }, action_tier: { type: 'string' }, units_to_target: { type: 'number' }, match_confidence: { type: 'number' }, demand_note: { type: 'string' },
               buy_price: { type: 'number' }, discount_amount: { type: 'number' }, discount_description: { type: 'string' },
               net_buy_cost: { type: 'number' }, resale_price: { type: 'number' }, estimated_fees: { type: 'number' },
               buy_url: { type: 'string' }, resale_url: { type: 'string' }, caveat: { type: 'string' },
@@ -51,7 +52,7 @@ const SYNTH_SCHEMA = {
           arbitrage_lead: {
             type: 'object',
             properties: {
-              item_name: { type: 'string' }, retailer: { type: 'string' }, marketplace: { type: 'string' }, identifier: { type: 'string' },
+              item_name: { type: 'string' }, retailer: { type: 'string' }, marketplace: { type: 'string' }, category: { type: 'string' }, brand: { type: 'string' }, identifier: { type: 'string' },
               buy_price: { type: 'number' }, resale_price: { type: 'number' }, buy_url: { type: 'string' }, resale_url: { type: 'string' },
               missing_evidence: { type: 'string' }, reason: { type: 'string' }, confidence: { type: 'number' },
             },
@@ -388,7 +389,7 @@ async function synthesize(base44: any, goal: string, results: any[]) {
       `User goal: ${goal}`,
       'Below are specialist outputs. Produce the final answer using ONLY claims supported by those outputs. Resolve contradictions conservatively. Never invent missing prices, dates, URLs, or actions.',
       'For every finding, use the most specific source URL actually present in the evidence. Prefer the exact article, product, listing, provider, event, route/search, or booking page. Do not replace a direct source with a site homepage or generic landing page. If only a homepage is available, leave the URL empty.',
-      isBroadArbitrageScan(goal) ? `For this retail-arbitrage request, return specific item results only. VERIFIED opportunities must include arbitrage with exact item_name, retailer, marketplace, buy_price, verified discount_amount/description when applicable, net_buy_cost, resale_price, estimated_fees, exact retailer buy_url, exact Amazon/eBay resale_url, and a caveat. ${extractArbitrageProfitTarget(goal) > 0 ? `The $${extractArbitrageProfitTarget(goal).toLocaleString()} figure is the combined weekly target, NOT a minimum profit requirement for each item. Keep all useful positive-spread items even if the current batch totals less than the target.` : ''} If a specific item has a direct non-generic URL+price on exactly one side but the other side still needs proof, return arbitrage_lead with the exact item, identifier when available, the verified side, what evidence is missing, why it is promising, and confidence. Leads are NOT profit and must not count toward the target. Never use flyer pages, generic deals pages, homepages, category pages, or marketplace homepages as final evidence.` : '',
+      isBroadArbitrageScan(goal) ? `For this retail-arbitrage request, return specific item results only. VERIFIED opportunities must include arbitrage with exact item_name, retailer, marketplace, category/brand when known, buy_price, verified discount_amount/description when applicable, net_buy_cost, resale_price, estimated_fees, exact retailer buy_url, exact Amazon/eBay resale_url, and a caveat. Rank toward meaningful per-unit profit and realistic contribution to the weekly target rather than low-dollar commodity spreads. ${extractArbitrageProfitTarget(goal) > 0 ? `The $${extractArbitrageProfitTarget(goal).toLocaleString()} figure is the combined weekly target, NOT a minimum profit requirement for each item. Keep useful positive-spread items even if the current batch totals less than the target.` : ''} If a specific item has a direct non-generic URL+price on exactly one side but the other side still needs proof, return arbitrage_lead with the exact item, identifier when available, the verified side, what evidence is missing, why it is promising, and confidence. Leads are NOT profit and must not count toward the target. Never use flyer pages, generic deals pages, homepages, category pages, or marketplace homepages as final evidence.` : '',
       'If a consequential action still needs approval, say so rather than implying it happened.',
       JSON.stringify(evidence).slice(0, arbitrageRun ? 52000 : 28000),
     ].join('\n'),
