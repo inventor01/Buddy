@@ -362,6 +362,63 @@ async function crossMatchBatch(base44: any, candidates: any[], request: string) 
   });
 }
 
+async function resolveExactResaleCompPages(base44: any, matches: any[], request: string) {
+  const needsResolution = (Array.isArray(matches) ? matches : [])
+    .filter((match: any) => Number(match?.resale_price) > 0 && !isExactResaleCompUrl(match?.resale_url, match?.marketplace))
+    .slice(0, 24);
+  if (!needsResolution.length) return matches;
+
+  const batches: any[][] = [];
+  for (let i = 0; i < needsResolution.length; i += 8) batches.push(needsResolution.slice(i, i + 8));
+  const settled = await Promise.allSettled(batches.map(async (batch) => {
+    const response = await base44.asServiceRole.integrations.Core.InvokeLLM({
+      model: 'gemini_3_flash',
+      add_context_from_internet: true,
+      prompt: [
+        'Resolve these retail-arbitrage resale comps to the EXACT marketplace product/listing page used for the quoted price.',
+        `Overall request: ${request}`,
+        `Candidates: ${JSON.stringify(batch).slice(0, 16000)}`,
+        'Search identifier-first using UPC/SKU/model and exact variant. Never substitute a different size, color, edition, condition, bundle, generation, or count.',
+        'For Amazon, resale_url must be an exact /dp/ASIN or /gp/product/ASIN page whose visible offer supports resale_price.',
+        'For eBay, resale_url must be an exact /itm/ item/listing page. If using a sold/completed comp, link the exact sold/completed item page itself, not the completed-listings search results.',
+        'Search pages, result grids, sold-search pages, category pages, product grids, and marketplace homepages are discovery-only. They are NEVER acceptable resale_url evidence.',
+        'Return only candidates for which the exact comp page and quoted resale price can be supported. Omit unresolved candidates rather than inventing a URL.',
+      ].join('\n'),
+      response_json_schema: MATCH_SCHEMA,
+    });
+    return Array.isArray(response?.matches) ? response.matches : [];
+  }));
+  const resolved = settled.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
+  const byKey = new Map(resolved.map((match: any) => [matchKey(match), match]));
+
+  return matches.map((match: any) => {
+    if (isExactResaleCompUrl(match?.resale_url, match?.marketplace)) return match;
+    const replacement: any = byKey.get(matchKey(match));
+    if (replacement && isExactResaleCompUrl(replacement?.resale_url, replacement?.marketplace)) {
+      return {
+        ...match,
+        ...replacement,
+        buy_url: match.buy_url,
+        buy_price: match.buy_price,
+        original_price: match.original_price,
+        price_status: match.price_status,
+        discounts: match.discounts,
+        discount_amount: match.discount_amount,
+        discount_description: match.discount_description,
+      };
+    }
+    return {
+      ...match,
+      resale_price: 0,
+      estimated_fees: 0,
+      resale_url: '',
+      match_confidence: Math.min(0.55, Number(match?.match_confidence) || 0.5),
+      missing_evidence: 'An exact Amazon product page or eBay item page supporting the resale comp is still needed. Search/results pages do not count.',
+      caveat: 'Buddy preserved the exact buy side but removed the unverified resale price from profit math.',
+    };
+  });
+}
+
 export function toFinding(match: any, target: number) {
   const itemName = cleanText(match?.item_name, 120);
   const retailer = cleanText(match?.retailer, 60);
@@ -562,8 +619,9 @@ export async function runRetailArbitragePipeline({ base44, buddy, personalFacts 
     }));
   });
   const coveredMatches = [...matches, ...failedMatchCandidates];
+  const exactResaleMatches = await resolveExactResaleCompPages(base44, coveredMatches, request);
 
-  const findings = coveredMatches.map((m) => toFinding(m, target)).filter(Boolean);
+  const findings = exactResaleMatches.map((m) => toFinding(m, target)).filter(Boolean);
   const verified = findings.filter((f: any) => f.arbitrage)
     .sort((a: any, b: any) => {
       const sa = Number(a.arbitrage?.actionability_score || 0);
