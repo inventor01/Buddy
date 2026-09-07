@@ -4,6 +4,7 @@ import { loadProfile, loadHousehold, householdFacts, profilePromptLines, relevan
 import { requestCategory, loadDelegationPolicy, delegationPromptLines } from '../../shared/delegation.ts';
 import { resolveBuddyMentions, linkedBuddyPromptLines } from '../../shared/linkedBuddies.ts';
 import { looksLikeComplexChain, normalizeTaskSteps } from '../../shared/taskChain.ts';
+import { suppressOptionalClarification } from '../../shared/clarification.ts';
 
 // Turns one plain sentence into a plain-language plan. The consumer never
 // needs to know about agents, workflows, or automation — they only see what
@@ -81,6 +82,8 @@ export default async function(req) {
         'handle_responses may check and draft while the user is present, but never imply background email access or an outgoing reply happened unless the connection and approval flow actually completed.',
         'CRITICAL: preserve every explicit constraint exactly as written — prices, dates, times, locations, names, quantities, thresholds, recipients, and frequency. Never loosen, round, substitute, or invent a constraint.',
         'Do not ask a question for information already present in the note. Only ask when a genuinely required detail is missing.',
+        'Broad discovery is a valid instruction. If the user asks to scan named stores/marketplaces broadly for arbitrage, resale, deals, or profit opportunities, do NOT ask them to choose a product category or specific items. Scan broadly, rank the strongest verifiable opportunities, and let them narrow it later if they want.',
+        'For retail arbitrage requests, preserve every named retailer and resale marketplace. Include explicitly requested coupons, discounts, loyalty offers, and sale prices in the buy-cost calculation only when they are actually verifiable; never invent coupon eligibility. Compare against verifiable resale prices and label fees/shipping assumptions clearly.',
         ...(imageUrl
           ? ['A photo is attached — identify the product or thing it shows, and make what_line about finding that exact thing every day.']
           : []),
@@ -167,6 +170,7 @@ export default async function(req) {
 
     const explicitMoney = note.match(/\$\s*\d+(?:\.\d+)?/g) || [];
     let question = typeof plan?.question === 'string' ? plan.question.trim().slice(0, 200) : '';
+    question = suppressOptionalClarification(note, question);
     if (explicitMoney.length && /price|budget|maximum|max|dollar|cost/i.test(question)) question = '';
     if (profile?.home_airport && looksLikeFlightRequest(note) && /\b(from|departure|departing|airport|city)\b/i.test(question)) question = '';
     if (profile?.home_city && /\b(near me|nearby|plumber|electrician|mechanic|cleaner|dentist|contractor|roofer|salon|barber|restaurant)\b/i.test(note) && /\b(city|zip|location|area)\b/i.test(question)) question = '';
