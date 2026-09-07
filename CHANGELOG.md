@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-09-06 — Weekly arbitrage target portfolio behavior
+
+### Root cause
+- A prompt such as `Everyday search and find arbritage opportunities for a minimum of 5k that i can make this week` did not necessarily enter the dedicated arbitrage path because the detector expected named stores/marketplaces.
+- The `$5K` goal could be interpreted like a minimum profit filter on each result instead of a combined weekly portfolio target, causing useful smaller positive-spread opportunities to be discarded.
+- When stores/marketplaces were omitted, Buddy could ask another optional narrowing question instead of choosing sensible defaults.
+- The generic 5-result research path was too shallow for a weekly portfolio goal.
+
+### Permanent fix
+- Any clear `find/search + arbitrage/resale/flip` request now activates the arbitrage workflow, including common `arbritage`/`arbitage` misspellings.
+- Broad arbitrage no longer requires the user to name Amazon/eBay or specific retailers.
+- When sources are unspecified, Buddy defaults to broad current U.S. retail/online sourcing with Amazon/eBay resale evidence rather than asking for stores, marketplaces, categories, or items.
+- Added profit-target parsing for `$5K`, `5k`, and similar goal language.
+- A weekly/make/earn target is explicitly treated as the AGGREGATE target across multiple opportunities unless the person explicitly says `each`, `per item`, or `per deal`.
+- Added a deterministic arbitrage orchestration chain: retail scan → exact resale cross-match → deterministic profit math → verification.
+- Broad arbitrage runs can retain up to 12 verified positive-spread opportunities instead of only five.
+- Partial progress is preserved: Buddy reports the estimated one-unit potential found on the current run and the remaining gap to the weekly target instead of returning nothing because the target has not been reached yet.
+- Empty recurring runs preserve the target and tell the user Buddy will keep scanning on the next scheduled run rather than suggesting unnecessary narrowing.
+- Profit progress is explicitly labeled as opportunity math, not guaranteed profit or confirmed inventory quantity.
+
+### QA
+- Exact user sentence with `arbritage` is recognized as arbitrage and broad discovery.
+- `5k` parses deterministically to `$5,000`.
+- Product-category, store, and marketplace clarification variants are suppressed for the exact prompt.
+- Valid opportunities totaling less than the target remain valid; unit test produced `$190` potential and correctly reported a `$4,810` gap instead of rejecting the batch.
+- Net buy cost remains independently recomputed rather than trusting model math.
+- Production build, ESLint, all affected backend/shared bundles, and `git diff --check` pass.
+
+
 ## 2026-09-06 — Arbitrage evidence + profit quality gate
 
 ### Root cause
