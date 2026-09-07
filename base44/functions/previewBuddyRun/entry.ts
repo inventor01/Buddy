@@ -5,6 +5,7 @@ import { isWholesalePropertyRequest, runWholesaleDealFinder } from '../../shared
 import { normalizeTaskSteps, taskStepPromptLines } from '../../shared/taskChain.ts';
 import { isBroadArbitrageScan, suppressOptionalClarification } from '../../shared/clarification.ts';
 import { arbitragePortfolioSummary, extractArbitrageProfitTarget } from '../../shared/arbitrage.ts';
+import { runRetailArbitragePipeline } from '../../shared/arbitrageSearch.ts';
 
 // Runs a visitor's typed note once, with no account and nothing saved —
 // the "watch it run" step for people who haven't signed in. Anonymous by
@@ -84,6 +85,33 @@ export default async function(req) {
       if (needs) return Response.json({ state: 'needs_detail', message: needs, lines: [needs], items: [] });
       const wholesaleItems = toFindingItems(wholesale?.findings);
       return Response.json({ state: wholesaleItems.length ? 'answer' : 'empty', lines: toLines(wholesaleItems), items: wholesaleItems, message: wholesaleItems.length ? undefined : 'No deal cleared the wholesale screen today.' });
+    }
+
+    const broadArbitrageRequest = isBroadArbitrageScan(`${note} ${what}`);
+    if (broadArbitrageRequest) {
+      const pipeline = await runRetailArbitragePipeline({
+        base44,
+        buddy: { note, what_line: what, context, run_mode: 'repeat', kind: 'web', arbitrage_leads: [] },
+        personalFacts: context,
+      });
+      const target = extractArbitrageProfitTarget(`${note} ${what}`);
+      const items = toFindingItems(pipeline?.findings, 12).filter((item) => item?.arbitrage || item?.arbitrage_lead);
+      if (!items.length) {
+        return Response.json({
+          state: 'empty',
+          message: target > 0
+            ? `Buddy searched multiple retailer sources but could not produce an exact actionable item this pass. Your $${target.toLocaleString()} weekly target stays in place.`
+            : 'Buddy searched multiple retailer sources but could not produce an exact actionable item this pass.',
+          lines: [],
+          items: [],
+        });
+      }
+      const portfolio = arbitragePortfolioSummary(items, target);
+      const leadCount = items.filter((item) => item?.arbitrage_lead).length;
+      const summary = target > 0
+        ? `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities toward your $${target.toLocaleString()} weekly target. Gap: $${portfolio.gap.toLocaleString()}.${leadCount ? ` ${leadCount} more exact product lead${leadCount === 1 ? '' : 's'} still need one side verified.` : ''}`
+        : `This run found ${portfolio.count} verified opportunities${leadCount ? ` plus ${leadCount} exact product lead${leadCount === 1 ? '' : 's'} still being verified` : ''}.`;
+      return Response.json({ state: 'answer', lines: [summary, ...toLines(items)], items, message: summary });
     }
 
     const findings = await base44.asServiceRole.integrations.Core.InvokeLLM({
