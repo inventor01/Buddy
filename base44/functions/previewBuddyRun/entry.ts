@@ -4,6 +4,7 @@ import { checkUsageLimit } from '../../shared/rateLimit.ts';
 import { isWholesalePropertyRequest, runWholesaleDealFinder } from '../../shared/realEstate.ts';
 import { normalizeTaskSteps, taskStepPromptLines } from '../../shared/taskChain.ts';
 import { isBroadArbitrageScan, suppressOptionalClarification } from '../../shared/clarification.ts';
+import { arbitragePortfolioSummary, extractArbitrageProfitTarget } from '../../shared/arbitrage.ts';
 
 // Runs a visitor's typed note once, with no account and nothing saved —
 // the "watch it run" step for people who haven't signed in. Anonymous by
@@ -123,22 +124,31 @@ export default async function(req) {
       });
     }
 
-    let items = toFindingItems(findings?.findings);
     const broadArbitrage = isBroadArbitrageScan(`${note} ${what}`);
+    const arbitrageTarget = broadArbitrage ? extractArbitrageProfitTarget(`${note} ${what}`) : 0;
+    let items = toFindingItems(findings?.findings, broadArbitrage ? 12 : 5);
     if (broadArbitrage) items = items.filter((item) => item?.arbitrage);
-    const lines = toLines(items);
     if (!items.length) {
       return Response.json({
         state: 'empty',
         message: broadArbitrage
-          ? "No specific arbitrage opportunity cleared Buddy’s evidence and profit checks today."
+          ? (arbitrageTarget > 0
+              ? `No specific arbitrage opportunity cleared Buddy’s evidence and profit checks on this run. Your $${arbitrageTarget.toLocaleString()} weekly target stays in place.`
+              : "No specific arbitrage opportunity cleared Buddy’s evidence and profit checks today.")
           : "Buddy couldn't verify a useful answer yet.",
         lines: [],
         items: [],
       });
     }
+    if (broadArbitrage) {
+      const portfolio = arbitragePortfolioSummary(items, arbitrageTarget);
+      const summary = arbitrageTarget > 0
+        ? `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities toward your $${arbitrageTarget.toLocaleString()} weekly target. Gap: $${portfolio.gap.toLocaleString()}. This is opportunity math, not guaranteed profit or confirmed inventory quantity.`
+        : `This run found $${portfolio.verified_potential.toLocaleString()} in estimated one-unit profit across ${portfolio.count} verified opportunities.`;
+      return Response.json({ state: 'answer', lines: [summary, ...toLines(items)], items, message: summary });
+    }
 
-    return Response.json({ state: 'answer', lines, items });
+    return Response.json({ state: 'answer', lines: toLines(items), items });
   } catch (error) {
     const message = String(error?.message || error || 'Buddy could not finish this preview.');
     return Response.json({ error: message, code: 'PREVIEW_FAILED' }, { status: 500 });
