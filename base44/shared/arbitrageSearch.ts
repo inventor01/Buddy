@@ -139,7 +139,7 @@ async function discoverAtRetailer(base44: any, retailer: string, request: string
   return (Array.isArray(response?.candidates) ? response.candidates : []).map((c: any) => ({ ...c, retailer }));
 }
 
-function candidateDiscoveryScore(c: any) {
+export function candidateDiscoveryScore(c: any) {
   const buyPrice = Math.max(0, Number(c?.buy_price) || 0);
   const discount = Math.max(0, Number(c?.discount_amount) || 0);
   const identifierBonus = cleanText(c?.identifier, 100) ? 20 : 0;
@@ -247,7 +247,7 @@ async function crossMatchBatch(base44: any, candidates: any[], request: string) 
   });
 }
 
-function toFinding(match: any, target: number) {
+export function toFinding(match: any, target: number) {
   const itemName = cleanText(match?.item_name, 120);
   const retailer = cleanText(match?.retailer, 60);
   const identifier = cleanText(match?.identifier, 100);
