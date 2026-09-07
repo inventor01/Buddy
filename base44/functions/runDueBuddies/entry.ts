@@ -3,6 +3,7 @@ import { runBuddy, parseScheduleHour, nowInZone, scheduleMatchesToday } from '..
 import { loadProfile, loadHousehold, householdFacts, relevantProfileFacts } from '../../shared/personalization.ts';
 import { requestCategory, loadDelegationPolicy, delegationPromptLines } from '../../shared/delegation.ts';
 import { loadVerifiedPhone } from '../../shared/phone.ts';
+import { suppressOptionalClarification } from '../../shared/clarification.ts';
 
 // Hourly sweep: runs every active buddy whose schedule time has arrived and
 // that hasn't already run today. Triggered by the platform's scheduler.
@@ -58,7 +59,17 @@ export default async function(req) {
       // User-presence states must never be picked up by the background sweep.
       // Connected reply handling needs the person's app-user OAuth context,
       // and approval/detail states must wait for that person rather than rerun.
-      if (buddy.open_question) continue;
+      if (buddy.open_question) {
+        const requestText = `${buddy.note || ''} ${buddy.what_line || ''}`;
+        const stillRequired = suppressOptionalClarification(requestText, buddy.open_question);
+        if (stillRequired) continue;
+        try {
+          await base44.asServiceRole.entities.Buddy.update(buddy.id, { open_question: '' });
+          buddy.open_question = '';
+        } catch (_) {
+          continue;
+        }
+      }
       if (['pending', 'needs_connection', 'executing'].includes(String(buddy.approval_status || ''))) continue;
       if (buddy.action_type === 'email_read' && buddy.chain_state?.phase === 'waiting_response') continue;
       const owner = await ownerOf(buddy.owner_id);
