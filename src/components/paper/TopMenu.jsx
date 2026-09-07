@@ -15,7 +15,7 @@ export default function TopMenu({ onBook, authed = true, onSignIn = null }) {
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-8">
         <Link
-          to="/"
+          to={authed ? "/notes" : "/"}
           className="font-display text-[16px] font-semibold tracking-tight text-neutral-900"
         >
           Buddy
