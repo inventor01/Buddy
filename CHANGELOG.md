@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-09-06 — Consumer-grade trust + Buddy category differentiation
+
+### Root causes found
+- **Buddy’s strongest behavior was hidden behind a chat-like first impression.** The landing and plan review did not make the core handoff model obvious: the user gives an outcome, Buddy owns the dependent work, and the user returns only for a missing detail or consequential approval.
+- **Receipts and escalations were not strong trust artifacts.** Owner-side create/update RLS meant client code could theoretically forge records that the UI presented as system-generated history.
+- **Buddy displayed invented time-saved estimates.** Receipts assigned fixed 8/10-minute values that were not measured.
+- **Navigation leaked users out of the product.** `/start` was referenced but missing, Settings and post-payment links labeled as returning to the workspace pointed to `/`, authenticated logo clicks opened the public landing page, and normal login defaulted to `/` instead of the workspace.
+- **Settings exposed implementation complexity.** Niche wholesale/ad controls and specialist readiness made the default consumer experience feel like a configurable agent console.
+- **Connection cards showed app readiness, not the current person’s connection state.** Already-connected users could still see a generic Connect state.
+- **One-click deletion and generic template branding weakened product trust.** Handoffs deleted immediately; the 404, favicon, and missing web manifest still exposed platform/template residue.
+- **Several visible labels still described Buddy as notes rather than delegated work.** This weakened the category position.
+
+### Permanent fixes
+- Repositioned the first screen around **“Hand off the outcome, not the steps”** and added a visible `Find → Review → Prepare → Ask you → Finish` model.
+- Added a handoff contract to plan review: **Buddy owns** the outcome and **You’re needed for** only the missing detail/approval, or nothing else right now.
+- Added a complex carry-through example that demonstrates research → ranking → outreach preparation → approval rather than another one-shot answer.
+- Made BuddyReceipt and BuddyEscalation create/update server-controlled while retaining owner read/delete access.
+- Removed all displayed time-saved claims and neutralized the legacy receipt field until a measured source exists.
+- Added `/start`, fixed workspace navigation, made normal auth return to `/notes`, and corrected post-payment links.
+- Added Buddy-branded favicon, metadata, install manifest, standalone launch behavior, and a Buddy-native 404.
+- Collapsed wholesale and Meta controls behind Advanced options; specialist readiness remains admin-only.
+- `connectionSetup` now checks the current app-user connection and Settings displays `Connected` instead of only environment readiness.
+- Added a two-step deletion confirmation for handoffs.
+- Replaced visible note-centric copy with handoff/things/Buddy language in core surfaces.
+- Made manual rerun copy context-aware: search-like handoffs say `Run this search now`; other web handoffs say `Run this again now`.
+- Removed overbroad photo copy and now truthfully says the exact image is used as context.
+
+### Market-position check
+- Current competitors increasingly offer recurring tasks, memory/context, approvals, integrations, and autonomous execution. Buddy therefore treats those as table stakes, not the USP.
+- The protected product thesis is the interaction model: no agent builder, trigger/action editor, skill/model selection, or workflow assembly for ordinary users; one outcome becomes a managed, evidence-aware handoff.
+
+### QA / release notes
+- Mid-pass production build, ESLint, schema parsing, backend bundles, and trust/navigation regression checks passed.
+- Final gate rerun required after the last branding/auth/handoff-contract edits.
+- Base44 connector catalog reported Gmail, Google Calendar, and Google Tasks as not connected at the app level during this pass; code can be release-gated, but live connected-action E2E should not be claimed until OAuth configuration is connected and exercised.
+
 ## 2026-09-06 — Response error debugging
 
 ### Root causes found
