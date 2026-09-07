@@ -218,7 +218,8 @@ async function discoverAtRetailer(base44: any, retailer: string, request: string
 
 export function candidateDiscoveryScore(c: any) {
   const buyPrice = Math.max(0, Number(c?.buy_price) || 0);
-  const discount = Math.max(0, Number(c?.discount_amount) || 0);
+  const verifiedDiscounts = sanitizeDiscounts(c?.discounts, buyPrice);
+  const discount = discountSummary(verifiedDiscounts).total;
   const identifierBonus = cleanText(c?.identifier, 100) ? 20 : 0;
   const brandBonus = cleanText(c?.brand, 80) ? 8 : 0;
   const priorityText = `${c?.category || ''} ${c?.brand || ''} ${c?.item_name || ''}`.toLowerCase();
@@ -241,6 +242,8 @@ function dedupeCandidates(raw: any[]) {
     const key = `${retailer.toLowerCase()}|${identifier || itemName.toLowerCase()}`;
     if (seen.has(key)) continue;
     seen.add(key);
+    const verifiedDiscounts = sanitizeDiscounts(c?.discounts, buyPrice);
+    const discount = discountSummary(verifiedDiscounts);
     out.push({
       item_name: itemName,
       retailer,
@@ -248,9 +251,12 @@ function dedupeCandidates(raw: any[]) {
       brand: cleanText(c?.brand, 80),
       identifier,
       variant: cleanText(c?.variant, 120),
+      original_price: Math.max(buyPrice, Number(c?.original_price) || 0),
       buy_price: Math.round(buyPrice * 100) / 100,
-      discount_amount: Math.max(0, Number(c?.discount_amount) || 0),
-      discount_description: cleanText(c?.discount_description, 180),
+      price_status: cleanText(c?.price_status, 30),
+      discount_amount: discount.total,
+      discount_description: discount.description,
+      discounts: verifiedDiscounts,
       buy_url: buyUrl,
       availability_note: cleanText(c?.availability_note, 180),
       evidence_note: cleanText(c?.evidence_note, 180),
