@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-09-07 — Exact retailer product-page evidence gate
+
+### Root cause
+- Arbitrage buy-side evidence validation only rejected a small set of generic URLs when the generic word appeared at the end of the path. It missed nested browse/category routes such as Target `/c/.../clearance/-/N-...` and retailer search routes such as Kroger `/q/...`.
+- Those discovery pages could therefore be mislabeled as `Buy side verified` even though they did not prove the exact product, exact variant, or current item-level price.
+- When a discovery pass learned a useful exact item/model/UPC from a generic page, there was no dedicated recovery step to resolve that candidate to the retailer's exact product-detail URL.
+
+### Permanent fix
+- Added a shared retailer evidence classifier with explicit product-detail URL rules for Target, Kroger, Meijer, TJ Maxx, Ollie's, Walmart, Best Buy, Home Depot, Lowe's, Walgreens, CVS, and Costco plus a conservative generic fallback.
+- Target category/clearance routes and Kroger `/q/` search routes are now discovery-only and can never certify the buy side.
+- The final arbitrage normalization boundary independently requires an exact retailer product-detail URL, so a weak URL cannot bypass the discovery filter and reach the UI as verified evidence.
+- Resale evidence generic-page detection was expanded to reject browse/search/category/collection/clearance/home-style routes.
+- Added an exact-product resolution pass: when Buddy discovers a specific item/model/UPC on a generic retailer page, it immediately searches again for the exact retailer product-detail page and only preserves the candidate when that exact page and current price are found.
+- Resale matching can no longer overwrite a valid exact retailer product URL with a weaker generic URL returned by a later model pass.
+
+### QA
+- Exact reported Target clearance URL is rejected as buy-side evidence.
+- Known Target `/p/.../-/A-...` product URL is accepted.
+- Exact reported Kroger `/q/kitchen%2Bappliance` URL is rejected as buy-side evidence.
+- Kroger `/p/<product>/<UPC>` product URL is accepted.
+- Production build, ESLint, retail-evidence/arbitrage/arbitrage-search/shared-runner bundles, and `git diff --check` pass.
+
+
 ## 2026-09-07 — Remove arbitrage dead-end empty state
 
 ### Root cause
